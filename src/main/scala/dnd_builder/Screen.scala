@@ -12,7 +12,6 @@ trait ScreenId {
 object ScreenId {
   case object HomeId        extends ScreenId { val name = "home"; val title = "Home" }
   case object AboutId       extends ScreenId { val name = "about"; val title = "About" }
-  case object NotesId       extends ScreenId { val name = "notes"; val title = "Notes" }
   case object SpeciesId     extends ScreenId { val name = "species"; val title = "Choose Race" }
   case object ClassSelectId extends ScreenId { val name = "class-select"; val title = "Choose Class" }
   case object BackgroundId  extends ScreenId { val name = "background"; val title = "Choose Background" }

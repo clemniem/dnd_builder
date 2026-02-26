@@ -4,12 +4,6 @@ import dndbuilder.dnd.{Character, Codecs}
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 import io.circe.{Decoder, Encoder}
 
-final case class StoredNote(id: String, name: String, content: String)
-object StoredNote {
-  given Encoder[StoredNote] = deriveEncoder
-  given Decoder[StoredNote] = deriveDecoder
-}
-
 final case class StoredCharacter(id: String, character: Character)
 object StoredCharacter {
   import Codecs.given
@@ -18,6 +12,5 @@ object StoredCharacter {
 }
 
 object StorageKeys {
-  val notes      = "notes"
   val characters = "characters"
 }

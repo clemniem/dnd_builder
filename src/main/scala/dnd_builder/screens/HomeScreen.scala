@@ -34,8 +34,6 @@ object HomeScreen extends Screen {
           "Build a new Level 1 character step by step"),
         linkCard("My Characters", ScreenId.GalleryId,
           "View, manage, and export your saved characters"),
-        linkCard("Notes", ScreenId.NotesId,
-          "Scratch notes with LocalStorage persistence"),
         linkCard("About", ScreenId.AboutId,
           "Tech stack and tools")
       )

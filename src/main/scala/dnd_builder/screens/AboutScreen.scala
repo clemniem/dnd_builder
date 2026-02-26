@@ -50,6 +50,15 @@ object AboutScreen extends Screen {
       div(`class` := "about-content")(
         p(text("D&D Character Creator — a type-safe 5e (2024) character builder.")),
         p(text("Built with Scala 3, Scala.js, Tyrian (Elm architecture), and Circe.")),
+        p(text("All game rules follow the 2024 Systems Reference Document (SRD).")),
+        p()(
+          a(
+            href := "https://github.com/clemniem/dnd_builder",
+            Attribute("target", "_blank"),
+            Attribute("rel", "noopener noreferrer"),
+            `class` := "about-link"
+          )(text("View on GitHub"))
+        ),
         h2(`class` := "about-heading")(text("Libraries & tools")),
         div(`class` := "about-table-wrap")(toolsTable),
         h2(`class` := "about-heading")(text("Get latest version")),

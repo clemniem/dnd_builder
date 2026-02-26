@@ -20,7 +20,6 @@ object App extends TyrianIOApp[RootMsg, RootModel] {
       screens = List(
         HomeScreen,
         AboutScreen,
-        NotesScreen,
         SpeciesScreen,
         ClassSelectScreen,
         BackgroundScreen,
