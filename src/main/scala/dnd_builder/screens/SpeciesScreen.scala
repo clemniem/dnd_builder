@@ -41,6 +41,7 @@ object SpeciesScreen extends Screen:
   def view(model: Model): Html[Msg] =
     div(`class` := "screen-container")(
       StepIndicator(1),
+      StepNav("< Home", SpeciesMsg.Back, "Next: Class >", SpeciesMsg.Next, model.selectedSpecies.isDefined),
       h1(`class` := "screen-title")(text("Choose Your Race")),
       p(`class` := "screen-intro")(text("Select a species to define your character's heritage and innate traits.")),
       div(`class` := "card-grid")(
@@ -68,14 +69,7 @@ object SpeciesScreen extends Screen:
         }*
       ),
       subChoiceSection(model),
-      selectedTraitsSection(model),
-      div(`class` := "nav-row")(
-        button(`class` := "btn-ghost", onClick(SpeciesMsg.Back))(text("< Home")),
-        button(
-          `class` := (if model.selectedSpecies.isDefined then "btn-primary btn-lg" else "btn-primary btn-lg btn-disabled"),
-          onClick(SpeciesMsg.Next)
-        )(text("Next: Class >"))
-      )
+      selectedTraitsSection(model)
     )
 
   private def subChoiceSection(model: Model): Html[Msg] =

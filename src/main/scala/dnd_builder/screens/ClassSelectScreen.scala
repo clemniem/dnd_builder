@@ -35,17 +35,11 @@ object ClassSelectScreen extends Screen:
   def view(model: Model): Html[Msg] =
     div(`class` := "screen-container")(
       StepIndicator(2),
+      StepNav("< Race", ClassSelectMsg.Back, "Next: Background >", ClassSelectMsg.Next, model.selected.isDefined),
       h1(`class` := "screen-title")(text("Choose Your Class")),
       p(`class` := "screen-intro")(text("Select a class to define your character's abilities and role.")),
       div(`class` := "card-grid")(
         DndClass.all.map(cls => classCard(cls, model.selected.contains(cls)))*
-      ),
-      div(`class` := "nav-row")(
-        button(`class` := "btn-ghost", onClick(ClassSelectMsg.Back))(text("< Race")),
-        button(
-          `class` := (if model.selected.isDefined then "btn-primary btn-lg" else "btn-primary btn-lg btn-disabled"),
-          onClick(ClassSelectMsg.Next)
-        )(text("Next: Background >"))
       )
     )
 

@@ -55,6 +55,7 @@ object SkillsScreen extends Screen:
 
     div(`class` := "screen-container")(
       StepIndicator(5),
+      StepNav("< Abilities", SkillsMsg.Back, "Next: Review >", SkillsMsg.Next, remaining == 0),
       h1(`class` := "screen-title")(text("Choose Skills")),
       p(`class` := "screen-intro")(
         text(s"Select ${model.dndClass.numSkillChoices} skills from your class. Background skills are already granted.")
@@ -94,13 +95,6 @@ object SkillsScreen extends Screen:
               )
             ))
         }*
-      ),
-      div(`class` := "nav-row")(
-        button(`class` := "btn-ghost", onClick(SkillsMsg.Back))(text("< Abilities")),
-        button(
-          `class` := (if remaining == 0 then "btn-primary btn-lg" else "btn-primary btn-lg btn-disabled"),
-          onClick(SkillsMsg.Next)
-        )(text("Next: Review >"))
       )
     )
 

@@ -79,6 +79,7 @@ object ReviewScreen extends Screen:
 
     div(`class` := "screen-container")(
       StepIndicator(6),
+      StepNav("< Skills", ReviewMsg.Back, if model.saving then "Saving..." else "Save Character", ReviewMsg.Save, !model.saving),
       h1(`class` := "screen-title")(text("Review & Save")),
       div(`class` := "field-block")(
         label(`class` := "label-block")(text("Character Name")),
@@ -86,14 +87,7 @@ object ReviewScreen extends Screen:
           onInput(ReviewMsg.SetName.apply))
       ),
       errorsView(model.errors),
-      characterSummary(character),
-      div(`class` := "nav-row")(
-        button(`class` := "btn-ghost", onClick(ReviewMsg.Back))(text("< Skills")),
-        button(
-          `class` := (if model.saving then "btn-primary btn-lg btn-disabled" else "btn-primary btn-lg"),
-          onClick(ReviewMsg.Save)
-        )(text(if model.saving then "Saving..." else "Save Character"))
-      )
+      characterSummary(character)
     )
 
   private def errorsView(errors: List[String]): Html[Msg] =

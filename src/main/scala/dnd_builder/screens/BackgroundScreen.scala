@@ -40,6 +40,7 @@ object BackgroundScreen extends Screen:
   def view(model: Model): Html[Msg] =
     div(`class` := "screen-container")(
       StepIndicator(3),
+      StepNav("< Class", BackgroundMsg.Back, "Next: Abilities >", BackgroundMsg.Next, model.selectedBackground.isDefined),
       h1(`class` := "screen-title")(text("Choose Your Background")),
       p(`class` := "screen-intro")(text("Your background determines ability bonuses, skill proficiencies, and your origin feat.")),
       div(`class` := "card-grid--2col card-grid")(
@@ -65,14 +66,7 @@ object BackgroundScreen extends Screen:
           )
         }*
       ),
-      selectedBackgroundDetail(model),
-      div(`class` := "nav-row")(
-        button(`class` := "btn-ghost", onClick(BackgroundMsg.Back))(text("< Class")),
-        button(
-          `class` := (if model.selectedBackground.isDefined then "btn-primary btn-lg" else "btn-primary btn-lg btn-disabled"),
-          onClick(BackgroundMsg.Next)
-        )(text("Next: Abilities >"))
-      )
+      selectedBackgroundDetail(model)
     )
 
   private def selectedBackgroundDetail(model: Model): Html[Msg] =

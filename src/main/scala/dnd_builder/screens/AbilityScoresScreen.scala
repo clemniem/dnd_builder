@@ -124,6 +124,7 @@ object AbilityScoresScreen extends Screen:
 
     div(`class` := "screen-container")(
       StepIndicator(4),
+      StepNav("< Background", AbilityScoresMsg.Back, "Next: Skills >", AbilityScoresMsg.Next, bonusUsed == 3),
       h1(`class` := "screen-title")(text("Ability Scores")),
       p(`class` := "screen-intro")(text("Assign your ability scores and distribute background bonuses.")),
       div(`class` := "flex-row", style := "margin-bottom: 1rem;")(
@@ -146,14 +147,7 @@ object AbilityScoresScreen extends Screen:
         text("Bonus used: "),
         span(`class` := "points-pool-value")(text(s"$bonusUsed / 3"))
       ),
-      bonusControls(model),
-      div(`class` := "nav-row")(
-        button(`class` := "btn-ghost", onClick(AbilityScoresMsg.Back))(text("< Background")),
-        button(
-          `class` := (if bonusUsed == 3 then "btn-primary btn-lg" else "btn-primary btn-lg btn-disabled"),
-          onClick(AbilityScoresMsg.Next)
-        )(text("Next: Skills >"))
-      )
+      bonusControls(model)
     )
 
   private def methodToggle(current: ScoreMethod): Html[Msg] =

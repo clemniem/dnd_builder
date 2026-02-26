@@ -1,0 +1,33 @@
+---
+description: Extract reusable UI components instead of duplicating view logic across screens
+alwaysApply: true
+---
+
+# Reusable Components
+
+## Rule
+When the same HTML/view structure appears (or would appear) in more than one screen, extract it into a shared component in `screens/` (like `StepIndicator` or `StepNav`). Never copy-paste a view block across multiple screens.
+
+## How to Check
+Before writing view code in a screen, scan existing shared components for something that already fits. If nothing exists and you see the same pattern needed in 2+ screens, create a new `object` with a polymorphic `apply[Msg](...)` method.
+
+## Pattern
+
+```scala
+// screens/MySharedWidget.scala
+object MySharedWidget:
+  def apply[Msg](label: String, onAction: Msg, enabled: Boolean): Html[Msg] =
+    div(`class` := "widget")(
+      button(`class` := (if enabled then "btn" else "btn btn-disabled"), onClick(onAction))(text(label))
+    )
+```
+
+Then in each screen: `MySharedWidget("Go", MyMsg.Go, isReady)` — one line, not a duplicated block.
+
+## Existing Shared Components
+| Component | File | Purpose |
+|---|---|---|
+| `StepIndicator` | `screens/StepIndicator.scala` | Wizard progress bar |
+| `StepNav` | `screens/StepNav.scala` | Back / Next navigation row |
+| `ScreenHeader` | `screens/ScreenHeader.scala` | Shared screen header |
+| `GalleryLayout` | `screens/GalleryLayout.scala` | Card grid with empty state |
