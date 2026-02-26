@@ -1,4 +1,4 @@
-package scaffold
+package dndbuilder
 
 final case class ScreenRegistry(
   screens: List[Screen],

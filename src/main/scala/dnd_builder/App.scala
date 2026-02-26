@@ -1,7 +1,7 @@
-package scaffold
+package dndbuilder
 
 import cats.effect.IO
-import scaffold.screens.{HomeMsg, HomeScreen, AboutScreen, NotesScreen}
+import dndbuilder.screens.*
 import tyrian.Html.*
 import tyrian.*
 
@@ -20,7 +20,14 @@ object App extends TyrianIOApp[RootMsg, RootModel] {
       screens = List(
         HomeScreen,
         AboutScreen,
-        NotesScreen
+        NotesScreen,
+        ClassSelectScreen,
+        OriginScreen,
+        AbilityScoresScreen,
+        SkillsScreen,
+        ReviewScreen,
+        CharacterGalleryScreen,
+        CharacterDetailScreen
       ),
       initialScreenId = ScreenId.HomeId
     )

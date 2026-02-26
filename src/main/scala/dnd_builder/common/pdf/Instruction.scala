@@ -1,4 +1,4 @@
-package scaffold.common.pdf
+package dndbuilder.common.pdf
 
 sealed trait Instruction
 

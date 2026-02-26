@@ -1,4 +1,4 @@
-package scaffold.common.pdf
+package dndbuilder.common.pdf
 
 import org.scalajs.dom.console
 import scala.scalajs.js

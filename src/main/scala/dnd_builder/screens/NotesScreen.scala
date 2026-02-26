@@ -1,9 +1,9 @@
-package scaffold.screens
+package dndbuilder.screens
 
 import cats.effect.IO
-import scaffold.{NavigateNext, Screen, ScreenId, ScreenOutput, StorageKeys, StoredNote}
-import scaffold.common.LocalStorageUtils
-import scaffold.common.nescss.NesCss
+import dndbuilder.{NavigateNext, Screen, ScreenId, ScreenOutput, StorageKeys, StoredNote}
+import dndbuilder.common.LocalStorageUtils
+import dndbuilder.common.nescss.NesCss
 import tyrian.Html.*
 import tyrian.*
 

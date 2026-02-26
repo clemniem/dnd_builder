@@ -1,0 +1,177 @@
+package dndbuilder.dnd
+
+import io.circe.*
+import io.circe.syntax.*
+
+object Codecs:
+
+  private def mkEncoder[A](toStr: A => String): Encoder[A] =
+    Encoder.encodeString.contramap(toStr)
+
+  private def mkDecoder[A](values: Array[A], toStr: A => String): Decoder[A] =
+    Decoder.decodeString.emap { s =>
+      values.find(v => toStr(v) == s).toRight(s"Unknown value: $s")
+    }
+
+  given Encoder[Ability] = mkEncoder(_.toString)
+  given Decoder[Ability] = mkDecoder(Ability.values, _.toString)
+
+  given Encoder[Skill] = mkEncoder(_.toString)
+  given Decoder[Skill] = mkDecoder(Skill.values, _.toString)
+
+  given Encoder[HitDie] = mkEncoder(_.toString)
+  given Decoder[HitDie] = mkDecoder(HitDie.values, _.toString)
+
+  given Encoder[Size] = mkEncoder(_.toString)
+  given Decoder[Size] = mkDecoder(Size.values, _.toString)
+
+  given Encoder[ArmorType] = mkEncoder(_.toString)
+  given Decoder[ArmorType] = mkDecoder(ArmorType.values, _.toString)
+
+  given Encoder[SpellList] = mkEncoder(_.toString)
+  given Decoder[SpellList] = mkDecoder(SpellList.values, _.toString)
+
+  given Encoder[ElvenLineage] = mkEncoder(_.toString)
+  given Decoder[ElvenLineage] = mkDecoder(ElvenLineage.values, _.toString)
+
+  given Encoder[GnomishLineage] = mkEncoder(_.toString)
+  given Decoder[GnomishLineage] = mkDecoder(GnomishLineage.values, _.toString)
+
+  given Encoder[GiantAncestry] = mkEncoder(_.toString)
+  given Decoder[GiantAncestry] = mkDecoder(GiantAncestry.values, _.toString)
+
+  given Encoder[FiendishLegacy] = mkEncoder(_.toString)
+  given Decoder[FiendishLegacy] = mkDecoder(FiendishLegacy.values, _.toString)
+
+  given Encoder[DragonAncestry] = mkEncoder(_.toString)
+  given Decoder[DragonAncestry] = mkDecoder(DragonAncestry.values, _.toString)
+
+  given Encoder[AbilityScores] = Encoder.instance { s =>
+    Json.obj(
+      "strength"     -> s.strength.asJson,
+      "dexterity"    -> s.dexterity.asJson,
+      "constitution" -> s.constitution.asJson,
+      "intelligence" -> s.intelligence.asJson,
+      "wisdom"       -> s.wisdom.asJson,
+      "charisma"     -> s.charisma.asJson
+    )
+  }
+
+  given Decoder[AbilityScores] = Decoder.instance { c =>
+    for
+      str <- c.downField("strength").as[Int]
+      dex <- c.downField("dexterity").as[Int]
+      con <- c.downField("constitution").as[Int]
+      int <- c.downField("intelligence").as[Int]
+      wis <- c.downField("wisdom").as[Int]
+      cha <- c.downField("charisma").as[Int]
+    yield AbilityScores(str, dex, con, int, wis, cha)
+  }
+
+  given Encoder[BackgroundBonus] = Encoder.instance {
+    case BackgroundBonus.TwoPlusOne(p2, p1) =>
+      Json.obj("type" -> "TwoPlusOne".asJson, "plus2" -> p2.asJson, "plus1" -> p1.asJson)
+    case BackgroundBonus.ThreePlusOnes(a1, a2, a3) =>
+      Json.obj("type" -> "ThreePlusOnes".asJson, "a1" -> a1.asJson, "a2" -> a2.asJson, "a3" -> a3.asJson)
+  }
+
+  given Decoder[BackgroundBonus] = Decoder.instance { c =>
+    c.downField("type").as[String].flatMap {
+      case "TwoPlusOne" =>
+        for
+          p2 <- c.downField("plus2").as[Ability]
+          p1 <- c.downField("plus1").as[Ability]
+        yield BackgroundBonus.TwoPlusOne(p2, p1)
+      case "ThreePlusOnes" =>
+        for
+          a1 <- c.downField("a1").as[Ability]
+          a2 <- c.downField("a2").as[Ability]
+          a3 <- c.downField("a3").as[Ability]
+        yield BackgroundBonus.ThreePlusOnes(a1, a2, a3)
+      case other => Left(DecodingFailure(s"Unknown BackgroundBonus type: $other", c.history))
+    }
+  }
+
+  given Encoder[Species] = Encoder.instance { sp =>
+    val base = Json.obj("species" -> sp.name.asJson)
+    sp match
+      case DragonbornOf(a) => base.deepMerge(Json.obj("dragonAncestry" -> a.asJson))
+      case Elf(l)          => base.deepMerge(Json.obj("elvenLineage" -> l.asJson))
+      case Gnome(l)        => base.deepMerge(Json.obj("gnomishLineage" -> l.asJson))
+      case Goliath(a)      => base.deepMerge(Json.obj("giantAncestry" -> a.asJson))
+      case Tiefling(l)     => base.deepMerge(Json.obj("fiendishLegacy" -> l.asJson))
+      case _               => base
+  }
+
+  given Decoder[Species] = Decoder.instance { c =>
+    c.downField("species").as[String].flatMap {
+      case "Dragonborn" =>
+        c.downField("dragonAncestry").as[DragonAncestry]
+          .map(DragonbornOf.apply)
+          .orElse(Right(Dragonborn))
+      case "Dwarf"    => Right(Dwarf)
+      case "Elf"      => c.downField("elvenLineage").as[ElvenLineage].map(Elf.apply)
+      case "Gnome"    => c.downField("gnomishLineage").as[GnomishLineage].map(Gnome.apply)
+      case "Goliath"  => c.downField("giantAncestry").as[GiantAncestry].map(Goliath.apply)
+      case "Halfling" => Right(Halfling)
+      case "Human"    => Right(Human)
+      case "Orc"      => Right(Orc)
+      case "Tiefling" => c.downField("fiendishLegacy").as[FiendishLegacy].map(Tiefling.apply)
+      case other      => Left(DecodingFailure(s"Unknown species: $other", c.history))
+    }
+  }
+
+  given Encoder[DndClass] = Encoder.encodeString.contramap(_.name)
+
+  given Decoder[DndClass] = Decoder.decodeString.emap { s =>
+    DndClass.all.find(_.name == s).toRight(s"Unknown class: $s")
+  }
+
+  given Encoder[OriginFeat] = Encoder.instance {
+    case Alert              => Json.obj("feat" -> "Alert".asJson)
+    case MagicInitiate(sl)  => Json.obj("feat" -> "MagicInitiate".asJson, "spellList" -> sl.asJson)
+    case SavageAttacker     => Json.obj("feat" -> "SavageAttacker".asJson)
+    case Skilled            => Json.obj("feat" -> "Skilled".asJson)
+  }
+
+  given Decoder[OriginFeat] = Decoder.instance { c =>
+    c.downField("feat").as[String].flatMap {
+      case "Alert"          => Right(Alert)
+      case "MagicInitiate"  => c.downField("spellList").as[SpellList].map(MagicInitiate.apply)
+      case "SavageAttacker" => Right(SavageAttacker)
+      case "Skilled"        => Right(Skilled)
+      case other            => Left(DecodingFailure(s"Unknown feat: $other", c.history))
+    }
+  }
+
+  given Encoder[Background] = Encoder.encodeString.contramap(_.name)
+
+  given Decoder[Background] = Decoder.decodeString.emap { s =>
+    Background.all.find(_.name == s).toRight(s"Unknown background: $s")
+  }
+
+  given Encoder[Character] = Encoder.instance { ch =>
+    Json.obj(
+      "name"            -> ch.name.asJson,
+      "species"         -> ch.species.asJson,
+      "dndClass"        -> ch.dndClass.asJson,
+      "background"      -> ch.background.asJson,
+      "baseScores"      -> ch.baseScores.asJson,
+      "backgroundBonus" -> ch.backgroundBonus.asJson,
+      "chosenSkills"    -> ch.chosenSkills.toList.asJson,
+      "level"           -> ch.level.asJson
+    )
+  }
+
+  given Decoder[Character] = Decoder.instance { c =>
+    for
+      name   <- c.downField("name").as[String]
+      sp     <- c.downField("species").as[Species]
+      cls    <- c.downField("dndClass").as[DndClass]
+      bg     <- c.downField("background").as[Background]
+      scores <- c.downField("baseScores").as[AbilityScores]
+      bonus  <- c.downField("backgroundBonus").as[BackgroundBonus]
+      skills <- c.downField("chosenSkills").as[List[Skill]]
+      level  <- c.downField("level").as[Int]
+    yield Character(name, sp, cls, bg, scores, bonus, skills.toSet, level)
+  }

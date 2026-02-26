@@ -1,8 +1,7 @@
-package scaffold.screens
+package dndbuilder.screens
 
 import cats.effect.IO
-import scaffold.{NavigateNext, Screen, ScreenId, ScreenOutput}
-import scaffold.common.nescss.NesCss
+import dndbuilder.{NavigateNext, Screen, ScreenId, ScreenOutput}
 import tyrian.Html.*
 import tyrian.*
 
@@ -25,20 +24,26 @@ object HomeScreen extends Screen {
   }
 
   def view(model: Model): Html[Msg] =
-    div(`class` := NesCss.screenContainer)(
-      h1(`class` := "screen-title")(text("Tyrian Scaffold")),
-      p(`class` := s"${NesCss.text} screen-intro")(
-        text("Hello, World! This is your Scala.js + Tyrian starter project.")
+    div(`class` := "screen-container")(
+      div(`class` := "home-title-block")(
+        h1(text("D&D Character Creator")),
+        p(text("Build type-safe 5e (2024) characters"))
       ),
-      div(`class` := "flex-col flex-col--gap-1 screen-container-inner")(
-        linkCard("Notes", ScreenId.NotesId, "A CRUD demo with LocalStorage persistence"),
-        linkCard("About", ScreenId.AboutId, "Learn about the tech stack and tools")
+      div(`class` := "flex-col flex-col--gap-md")(
+        linkCard("Create Character", ScreenId.ClassSelectId,
+          "Build a new Level 1 character step by step"),
+        linkCard("My Characters", ScreenId.GalleryId,
+          "View, manage, and export your saved characters"),
+        linkCard("Notes", ScreenId.NotesId,
+          "Scratch notes with LocalStorage persistence"),
+        linkCard("About", ScreenId.AboutId,
+          "Tech stack and tools")
       )
     )
 
   private def linkCard(title: String, target: ScreenId, desc: String): Html[Msg] =
     button(
-      `class` := s"${NesCss.btn} link-card",
+      `class` := "link-card",
       onClick(HomeMsg.GoTo(target))
     )(
       span(`class` := "link-card-title")(text(title)),

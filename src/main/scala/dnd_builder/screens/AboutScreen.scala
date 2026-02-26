@@ -1,9 +1,8 @@
-package scaffold.screens
+package dndbuilder.screens
 
 import cats.effect.IO
-import scaffold.{NavigateNext, Screen, ScreenId, ScreenOutput}
-import scaffold.common.CmdUtils
-import scaffold.common.nescss.NesCss
+import dndbuilder.{NavigateNext, Screen, ScreenId, ScreenOutput}
+import dndbuilder.common.CmdUtils
 import org.scalajs.dom
 import tyrian.Html.*
 import tyrian.*
@@ -43,19 +42,19 @@ object AboutScreen extends Screen {
   }
 
   def view(model: Model): Html[Msg] =
-    div(`class` := NesCss.screenContainer)(
+    div(`class` := "screen-container")(
       div(`class` := "screen-header")(
         h1(`class` := "screen-title")(text("About")),
-        GalleryLayout.backButton(AboutMsg.Back, "Home")
+        button(`class` := "btn-ghost", onClick(AboutMsg.Back))(text("< Home"))
       ),
       div(`class` := "about-content")(
-        p(`class` := NesCss.text)(text("This project was created with the Tyrian Scaffold.")),
-        p(`class` := NesCss.text)(text("An Elm-style Scala.js SPA with screen navigation and LocalStorage persistence.")),
+        p(text("D&D Character Creator — a type-safe 5e (2024) character builder.")),
+        p(text("Built with Scala 3, Scala.js, Tyrian (Elm architecture), and Circe.")),
         h2(`class` := "about-heading")(text("Libraries & tools")),
-        div(`class` := "about-tools")(toolsTable),
+        div(`class` := "about-table-wrap")(toolsTable),
         h2(`class` := "about-heading")(text("Get latest version")),
-        p(`class` := NesCss.text)(text("After a deploy, the browser may serve cached files.")),
-        p(`class` := NesCss.text)(text("Use the button below to unregister the cache and reload.")),
+        p(text("After a deploy, the browser may serve cached files.")),
+        p(text("Use the button below to unregister the cache and reload.")),
         (
           if (model)
             div(`class` := "about-refresh-confirm")(
@@ -63,12 +62,12 @@ object AboutScreen extends Screen {
                 text("Unregister cache and reload now? The page will refresh.")
               ),
               div(`class` := "flex-row flex-row--tight")(
-                button(`class` := NesCss.btnPrimary, onClick(AboutMsg.ConfirmRefresh))(text("Yes, refresh")),
-                button(`class` := NesCss.btn, onClick(AboutMsg.CancelRefresh))(text("Cancel"))
+                button(`class` := "btn-primary", onClick(AboutMsg.ConfirmRefresh))(text("Yes, refresh")),
+                button(`class` := "btn-ghost", onClick(AboutMsg.CancelRefresh))(text("Cancel"))
               )
             )
           else
-            button(`class` := NesCss.btn, onClick(AboutMsg.ShowRefreshConfirm))(text("Refresh app"))
+            button(`class` := "btn-secondary", onClick(AboutMsg.ShowRefreshConfirm))(text("Refresh app"))
         )
       )
     )
@@ -76,34 +75,31 @@ object AboutScreen extends Screen {
   private def toolsTable: Html[Msg] = {
     val rows = List(
       ("Tyrian", "Elm-style UI framework for Scala.js", "https://github.com/PurpleKingdomGames/tyrian"),
-      ("NES.css", "Retro pixel-art CSS framework", "https://nostalgic-css.github.io/NES.css/"),
       ("Circe", "JSON encoding / decoding", "https://circe.github.io/circe/"),
       ("Scala.js", "Scala compiled to JavaScript", "https://www.scala-js.org/"),
       ("Parcel", "Dev server and bundler", "https://parceljs.org/")
     )
-    div(`class` := "about-table-wrap")(
-      table(`class` := "about-table")(
-        thead(
-          tr(
-            th(`class` := NesCss.text)(text("Library")),
-            th(`class` := NesCss.text)(text("Purpose"))
-          )
-        ),
-        tbody(
-          rows.map { case (name, purpose, url) =>
-            tr(
-              td(`class` := NesCss.text)(
-                a(
-                  href := url,
-                  Attribute("target", "_blank"),
-                  Attribute("rel", "noopener noreferrer"),
-                  `class` := "about-link"
-                )(text(name))
-              ),
-              td(`class` := NesCss.text)(text(purpose))
-            )
-          }*
+    table(`class` := "about-table")(
+      thead(
+        tr(
+          th(text("Library")),
+          th(text("Purpose"))
         )
+      ),
+      tbody(
+        rows.map { case (name, purpose, url) =>
+          tr(
+            td(
+              a(
+                href := url,
+                Attribute("target", "_blank"),
+                Attribute("rel", "noopener noreferrer"),
+                `class` := "about-link"
+              )(text(name))
+            ),
+            td(text(purpose))
+          )
+        }*
       )
     )
   }

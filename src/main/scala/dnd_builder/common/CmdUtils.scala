@@ -1,4 +1,4 @@
-package scaffold.common
+package dndbuilder.common
 
 import cats.effect.IO
 import tyrian.Cmd

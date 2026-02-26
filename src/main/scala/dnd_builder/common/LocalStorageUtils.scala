@@ -1,9 +1,9 @@
-package scaffold.common
+package dndbuilder.common
 
 import cats.effect.IO
 import io.circe.syntax.*
 import io.circe.{Decoder, Encoder}
-import scaffold.screens.GalleryLayout
+import dndbuilder.screens.GalleryLayout
 import tyrian.Cmd
 import tyrian.cmds.LocalStorage
 

@@ -1,18 +1,18 @@
-package scaffold.common.nescss
+package dndbuilder.common.nescss
 
 object NesCss {
-  val container        = "nes-container"
-  val containerRounded = "nes-container is-rounded"
-  val screenContainer  = s"$containerRounded screen-container"
-  val btn              = "nes-btn"
-  val btnPrimary       = "nes-btn is-primary"
-  val btnError         = "nes-btn is-error"
-  val btnWarning       = "nes-btn is-warning"
-  val btnSuccess       = "nes-btn is-success"
-  val input            = "nes-input"
-  val field            = "nes-field"
-  val text             = "nes-text"
-  val balloon          = "nes-balloon"
-  val list             = "nes-list is-disc"
-  val radio            = "nes-radio"
+  val container        = "card card--static"
+  val containerRounded = "card card--static"
+  val screenContainer  = "screen-container"
+  val btn              = "btn-secondary"
+  val btnPrimary       = "btn-primary"
+  val btnError         = "btn-danger"
+  val btnWarning       = "btn-secondary"
+  val btnSuccess       = "btn-primary"
+  val input            = ""
+  val field            = "field-block"
+  val text             = ""
+  val balloon          = "card"
+  val list             = ""
+  val radio            = ""
 }

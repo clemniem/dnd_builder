@@ -1,6 +1,6 @@
-package scaffold.screens
+package dndbuilder.screens
 
-import scaffold.common.nescss.NesCss
+import dndbuilder.common.nescss.NesCss
 import tyrian.Html.*
 import tyrian.*
 
