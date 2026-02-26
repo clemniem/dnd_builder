@@ -1,0 +1,187 @@
+/* ========== NES.css integration ========== */
+:root {
+  --nes-pointer: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAzElEQVRYR+2X0Q6AIAhF5f8/2jYXZkwEjNSVvVUjDpcrGgT7FUkI2D9xRfQETwNIiWO85wfINfQUEyxBG2ArsLwC0jioGt5zFcwF4OYDPi/mBYKm4t0U8ATgRm3ThFoAqkhNgWkA0jJLvaOVSs7j3qMnSgXWBMiWPXe94QqMBMBc1VZIvaTu5u5pQewq0EqNZvIEMCmxAawK0DNkay9QmfFNAJUXfgGgUkLaE7j/h8fnASkxHTz0DGIBMCnBeeM7AArpUd3mz2x3C7wADglA8BcWMZhZAAAAAElFTkSuQmCC") 14 0, pointer;
+
+  --palette-bg: #9e9e9e;
+  --palette-element-bg: #fafafa;
+  --palette-element-bg-disabled: #e8e8e8;
+  --palette-bad-bg: #c62828;
+  --palette-bad-border: #c62828;
+  --palette-bad-text: #fff;
+  --palette-good-bg: #1565c0;
+  --palette-good-border: #1565c0;
+  --palette-good-text: #fff;
+  --palette-good-muted-bg: #e3f2fd;
+  --palette-good-muted-text: #1565c0;
+  --palette-good-muted-border: #90caf9;
+  --palette-frame: #8b8b9e;
+  --palette-frame-border: #212529;
+  --palette-font: #212529;
+  --palette-font-muted: #666;
+  --palette-border: #333;
+  --palette-border-light: #999;
+  --palette-border-lighter: #ccc;
+  --palette-border-lightest: #ddd;
+  --screen-container-bg: var(--palette-frame);
+  --screen-inner-bg: transparent;
+}
+
+html {
+  font-size: 12px;
+  scrollbar-gutter: stable;
+}
+
+body {
+  font-family: "Press Start 2P", system-ui, sans-serif;
+  font-size: 1rem;
+  background-color: var(--palette-bg);
+  color: var(--palette-font);
+  margin: 0;
+  padding: 2rem 1rem;
+  min-height: 100vh;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+#myapp {
+  width: 42rem;
+  max-width: 100%;
+  min-height: 0;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.nes-container { margin-bottom: 1rem; border-color: var(--palette-frame-border); }
+.nes-container.is-rounded { padding: 1rem 1.5rem; }
+
+.nes-container.is-rounded.screen-container {
+  background-color: var(--screen-container-bg);
+  box-shadow: 6px 6px 0 var(--palette-frame-border);
+}
+
+.screen-container {
+  width: 42rem;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.screen-container-inner {
+  background-color: var(--screen-inner-bg);
+  border-radius: 4px;
+  padding: 0.5rem 0;
+}
+
+/* ========== Screen layout ========== */
+.screen-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  gap: 8px;
+}
+
+.screen-header--short { margin-bottom: 1rem; }
+
+.screen-header-name-row {
+  margin-top: 0.25rem;
+  margin-bottom: 0;
+  width: 100%;
+}
+
+.screen-header-name-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.screen-title { margin: 0 0 1rem 0; }
+.screen-intro { margin-bottom: 1.5rem; }
+
+/* ========== Flex ========== */
+.flex-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.flex-row--tight { gap: 0.5rem; }
+.flex-col { display: flex; flex-direction: column; }
+.flex-col--gap-1 { gap: 0.75rem; }
+
+/* ========== Link cards (Home) ========== */
+.link-card {
+  display: block;
+  padding: 1rem 1.25rem;
+  text-align: left;
+}
+
+.link-card-title { font-weight: 600; }
+
+.link-card-desc {
+  display: block;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+  opacity: 0.9;
+}
+
+/* ========== About page ========== */
+.about-content { margin-top: 0.5rem; }
+.about-content .nes-text { margin-bottom: 1rem; }
+.about-heading { font-size: 1rem; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+.about-table-wrap { overflow-x: auto; margin-bottom: 1rem; }
+.about-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.about-table th, .about-table td { padding: 0.35rem 0.5rem; text-align: left; border-bottom: 1px solid var(--palette-frame-border); }
+.about-link { color: var(--palette-good-muted-border); text-decoration: underline; cursor: var(--nes-pointer); }
+.about-link:hover { color: var(--palette-good-muted-text); }
+.about-refresh-confirm { margin-top: 0.75rem; padding: 0.75rem; background: var(--palette-element-bg); border: 1px solid var(--palette-frame-border); border-radius: 4px; }
+.about-refresh-confirm-text { margin-bottom: 0.5rem; }
+
+/* ========== Buttons ========== */
+.btn-disabled { cursor: not-allowed; opacity: 0.6; }
+.btn-arrow { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 1.15em; line-height: 1; display: inline-block; vertical-align: middle; }
+
+/* ========== Error and empty states ========== */
+.error-box { margin-bottom: 1rem; background: var(--palette-bad-bg); border-color: var(--palette-bad-border); color: var(--palette-bad-text); }
+.empty-state { padding: 2rem; border: 2px dashed var(--palette-border-light); text-align: center; }
+.empty-state p { margin-bottom: 1rem; }
+.hidden { display: none; }
+
+/* ========== Gallery screens ========== */
+.gallery-content { padding: 0 0.5rem; }
+.gallery-list { display: flex; flex-direction: column; gap: 0.75rem; }
+.gallery-list-entries { display: flex; flex-direction: column; gap: 0.75rem; }
+.gallery-pagination { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.5rem; flex-shrink: 0; }
+.gallery-pagination-label { font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+
+.nes-container.gallery-card,
+.nes-container.is-rounded.gallery-card { background-color: var(--palette-element-bg); }
+
+.gallery-card { display: flex; align-items: center; gap: 0.75rem; }
+.gallery-card-body { min-width: 0; flex: 1; }
+.gallery-card-title { font-weight: 500; }
+.gallery-card-meta { display: block; font-size: 0.875rem; margin-top: 0.25rem; }
+.gallery-actions { margin-top: 0.5rem; display: flex; gap: 4px; flex-wrap: wrap; }
+.gallery-actions .nes-btn, .gallery-delete-confirm .nes-btn { padding: 3px 8px; font-size: 0.7rem; line-height: 1.2; }
+.gallery-delete-confirm { margin-top: 0.5rem; padding: 6px 0; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.delete-confirm-text { font-size: 0.875rem; margin-right: 8px; }
+
+/* ========== Fields and labels ========== */
+.field-block { margin-bottom: 1rem; }
+.label-block { display: block; margin-bottom: 0.35rem; }
+
+/* ========== Mobile ========== */
+@media (max-width: 768px) {
+  #myapp { padding: 0.75rem; }
+  .screen-container { padding-left: 0.25rem; padding-right: 0.25rem; }
+  .screen-header { gap: 6px; margin-bottom: 1rem; }
+  .nes-btn { min-height: 2.75rem; padding: 0.5rem 0.75rem; }
+  .link-card { padding: 1rem; min-height: 2.75rem; display: flex; flex-direction: column; justify-content: center; }
+  .gallery-actions .nes-btn { min-height: 2.5rem; padding: 0.4rem 0.6rem; }
+  .gallery-card { flex-wrap: wrap; }
+}
+
+@media (max-width: 480px) {
+  html { font-size: 13px; }
+  #myapp { padding: 0.5rem; }
+  .nes-container.is-rounded { padding: 0.75rem 1rem; }
+  .screen-title { font-size: 1rem; margin-bottom: 0.75rem; }
+  .flex-row { gap: 6px; }
+}
