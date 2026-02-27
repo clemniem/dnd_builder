@@ -38,6 +38,7 @@ jobs:
 
       - name: Assemble deployable directory
         run: |
+          rm -rf dist
           mkdir -p dist/css
           cp target/scalajs-opt/main.js dist/
           cp target/scalajs-opt/main.js.map dist/ 2>/dev/null || true

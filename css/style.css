@@ -297,6 +297,15 @@ select {
   box-shadow: none;
 }
 
+.card--disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.card--disabled:hover {
+  transform: none;
+}
+
 .card-title {
   font-family: var(--font-heading);
   font-size: 1rem;
@@ -477,17 +486,17 @@ select {
 .points-pool {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
+  gap: 0.35rem;
+  padding: 0.45rem 0.75rem;
   background: var(--color-card);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font-size: 0.9rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
 }
 
 .points-pool-value {
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 0.85rem;
   color: var(--color-secondary);
 }
 
@@ -729,7 +738,7 @@ select {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.5rem 0;
+  padding: 0.25rem 0;
   border-bottom: 1px solid var(--color-border);
 }
 

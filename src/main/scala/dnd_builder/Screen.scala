@@ -17,6 +17,8 @@ object ScreenId {
   case object BackgroundId  extends ScreenId { val name = "background"; val title = "Choose Background" }
   case object AbilitiesId   extends ScreenId { val name = "abilities"; val title = "Ability Scores" }
   case object SkillsId      extends ScreenId { val name = "skills"; val title = "Skills" }
+  case object EquipmentId   extends ScreenId { val name = "equipment"; val title = "Equipment" }
+  case object SpellsId      extends ScreenId { val name = "spells"; val title = "Spells" }
   case object ReviewId      extends ScreenId { val name = "review"; val title = "Review" }
   case object GalleryId     extends ScreenId { val name = "gallery"; val title = "My Characters" }
   case object DetailId      extends ScreenId { val name = "detail"; val title = "Character Detail" }
@@ -34,6 +36,17 @@ object ScreenOutput {
       species: Species, dndClass: DndClass, background: Background,
       baseScores: AbilityScores, backgroundBonus: BackgroundBonus,
       chosenSkills: Set[Skill]) extends ScreenOutput
+  case class EquipmentChosen(
+      species: Species, dndClass: DndClass, background: Background,
+      baseScores: AbilityScores, backgroundBonus: BackgroundBonus,
+      chosenSkills: Set[Skill],
+      equippedArmor: Option[Armor], equippedShield: Boolean, equippedWeapons: List[Weapon]) extends ScreenOutput
+  case class SpellsChosen(
+      species: Species, dndClass: DndClass, background: Background,
+      baseScores: AbilityScores, backgroundBonus: BackgroundBonus,
+      chosenSkills: Set[Skill],
+      equippedArmor: Option[Armor], equippedShield: Boolean, equippedWeapons: List[Weapon],
+      chosenCantrips: List[Spell], preparedSpells: List[Spell], spellbookSpells: List[Spell]) extends ScreenOutput
   case class ViewCharacter(storedCharacter: StoredCharacter) extends ScreenOutput
 }
 

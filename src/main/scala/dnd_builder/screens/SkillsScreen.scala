@@ -38,7 +38,7 @@ object SkillsScreen extends Screen:
           model.species, model.dndClass, model.background,
           model.baseScores, model.backgroundBonus, model.chosenSkills
         )
-        (model, Cmd.Emit(NavigateNext(ScreenId.ReviewId, Some(output))))
+        (model, Cmd.Emit(NavigateNext(ScreenId.EquipmentId, Some(output))))
       else (model, Cmd.None)
 
     case SkillsMsg.Back =>
@@ -54,8 +54,8 @@ object SkillsScreen extends Screen:
     val remaining = model.dndClass.numSkillChoices - model.chosenSkills.size
 
     div(`class` := "screen-container")(
-      StepIndicator(5),
-      StepNav("< Abilities", SkillsMsg.Back, "Next: Review >", SkillsMsg.Next, remaining == 0),
+      StepIndicator(5, model.dndClass.isSpellcaster),
+      StepNav("< Abilities", SkillsMsg.Back, "Next: Equipment >", SkillsMsg.Next, remaining == 0),
       h1(`class` := "screen-title")(text("Choose Skills")),
       p(`class` := "screen-intro")(
         text(s"Select ${model.dndClass.numSkillChoices} skills from your class. Background skills are already granted.")

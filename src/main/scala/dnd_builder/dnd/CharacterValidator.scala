@@ -18,6 +18,20 @@ enum ValidationError(val message: String):
     extends ValidationError(s"${ability.label} is not one of the background's three ability options.")
   case BonusTotalWrong(total: Int)
     extends ValidationError(s"Background bonus must total +3, but totals +$total.")
+  case WrongCantripCount(chosen: Int, expected: Int)
+    extends ValidationError(s"Expected $expected cantrips, but got $chosen.")
+  case CantripNotOnClassList(spellName: String)
+    extends ValidationError(s"$spellName is not on the class cantrip list.")
+  case WrongPreparedCount(chosen: Int, expected: Int)
+    extends ValidationError(s"Expected $expected prepared spells, but got $chosen.")
+  case PreparedNotOnClassList(spellName: String)
+    extends ValidationError(s"$spellName is not on the class spell list.")
+  case PreparedNotInSpellbook(spellName: String)
+    extends ValidationError(s"$spellName is not in the spellbook.")
+  case WrongSpellbookCount(chosen: Int, expected: Int)
+    extends ValidationError(s"Expected $expected spellbook spells, but got $chosen.")
+  case DuplicateSpell(spellName: String)
+    extends ValidationError(s"$spellName is selected more than once.")
 
 object CharacterValidator:
 
@@ -78,6 +92,72 @@ object CharacterValidator:
 
     bgOverlap ++ notInPool ++ countError
 
+  def validateSpells(
+      dndClass: DndClass,
+      chosenCantrips: List[Spell],
+      preparedSpells: List[Spell],
+      spellbookSpells: List[Spell]
+  ): List[ValidationError] =
+    if !dndClass.isSpellcaster then Nil
+    else
+      val cantripErrors =
+        if dndClass.cantripsKnown > 0 then
+          val countErr =
+            if chosenCantrips.size != dndClass.cantripsKnown then
+              List(ValidationError.WrongCantripCount(chosenCantrips.size, dndClass.cantripsKnown))
+            else Nil
+          val classErr = chosenCantrips.flatMap { s =>
+            if !s.availableToClass(dndClass) || s.level != 0 then
+              List(ValidationError.CantripNotOnClassList(s.name))
+            else Nil
+          }
+          val dupErr = chosenCantrips.groupBy(_.name).toList.flatMap { case (nm, spells) =>
+            if spells.size > 1 then List(ValidationError.DuplicateSpell(nm)) else Nil
+          }
+          countErr ++ classErr ++ dupErr
+        else Nil
+
+      val spellbookErrors =
+        if dndClass.spellbookSize > 0 then
+          val countErr =
+            if spellbookSpells.size != dndClass.spellbookSize then
+              List(ValidationError.WrongSpellbookCount(spellbookSpells.size, dndClass.spellbookSize))
+            else Nil
+          val classErr = spellbookSpells.flatMap { s =>
+            if !s.availableToClass(dndClass) || s.level != 1 then
+              List(ValidationError.PreparedNotOnClassList(s.name))
+            else Nil
+          }
+          countErr ++ classErr
+        else Nil
+
+      val preparedErrors =
+        if dndClass.numPreparedSpells > 0 then
+          val countErr =
+            if preparedSpells.size != dndClass.numPreparedSpells then
+              List(ValidationError.WrongPreparedCount(preparedSpells.size, dndClass.numPreparedSpells))
+            else Nil
+          val sourceErr =
+            if dndClass.spellbookSize > 0 then
+              preparedSpells.flatMap { s =>
+                if !spellbookSpells.exists(_.name == s.name) then
+                  List(ValidationError.PreparedNotInSpellbook(s.name))
+                else Nil
+              }
+            else
+              preparedSpells.flatMap { s =>
+                if !s.availableToClass(dndClass) || s.level != 1 then
+                  List(ValidationError.PreparedNotOnClassList(s.name))
+                else Nil
+              }
+          val dupErr = preparedSpells.groupBy(_.name).toList.flatMap { case (nm, spells) =>
+            if spells.size > 1 then List(ValidationError.DuplicateSpell(nm)) else Nil
+          }
+          countErr ++ sourceErr ++ dupErr
+        else Nil
+
+      cantripErrors ++ spellbookErrors ++ preparedErrors
+
   def validate(
       name: String,
       species: Species,
@@ -86,6 +166,12 @@ object CharacterValidator:
       baseScores: AbilityScores,
       bonus: BackgroundBonus,
       chosenSkills: Set[Skill],
+      equippedArmor: Option[Armor],
+      equippedShield: Boolean,
+      equippedWeapons: List[Weapon],
+      chosenCantrips: List[Spell],
+      preparedSpells: List[Spell],
+      spellbookSpells: List[Spell],
       level: Int
   ): Either[List[ValidationError], Character] =
     val finalScores = AbilityScores.applyBonus(baseScores, bonus)
@@ -93,7 +179,9 @@ object CharacterValidator:
       validateName(name) ++
       validateBackgroundBonus(bonus, background) ++
       validateFinalScores(finalScores) ++
-      validateSkillSelection(chosenSkills, dndClass, background)
+      validateSkillSelection(chosenSkills, dndClass, background) ++
+      validateSpells(dndClass, chosenCantrips, preparedSpells, spellbookSpells)
 
     if errors.nonEmpty then Left(errors)
-    else Right(Character(name, species, dndClass, background, baseScores, bonus, chosenSkills, level))
+    else Right(Character(name, species, dndClass, background, baseScores, bonus, chosenSkills,
+      equippedArmor, equippedShield, equippedWeapons, chosenCantrips, preparedSpells, spellbookSpells, level))

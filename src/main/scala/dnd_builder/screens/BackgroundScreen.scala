@@ -39,7 +39,7 @@ object BackgroundScreen extends Screen:
 
   def view(model: Model): Html[Msg] =
     div(`class` := "screen-container")(
-      StepIndicator(3),
+      StepIndicator(3, model.dndClass.isSpellcaster),
       StepNav("< Class", BackgroundMsg.Back, "Next: Abilities >", BackgroundMsg.Next, model.selectedBackground.isDefined),
       h1(`class` := "screen-title")(text("Choose Your Background")),
       p(`class` := "screen-intro")(text("Your background determines ability bonuses, skill proficiencies, and your origin feat.")),

@@ -8,6 +8,12 @@ final case class Character(
     baseScores: AbilityScores,
     backgroundBonus: BackgroundBonus,
     chosenSkills: Set[Skill],
+    equippedArmor: Option[Armor],
+    equippedShield: Boolean,
+    equippedWeapons: List[Weapon],
+    chosenCantrips: List[Spell],
+    preparedSpells: List[Spell],
+    spellbookSpells: List[Spell],
     level: Int):
 
   def finalScores: AbilityScores =
@@ -61,13 +67,25 @@ final case class Character(
 
   def armorClass: Int =
     val dexMod = modifier(Ability.Dexterity)
-    dndClass match
-      case Barbarian =>
-        10 + dexMod + modifier(Ability.Constitution)
-      case Monk =>
-        10 + dexMod + modifier(Ability.Wisdom)
-      case _ =>
-        10 + dexMod
+    val shieldBonus = if equippedShield then Armor.shieldACBonus else 0
+    equippedArmor match
+      case None =>
+        val unarmored = dndClass match
+          case Barbarian => 10 + dexMod + modifier(Ability.Constitution)
+          case Monk      => 10 + dexMod + modifier(Ability.Wisdom)
+          case _        => 10 + dexMod
+        unarmored + shieldBonus
+      case Some(armor) =>
+        import ArmorType.*
+        val base = armor.armorType match
+          case Light =>
+            armor.baseAC + dexMod
+          case Medium =>
+            val capped = armor.maxDexBonus.fold(dexMod)(cap => math.min(dexMod, cap))
+            armor.baseAC + capped
+          case Heavy | Shield =>
+            armor.baseAC
+        base + shieldBonus
 
   def spellSaveDC: Option[Int] =
     dndClass.spellcastingAbility.map { ability =>
@@ -82,3 +100,40 @@ final case class Character(
   def speed: Int = species.speed
 
   def originFeat: OriginFeat = background.feat
+
+  def weaponAbilityMod(weapon: Weapon): Int =
+    val strMod = modifier(Ability.Strength)
+    val dexMod = modifier(Ability.Dexterity)
+    if weapon.properties.contains(WeaponProperty.Finesse) then math.max(strMod, dexMod)
+    else if weapon.range == WeaponRange.Ranged then dexMod
+    else strMod
+
+  def weaponAttackBonus(weapon: Weapon): Int =
+    proficiencyBonus + weaponAbilityMod(weapon)
+
+  def weaponDamageBonus(weapon: Weapon): Int =
+    weaponAbilityMod(weapon)
+
+  def weaponDamageString(weapon: Weapon): String =
+    val dmgMod = weaponDamageBonus(weapon)
+    val parts  = weapon.damage.split(" ", 2)
+    val dice   = parts.headOption.getOrElse("")
+    val dmgType = if parts.length > 1 then parts(1) else ""
+    val modStr = if dmgMod >= 0 then s" + $dmgMod" else s" - ${math.abs(dmgMod)}"
+    val typeStr = if dmgType.nonEmpty then s" $dmgType" else ""
+    s"$dice$modStr$typeStr"
+
+  def weaponPropertiesSummary(weapon: Weapon): String =
+    weapon.properties.toList.sortBy(_.ordinal).map(_.toString).mkString(", ")
+
+  def spellProgression: Option[SpellSlotRow] =
+    SpellProgression.forClass(dndClass, level)
+
+  def isSpellcaster: Boolean =
+    dndClass.spellcastingAbility.isDefined
+
+  def equipmentSummary: String =
+    val armorStr = equippedArmor.fold("Unarmored")(_.name)
+    val shieldStr = if equippedShield then ", Shield" else ""
+    val weaponStr = if equippedWeapons.isEmpty then "" else ", " + equippedWeapons.map(_.name).mkString(", ")
+    armorStr + shieldStr + weaponStr

@@ -17,32 +17,32 @@ object AbilityScoresScreen extends Screen:
       case Some(ScreenOutput.BackgroundChosen(s, c, b)) => (c, s, b)
       case _ => (Barbarian, Human, Acolyte)
 
-    val initialScores = AbilityScores(15, 14, 13, 12, 10, 8)
+    val initialScores = cls.recommendedScores
     val opts = bg.abilityOptionsList
     val initialBonus = BackgroundBonus.TwoPlusOne(opts.head, opts(1))
 
     (AbilityScoresModel(cls, sp, bg, initialScores, initialBonus, ScoreMethod.StandardArray, Nil), Cmd.None)
 
+  private val stdArraySum: Int = AbilityScores.standardArray.sum
+
   def update(model: Model): Msg => (Model, Cmd[IO, Msg]) =
     case AbilityScoresMsg.SetMethod(m) =>
       val newScores = m match
-        case ScoreMethod.StandardArray => AbilityScores(15, 14, 13, 12, 10, 8)
+        case ScoreMethod.StandardArray => model.dndClass.recommendedScores
         case ScoreMethod.PointBuy      => AbilityScores.default
       (model.copy(baseScores = newScores, method = m), Cmd.None)
 
     case AbilityScoresMsg.Increment(ability) =>
       val current = model.baseScores.get(ability)
-      val maxVal = model.method match
-        case ScoreMethod.PointBuy => 15
-        case ScoreMethod.StandardArray => 15
-      if current < maxVal then
+      if current < 15 then
         val newScores = model.baseScores.adjust(ability, 1)
         val valid = model.method match
           case ScoreMethod.PointBuy =>
             newScores.totalPointBuyCost match
               case Right(cost) => cost <= AbilityScores.pointBuyTotal
               case Left(_) => false
-          case ScoreMethod.StandardArray => true
+          case ScoreMethod.StandardArray =>
+            newScores.toList.map(_._2).sum <= stdArraySum
         if valid then (model.copy(baseScores = newScores), Cmd.None)
         else (model, Cmd.None)
       else (model, Cmd.None)
@@ -123,29 +123,38 @@ object AbilityScoresScreen extends Screen:
     val bonusUsed  = model.backgroundBonus.totalPoints
 
     div(`class` := "screen-container")(
-      StepIndicator(4),
+      StepIndicator(4, model.dndClass.isSpellcaster),
       StepNav("< Background", AbilityScoresMsg.Back, "Next: Skills >", AbilityScoresMsg.Next, bonusUsed == 3),
       h1(`class` := "screen-title")(text("Ability Scores")),
       p(`class` := "screen-intro")(text("Assign your ability scores and distribute background bonuses.")),
       div(`class` := "flex-row", style := "margin-bottom: 1rem;")(
         methodToggle(model.method),
-        (
-          if model.method == ScoreMethod.PointBuy then
+        (model.method match
+          case ScoreMethod.PointBuy =>
             div(`class` := (if pointsUsed > AbilityScores.pointBuyTotal then "points-pool points-pool--over" else "points-pool"))(
               text("Points: "),
               span(`class` := "points-pool-value")(text(s"$pointsUsed / ${AbilityScores.pointBuyTotal}"))
             )
-          else div()
+          case ScoreMethod.StandardArray =>
+            val currentSum = model.baseScores.toList.map(_._2).sum
+            val spare = stdArraySum - currentSum
+            val cls = if spare > 0 then "points-pool points-pool--over" else "points-pool"
+            div(`class` := cls)(
+              text("Unassigned: "),
+              span(`class` := "points-pool-value")(text(s"$spare"))
+            )
         )
       ),
       scoresTable(model, finalScores),
-      h3(style := "margin-top: 1.25rem;")(text("Background Bonus")),
-      p(style := "font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 0.5rem;")(
-        text(s"Distribute 3 points among ${model.background.abilityOptionsList.map(_.abbreviation).mkString(", ")} (max +2 per ability).")
-      ),
-      div(`class` := "points-pool", style := "margin-bottom: 0.75rem;")(
-        text("Bonus used: "),
-        span(`class` := "points-pool-value")(text(s"$bonusUsed / 3"))
+      div(`class` := "flex-row", style := "margin-top: 1.25rem; margin-bottom: 0.5rem; align-items: baseline; gap: 0.75rem;")(
+        h3(style := "margin: 0;")(text("Background Bonus")),
+        span(style := "font-size: 0.85rem; color: var(--color-text-muted);")(
+          text(s"${model.background.abilityOptionsList.map(_.abbreviation).mkString(", ")} — max +2 each")
+        ),
+        div(`class` := "points-pool")(
+          text("Used: "),
+          span(`class` := "points-pool-value")(text(s"$bonusUsed / 3"))
+        )
       ),
       bonusControls(model)
     )
@@ -184,16 +193,10 @@ object AbilityScoresScreen extends Screen:
             td(`class` := "ability-name")(text(ability.label)),
             td(`class` := "ability-score")(text(base.toString)),
             td(
-              if model.method == ScoreMethod.PointBuy then
-                div(`class` := "ability-controls")(
-                  button(onClick(AbilityScoresMsg.Decrement(ability)))(text("-")),
-                  button(onClick(AbilityScoresMsg.Increment(ability)))(text("+"))
-                )
-              else
-                div(`class` := "ability-controls")(
-                  button(onClick(AbilityScoresMsg.Decrement(ability)))(text("-")),
-                  button(onClick(AbilityScoresMsg.Increment(ability)))(text("+"))
-                )
+              div(`class` := "ability-controls")(
+                button(onClick(AbilityScoresMsg.Decrement(ability)))(text("-")),
+                button(onClick(AbilityScoresMsg.Increment(ability)))(text("+"))
+              )
             ),
             td(style := "text-align: center; color: var(--color-success);")(
               text(if bonusAmt > 0 then s"+$bonusAmt" else "-")

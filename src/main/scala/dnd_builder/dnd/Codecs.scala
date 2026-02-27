@@ -28,8 +28,49 @@ object Codecs:
   given Encoder[ArmorType] = mkEncoder(_.toString)
   given Decoder[ArmorType] = mkDecoder(ArmorType.values, _.toString)
 
+  given Encoder[WeaponCategory] = mkEncoder(_.toString)
+  given Decoder[WeaponCategory] = mkDecoder(WeaponCategory.values, _.toString)
+  given Encoder[WeaponRange] = mkEncoder(_.toString)
+  given Decoder[WeaponRange] = mkDecoder(WeaponRange.values, _.toString)
+  given Encoder[WeaponProperty] = mkEncoder(_.toString)
+  given Decoder[WeaponProperty] = mkDecoder(WeaponProperty.values, _.toString)
+  given Encoder[MasteryProperty] = mkEncoder(_.toString)
+  given Decoder[MasteryProperty] = mkDecoder(MasteryProperty.values, _.toString)
+
+  given Encoder[Weapon] = Encoder.encodeString.contramap(_.name)
+  given Decoder[Weapon] = Decoder.decodeString.emap { s =>
+    Weapon.byName(s).toRight(s"Unknown weapon: $s")
+  }
+
+  given Encoder[Armor] = Encoder.encodeString.contramap(_.name)
+  given Decoder[Armor] = Decoder.decodeString.emap { s =>
+    Armor.byName(s).toRight(s"Unknown armor: $s")
+  }
+
+  given Encoder[WeaponProficiency] = Encoder.instance {
+    case WeaponProficiency.AllSimple       => Json.obj("type" -> "AllSimple".asJson)
+    case WeaponProficiency.AllMartial      => Json.obj("type" -> "AllMartial".asJson)
+    case WeaponProficiency.MartialIf(props) => Json.obj("type" -> "MartialIf".asJson, "props" -> props.toList.asJson)
+  }
+  given Decoder[WeaponProficiency] = Decoder.instance { c =>
+    c.downField("type").as[String].flatMap {
+      case "AllSimple"  => Right(WeaponProficiency.AllSimple)
+      case "AllMartial" => Right(WeaponProficiency.AllMartial)
+      case "MartialIf"  => c.downField("props").as[Set[WeaponProperty]].map(WeaponProficiency.MartialIf.apply)
+      case other        => Left(DecodingFailure(s"Unknown WeaponProficiency: $other", c.history))
+    }
+  }
+
   given Encoder[SpellList] = mkEncoder(_.toString)
   given Decoder[SpellList] = mkDecoder(SpellList.values, _.toString)
+
+  given Encoder[SpellSchool] = mkEncoder(_.toString)
+  given Decoder[SpellSchool] = mkDecoder(SpellSchool.values, _.toString)
+
+  given Encoder[Spell] = Encoder.encodeString.contramap(_.name)
+  given Decoder[Spell] = Decoder.decodeString.emap { s =>
+    Spell.byName.get(s).toRight(s"Unknown spell: $s")
+  }
 
   given Encoder[ElvenLineage] = mkEncoder(_.toString)
   given Decoder[ElvenLineage] = mkDecoder(ElvenLineage.values, _.toString)
@@ -152,14 +193,20 @@ object Codecs:
 
   given Encoder[Character] = Encoder.instance { ch =>
     Json.obj(
-      "name"            -> ch.name.asJson,
-      "species"         -> ch.species.asJson,
-      "dndClass"        -> ch.dndClass.asJson,
-      "background"      -> ch.background.asJson,
-      "baseScores"      -> ch.baseScores.asJson,
-      "backgroundBonus" -> ch.backgroundBonus.asJson,
-      "chosenSkills"    -> ch.chosenSkills.toList.asJson,
-      "level"           -> ch.level.asJson
+      "name"             -> ch.name.asJson,
+      "species"          -> ch.species.asJson,
+      "dndClass"         -> ch.dndClass.asJson,
+      "background"       -> ch.background.asJson,
+      "baseScores"       -> ch.baseScores.asJson,
+      "backgroundBonus"  -> ch.backgroundBonus.asJson,
+      "chosenSkills"     -> ch.chosenSkills.toList.asJson,
+      "equippedArmor"    -> ch.equippedArmor.asJson,
+      "equippedShield"   -> ch.equippedShield.asJson,
+      "equippedWeapons"  -> ch.equippedWeapons.asJson,
+      "chosenCantrips"   -> ch.chosenCantrips.asJson,
+      "preparedSpells"   -> ch.preparedSpells.asJson,
+      "spellbookSpells"  -> ch.spellbookSpells.asJson,
+      "level"            -> ch.level.asJson
     )
   }
 
@@ -172,6 +219,12 @@ object Codecs:
       scores <- c.downField("baseScores").as[AbilityScores]
       bonus  <- c.downField("backgroundBonus").as[BackgroundBonus]
       skills <- c.downField("chosenSkills").as[List[Skill]]
+      armor  <- c.downField("equippedArmor").as[Option[Armor]]
+      shield <- c.downField("equippedShield").as[Option[Boolean]].map(_.getOrElse(false))
+      weapons <- c.downField("equippedWeapons").as[Option[List[Weapon]]].map(_.getOrElse(Nil))
+      cantrips <- c.downField("chosenCantrips").as[Option[List[Spell]]].map(_.getOrElse(Nil))
+      prepared <- c.downField("preparedSpells").as[Option[List[Spell]]].map(_.getOrElse(Nil))
+      spellbook <- c.downField("spellbookSpells").as[Option[List[Spell]]].map(_.getOrElse(Nil))
       level  <- c.downField("level").as[Int]
-    yield Character(name, sp, cls, bg, scores, bonus, skills.toSet, level)
+    yield Character(name, sp, cls, bg, scores, bonus, skills.toSet, armor, shield, weapons, cantrips, prepared, spellbook, level)
   }
