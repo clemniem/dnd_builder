@@ -33,6 +33,9 @@ object PdfLib:
   def getCheckBox(form: js.Dynamic, name: String): js.Dynamic =
     form.getCheckBox(name)
 
+  def removeMaxLength(field: js.Dynamic): Unit =
+    val _ = field.setMaxLength(js.undefined)
+
   def setFontSize(field: js.Dynamic, pt: Int): Unit =
     val _ = field.setFontSize(pt)
 

@@ -1,0 +1,29 @@
+---
+description: PDF character sheet export and test PDF
+alwaysApply: false
+---
+
+# PDF Character Sheet Export
+
+## Rule: New features must be in the test PDF
+
+When adding **any new PDF form field** or section:
+
+1. **Implement filling** in the appropriate `fill*` method in `CharacterSheetPdf.scala` (e.g. `fillCombatStats`, `fillHeader`, `fillProficienciesAndFeatures`).
+2. **Ensure the test PDF exercises it**: `testPdf()` (exposed as `window.testPdf`) uses `generateTest()` which builds a single test character and calls `generate(ch)`. The test character must have data that populates every section we fill, so new fields are never left untested.
+3. **Update the test character** in `generateTest()` if a new field requires specific data (e.g. a new combat stat, a new checkbox group). Keep the test character comprehensive: header, combat (AC, HP, **hit dice**, prof bonus, init, speed, size), abilities, saves, skills, armor, weapons, spellcasting, currency, weapon/tool prof, feats, equipment, species traits, class features.
+
+## Hit dice
+
+Hit dice is filled in `fillCombatStats` as `{level}d{hitDie.sides}` (e.g. `1d10` for level 1 Fighter). The test character (level 1 Fighter) therefore exercises hit dice as `1d10`.
+
+## Key files
+
+| File | Purpose |
+|------|--------|
+| `common/pdf/CharacterSheetPdf.scala` | Form filling logic, `generate()`, `generateTest()` |
+| `common/pdf/PdfLib.scala` | pdf-lib facade (setText, setFontSize, removeMaxLength, etc.) |
+
+## Running the test
+
+In the browser console: `testPdf()`. Downloads a filled PDF for the test character so you can verify layout and font sizes without creating a character in the app.
