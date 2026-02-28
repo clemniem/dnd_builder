@@ -15,6 +15,8 @@ object LevelChoice {
   case class ChooseExtraSkills(count: Int, pool: Set[Skill]) extends LevelChoice
   case object ChooseLandType extends LevelChoice
   case object ChooseHunterPrey extends LevelChoice
+  case object ChooseFightingStyle extends LevelChoice
+  case class ChooseExpertise(count: Int) extends LevelChoice
 }
 
 object ClassProgression {
@@ -29,7 +31,7 @@ object ClassProgression {
       List(
         ClassFeature("Expertise", "Choose 2 skill proficiencies to gain Expertise (double proficiency bonus).", None),
         ClassFeature("Jack of All Trades", "Add half your proficiency bonus (round down) to ability checks you are not proficient in.", None)
-      ), Nil),
+      ), List(LevelChoice.ChooseExpertise(2))),
     (Cleric, 2) -> LevelGain(
       List(
         ClassFeature("Channel Divinity", "2 uses per Short/Long Rest. Turn Undead: undead within 30ft must save or be turned for 1 min.", Some(2))
@@ -53,12 +55,12 @@ object ClassProgression {
       List(
         ClassFeature("Fighting Style", "Choose a Fighting Style feat.", None),
         ClassFeature("Paladin's Smite", "When you hit with a melee weapon, expend a spell slot to deal 2d8 extra Radiant damage (+1d8 per slot level above 1st).", None)
-      ), Nil),
+      ), List(LevelChoice.ChooseFightingStyle)),
     (Ranger, 2) -> LevelGain(
       List(
         ClassFeature("Deft Explorer", "Choose one of your skill proficiencies. Your proficiency bonus is doubled for ability checks using that skill.", None),
         ClassFeature("Fighting Style", "Choose a Fighting Style feat.", None)
-      ), Nil),
+      ), List(LevelChoice.ChooseExpertise(1), LevelChoice.ChooseFightingStyle)),
     (Rogue, 2) -> LevelGain(
       List(
         ClassFeature("Cunning Action", "Bonus Action each turn: Dash, Disengage, or Hide.", None)
@@ -75,7 +77,7 @@ object ClassProgression {
     (Wizard, 2) -> LevelGain(
       List(
         ClassFeature("Scholar", "Choose one of your skill proficiencies. Your proficiency bonus is doubled for ability checks using that skill.", None)
-      ), Nil)
+      ), List(LevelChoice.ChooseExpertise(1)))
   )
 
   private val level3Entries: List[((DndClass, Int), LevelGain)] = List(

@@ -59,6 +59,8 @@ object LevelUpScreen extends Screen {
       extraSkills = Set.empty,
       landType = None,
       hunterPrey = None,
+      fightingStyle = None,
+      expertiseSkills = Set.empty,
       saving = false,
       errors = Nil
     )
@@ -114,6 +116,20 @@ object LevelUpScreen extends Screen {
     case LevelUpMsg.SetHunterPrey(hp) =>
       (model.copy(hunterPrey = Some(hp)), Cmd.None)
 
+    case LevelUpMsg.SetFightingStyle(style) =>
+      (model.copy(fightingStyle = Some(style)), Cmd.None)
+
+    case LevelUpMsg.ToggleExpertise(skill) =>
+      val tgt = targetLevel(model)
+      val cls = model.storedCharacter.character.primaryClass
+      val maxCount = expertiseCountAtLevel(cls, tgt)
+      val current = model.expertiseSkills
+      val newSet =
+        if current.contains(skill) then current - skill
+        else if current.size < maxCount then current + skill
+        else current
+      (model.copy(expertiseSkills = newSet), Cmd.None)
+
     case LevelUpMsg.TogglePrepared(spell) =>
       val ch = model.storedCharacter.character
       val cls = ch.primaryClass
@@ -148,6 +164,8 @@ object LevelUpScreen extends Screen {
       }
       val newPrepared = (model.preparedSpells ++ subclassSpells).distinctBy(_.name)
       val newFeatures = ch.featureSelections.copy(
+        fightingStyle = model.fightingStyle.orElse(ch.featureSelections.fightingStyle),
+        expertiseSkills = ch.featureSelections.expertiseSkills ++ model.expertiseSkills,
         landType = model.landType.orElse(ch.featureSelections.landType),
         hunterPrey = model.hunterPrey.orElse(ch.featureSelections.hunterPrey)
       )
@@ -208,17 +226,28 @@ object LevelUpScreen extends Screen {
   private def hasSpellChangesAtLevel(cls: DndClass, level: Int): Boolean =
     SpellProgression.forClass(cls, level).isDefined
 
+  private def choicesAtLevel(cls: DndClass, level: Int): List[LevelChoice] =
+    ClassProgression.atLevel(cls, level).choices.filterNot(_ == LevelChoice.ChooseSubclass)
+
   private def hasClassFeatureChoicesAtLevel(cls: DndClass, level: Int): Boolean =
-    extraSkillChoiceAtLevel(cls, level)._1 > 0 || (level >= 3 && cls == Druid) || (level >= 3 && cls == Ranger)
+    choicesAtLevel(cls, level).nonEmpty
 
   private def extraSkillChoiceAtLevel(cls: DndClass, level: Int): (Int, Set[Skill]) =
-    if level < 3 then (0, Set.empty)
-    else
-      cls match {
-        case Barbarian => (1, Barbarian.skillPool)
-        case Bard      => (3, Skill.values.toSet)
-        case _         => (0, Set.empty)
-      }
+    choicesAtLevel(cls, level).collectFirst { case LevelChoice.ChooseExtraSkills(count, pool) => (count, pool) }
+      .getOrElse((0, Set.empty))
+
+  private def hasFightingStyleChoice(cls: DndClass, level: Int): Boolean =
+    choicesAtLevel(cls, level).contains(LevelChoice.ChooseFightingStyle)
+
+  private def expertiseCountAtLevel(cls: DndClass, level: Int): Int =
+    choicesAtLevel(cls, level).collectFirst { case LevelChoice.ChooseExpertise(count) => count }
+      .getOrElse(0)
+
+  private def hasLandTypeChoice(cls: DndClass, level: Int): Boolean =
+    choicesAtLevel(cls, level).contains(LevelChoice.ChooseLandType)
+
+  private def hasHunterPreyChoice(cls: DndClass, level: Int): Boolean =
+    choicesAtLevel(cls, level).contains(LevelChoice.ChooseHunterPrey)
 
   private def phaseStepLabel(phase: LevelUpPhase): String =
     phase match {
@@ -456,9 +485,63 @@ object LevelUpScreen extends Screen {
     val cls = ch.primaryClass
     val tgt = targetLevel(model)
     val (extraCount, extraPool) = extraSkillChoiceAtLevel(cls, tgt)
-    val canProceed = (extraCount == 0 || model.extraSkills.size == extraCount) &&
-      (cls != Druid || model.landType.isDefined) &&
-      (cls != Ranger || model.hunterPrey.isDefined)
+    val expCount = expertiseCountAtLevel(cls, tgt)
+    val needFS = hasFightingStyleChoice(cls, tgt)
+    val needLand = hasLandTypeChoice(cls, tgt)
+    val needHunter = hasHunterPreyChoice(cls, tgt)
+
+    val canProceed =
+      (extraCount == 0 || model.extraSkills.size == extraCount) &&
+      (!needFS || model.fightingStyle.isDefined) &&
+      (expCount == 0 || model.expertiseSkills.size == expCount) &&
+      (!needLand || model.landType.isDefined) &&
+      (!needHunter || model.hunterPrey.isDefined)
+
+    val fightingStyleSection =
+      if !needFS then div()
+      else
+        div(style := "margin-bottom: 1.5rem;")(
+          h2(`class` := "about-heading")(text("Fighting Style (choose 1)")),
+          div(`class` := "card-grid")(
+            FightingStyle.values.toList.map { style =>
+              val selected = model.fightingStyle.contains(style)
+              div(
+                `class` := (if selected then "card card--selected" else "card"),
+                onClick(LevelUpMsg.SetFightingStyle(style))
+              )(
+                div(`class` := "card-title")(text(style.label)),
+                div(`class` := "card-desc")(text(style.description))
+              )
+            }*
+          )
+        )
+
+    val expertiseSection =
+      if expCount == 0 then div()
+      else {
+        val proficientSkills = ch.allSkillProficiencies
+        val alreadyExpert = ch.featureSelections.expertiseSkills
+        val pool = proficientSkills -- alreadyExpert
+        div(style := "margin-bottom: 1.5rem;")(
+          h2(`class` := "about-heading")(text(s"Expertise (choose $expCount skill${if expCount > 1 then "s" else ""})")),
+          p(`class` := "screen-intro")(text("Double your proficiency bonus for these skills.")),
+          div(`class` := "points-pool", style := "margin-bottom: 0.5rem;")(
+            text("Chosen: "),
+            span(`class` := "points-pool-value")(text(s"${model.expertiseSkills.size} / $expCount"))
+          ),
+          div(
+            pool.toList.sortBy(_.label).map { skill =>
+              val isChosen = model.expertiseSkills.contains(skill)
+              val clsName = if isChosen then "skill-item skill-item--selected" else "skill-item"
+              div(`class` := clsName, onClick(LevelUpMsg.ToggleExpertise(skill)))(
+                div(`class` := "skill-checkbox")(text(if isChosen then "*" else "")),
+                span(`class` := "skill-label")(text(skill.label)),
+                span(`class` := "skill-ability-tag")(text(skill.ability.abbreviation))
+              )
+            }*
+          )
+        )
+      }
 
     val skillSection =
       if extraCount == 0 then div()
@@ -490,7 +573,7 @@ object LevelUpScreen extends Screen {
         )
 
     val landSection =
-      if cls != Druid then div()
+      if !needLand then div()
       else
         div(style := "margin-bottom: 1.5rem;")(
           div(`class` := "section-title")(text("Circle of the Land: choose land type")),
@@ -508,7 +591,7 @@ object LevelUpScreen extends Screen {
         )
 
     val hunterSection =
-      if cls != Ranger then div()
+      if !needHunter then div()
       else
         div(style := "margin-bottom: 1.5rem;")(
           div(`class` := "section-title")(text("Hunter's Prey")),
@@ -528,6 +611,9 @@ object LevelUpScreen extends Screen {
 
     div(
       h2(`class` := "screen-title")(text("Class Feature Choices")),
+      p(`class` := "screen-intro")(text("Choose your class feature options.")),
+      fightingStyleSection,
+      expertiseSection,
       skillSection,
       landSection,
       hunterSection,
@@ -541,6 +627,8 @@ object LevelUpScreen extends Screen {
     val sub = if tgt >= 3 then model.chosenSubclass.orElse(Subclass.forClass(cls)) else None
     val summaryItems: List[Html[Msg]] =
       sub.map(s => div(`class` := "feature-item")(div(`class` := "feature-name")(text(s"Subclass: ${s.name}")))).toList ++
+        model.fightingStyle.map(fs => div(`class` := "feature-item")(div(`class` := "feature-name")(text(s"Fighting Style: ${fs.label}")))).toList ++
+        (if model.expertiseSkills.nonEmpty then List(div(`class` := "feature-item")(div(`class` := "feature-name")(text(s"Expertise: ${model.expertiseSkills.toList.sortBy(_.label).map(_.label).mkString(", ")}")))) else Nil) ++
         (if model.extraSkills.nonEmpty then List(div(`class` := "feature-item")(div(`class` := "feature-name")(text(s"Extra skills: ${model.extraSkills.map(_.label).mkString(", ")}")))) else Nil) ++
         model.landType.map(lt => div(`class` := "feature-item")(div(`class` := "feature-name")(text(s"Land type: ${lt.label}")))).toList ++
         model.hunterPrey.map(hp => div(`class` := "feature-item")(div(`class` := "feature-name")(text(s"Hunter's Prey: ${hp.label}")))).toList
@@ -646,6 +734,8 @@ final case class LevelUpModel(
     extraSkills: Set[Skill],
     landType: Option[LandType],
     hunterPrey: Option[HunterPreyChoice],
+    fightingStyle: Option[FightingStyle],
+    expertiseSkills: Set[Skill],
     saving: Boolean,
     errors: List[String]
 )
@@ -657,6 +747,8 @@ enum LevelUpMsg {
   case ToggleExtraSkill(skill: Skill)
   case SetLandType(landType: LandType)
   case SetHunterPrey(choice: HunterPreyChoice)
+  case SetFightingStyle(style: FightingStyle)
+  case ToggleExpertise(skill: Skill)
   case TogglePrepared(spell: Spell)
   case ToggleSpellbook(spell: Spell)
   case Confirm
