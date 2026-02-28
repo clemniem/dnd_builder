@@ -114,13 +114,11 @@ object CharacterSheetPdf {
   private def fillHeader(form: js.Dynamic, ch: Character): Unit = {
     setField(form, "Name", ch.name)
     setField(form, "Class", ch.classLabel)
-    setField(form, "Species", ch.species.name)
+    setField(form, "Species", ch.species.displayName)
     setField(form, "Background", ch.background.name)
     setField(form, "Level", ch.characterLevel.toString)
     setField(form, "XP Points", "0")
-    ch.species.subLabel.foreach { sub =>
-      setField(form, "Subclass", sub)
-    }
+    // Subclass = class archetype at level 3+, not species subrace; leave empty until we support it
   }
 
   private def fillCombatStats(form: js.Dynamic, ch: Character): Unit = {

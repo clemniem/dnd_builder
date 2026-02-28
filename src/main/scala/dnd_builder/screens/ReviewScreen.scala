@@ -138,8 +138,7 @@ object ReviewScreen extends Screen {
       div(`class` := "flex-row", style := "margin-bottom: 0.5rem; gap: 0.5rem;")(
         span(`class` := "badge")(text(s"Level ${ch.characterLevel}")),
         span(`class` := "badge")(text(ch.classLabel)),
-        span(`class` := "badge")(text(ch.species.name)),
-        ch.species.subLabel.map(s => span(`class` := "badge")(text(s))).getOrElse(span()),
+        span(`class` := "badge")(text(ch.species.displayName)),
         span(`class` := "badge")(text(ch.background.name)),
         span(`class` := "badge badge--feat")(text(ch.originFeat.name))
       ),

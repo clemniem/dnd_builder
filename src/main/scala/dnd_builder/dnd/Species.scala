@@ -47,6 +47,8 @@ sealed trait Species {
   def hpBonusPerLevel: Int
   def traits: List[String]
   def subLabel: Option[String]
+  /** Species name including subrace when present (e.g. "Elf (High Elf)"). Use this for display; Subclass is for class archetype at level 3+. */
+  def displayName: String = subLabel.fold(name)(sub => s"$name ($sub)")
   /** Languages granted by this species (everyone has Common; race adds others). */
   def languages: Set[Language]
 }
