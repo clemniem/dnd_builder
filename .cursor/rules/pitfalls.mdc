@@ -5,6 +5,9 @@ alwaysApply: true
 
 # Pitfalls & Gotchas
 
+## General
+- **Do not swallow errors silently:** Async or callback-based code (e.g. PDF load/save, fetch, Future.foreach) must surface failures. Log to console or show user feedback; avoid empty `catch` or `failed.foreach` with no logging.
+
 ## Scala.js
 - **No `return`:** Use if/else or pattern match instead of early return.
 - **No `null`:** Use `Option` with `.filter` / `.getOrElse`.
@@ -23,6 +26,10 @@ alwaysApply: true
 - **Global access:** Use `js.Dynamic.global.selectDynamic("jspdf")` (lowercase). Never reference `jsPDF` (uppercase) directly.
 - **Constructor key:** Get via `val ctorKey = "js" + "PDF"` then `jspdfObj.selectDynamic(ctorKey)` to avoid Scala thinking `jsPDF` is a method call.
 - **Never assign `js.Dynamic.global`** to a variable -- it triggers unexpected evaluation.
+
+## pdf-lib (character sheet PDF)
+- **WinAnsi encoding only:** Form field text is encoded as WinAnsi (Latin-1). Do **not** use Unicode characters outside that set (e.g. ○ U+25CB, or other symbols). `doc.save()` will throw `WinAnsi cannot encode "…"`. Use ASCII or Latin-1 only (e.g. `o` instead of `○` for tracking circles).
+- **Do not swallow errors:** Async or callback-based flows (e.g. `loadFromUrl`, `doc.save()`) must surface failures. Log errors to the console (`dom.console.error`) and/or call an `onError` callback. Avoid silent `catch (_ => ())` so that "nothing happens" bugs can be diagnosed.
 
 ## Deployment
 - **ES modules only:** `build.sbt` must use `ModuleKind.ESModule`. Production loader uses `import { TyrianApp } from './main.js'`.

@@ -29,6 +29,7 @@ object CharacterDetailScreen extends Screen:
     case DetailMsg.Back =>
       (model, Cmd.Emit(NavigateNext(ScreenId.GalleryId, None)))
     case DetailMsg.ExportPdf =>
+      org.scalajs.dom.console.log("[Export PDF] Detail screen: clicked, calling generate")
       CharacterSheetPdf.generate(model.storedCharacter.character)
       (model, Cmd.None)
     case _: NavigateNext =>

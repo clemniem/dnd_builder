@@ -12,17 +12,24 @@ object PdfLib:
 
   def loadFromUrl(url: String)(onLoaded: js.Dynamic => Unit)(onError: String => Unit): Unit =
     import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+    dom.console.log("[PdfLib] loadFromUrl called, pdfLib present: " + pdfLib.isDefined)
     pdfLib match
       case None =>
+        dom.console.error("[PdfLib] PDFLib not on window - add script to index.html")
         onError("pdf-lib not loaded. Add pdf-lib script to index.html")
       case Some(lib) =>
+        dom.console.log("[PdfLib] fetching PDF...")
         val result = for
           response <- dom.fetch(url).toFuture
-          bytes    <- response.arrayBuffer().toFuture
-          doc      <- lib.PDFDocument.load(bytes).asInstanceOf[js.Promise[js.Dynamic]].toFuture
+          _        = dom.console.log("[PdfLib] fetch response status: " + response.status)
+          bytes   <- response.arrayBuffer().toFuture
+          doc     <- lib.PDFDocument.load(bytes).asInstanceOf[js.Promise[js.Dynamic]].toFuture
         yield doc
         result.foreach(onLoaded)
-        result.failed.foreach(t => onError(t.getMessage))
+        result.failed.foreach { t =>
+          dom.console.error("[PdfLib] load failed:", t)
+          onError(t.getMessage)
+        }
 
   def getForm(doc: js.Dynamic): js.Dynamic =
     doc.getForm()
@@ -51,15 +58,27 @@ object PdfLib:
 
   def saveAndOpen(doc: js.Dynamic, filename: String): Unit =
     import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-    doc.save().asInstanceOf[js.Promise[js.Any]].toFuture.foreach { pdfBytes =>
-      val uint8 = pdfBytes.asInstanceOf[js.typedarray.Uint8Array]
-      val blob = new dom.Blob(
-        js.Array(uint8),
-        new dom.BlobPropertyBag { `type` = "application/pdf" }
-      )
-      val url = dom.URL.createObjectURL(blob)
-      triggerDownload(url, filename)
-      dom.URL.revokeObjectURL(url)
+    dom.console.log("[PdfLib] saveAndOpen: calling doc.save()")
+    val future = doc.save().asInstanceOf[js.Promise[js.Any]].toFuture
+    future.failed.foreach { t =>
+      dom.console.error("[PdfLib] doc.save() failed:", t)
+    }
+    future.foreach { pdfBytes =>
+      dom.console.log("[PdfLib] save() done, creating blob and download")
+      try
+        val uint8 = pdfBytes.asInstanceOf[js.typedarray.Uint8Array]
+        val blob = new dom.Blob(
+          js.Array(uint8),
+          new dom.BlobPropertyBag { `type` = "application/pdf" }
+        )
+        val url = dom.URL.createObjectURL(blob)
+        triggerDownload(url, filename)
+        dom.console.log("[PdfLib] download triggered for " + filename)
+        // Revoke after a short delay so the browser has time to start the download
+        dom.window.setTimeout(() => dom.URL.revokeObjectURL(url), 2000)
+      catch
+        case t: Throwable =>
+          dom.console.error("[PdfLib] blob/download error:", t)
     }
 
   private def triggerDownload(url: String, filename: String): Unit =

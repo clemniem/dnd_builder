@@ -55,21 +55,28 @@ object CharacterSheetPdf:
     generate(testChar)
 
   def generate(ch: Character): Unit =
+    org.scalajs.dom.console.log("[Export PDF] generate() called")
     PdfLib.loadFromUrl(pdfUrl) { doc =>
-      val form = PdfLib.getForm(doc)
-      fillHeader(form, ch)
-      fillCombatStats(form, ch)
-      fillAbilityScores(form, ch)
-      fillSavingThrows(form, ch)
-      fillSkills(form, ch)
-      fillArmorProficiencies(form, ch)
-      fillWeapons(form, ch)
-      fillSpellcasting(form, ch)
-      fillCurrency(form, ch)
-      fillProficienciesAndFeatures(form, ch)
-      val safeName = ch.name.replaceAll("[^a-zA-Z0-9_\\- ]", "").trim
-      val filename = if safeName.isEmpty then "character-sheet.pdf" else s"$safeName.pdf"
-      PdfLib.saveAndOpen(doc, filename)
+      org.scalajs.dom.console.log("[Export PDF] PDF loaded, filling form")
+      try
+        val form = PdfLib.getForm(doc)
+        fillHeader(form, ch)
+        fillCombatStats(form, ch)
+        fillAbilityScores(form, ch)
+        fillSavingThrows(form, ch)
+        fillSkills(form, ch)
+        fillArmorProficiencies(form, ch)
+        fillWeapons(form, ch)
+        fillSpellcasting(form, ch)
+        fillCurrency(form, ch)
+        fillProficienciesAndFeatures(form, ch)
+        val safeName = ch.name.replaceAll("[^a-zA-Z0-9_\\- ]", "").trim
+        val filename = if safeName.isEmpty then "character-sheet.pdf" else s"$safeName.pdf"
+        PdfLib.saveAndOpen(doc, filename)
+        org.scalajs.dom.console.log("[Export PDF] saveAndOpen called")
+      catch
+        case t: Throwable =>
+          org.scalajs.dom.console.error("PDF fill/save error:", t)
     } { error =>
       org.scalajs.dom.console.error(s"PDF generation failed: $error")
     }
@@ -284,7 +291,7 @@ object CharacterSheetPdf:
     val base = f.name + " - "
     val desc = resolvedFeatureDescription(f, ch)
     val tracking = f.uses match
-      case Some(n) => " " + ("○ " * n).trim
+      case Some(n) => " " + ("o " * n).trim
       case None    => ""
     s" * $base$desc$tracking"
 

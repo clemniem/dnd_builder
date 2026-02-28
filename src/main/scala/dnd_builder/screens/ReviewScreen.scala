@@ -72,6 +72,7 @@ object ReviewScreen extends Screen:
       (model.copy(errors = List(msg), saving = false), Cmd.None)
 
     case ReviewMsg.ExportPdf =>
+      org.scalajs.dom.console.log("[Export PDF] clicked, building character and calling generate")
       CharacterSheetPdf.generate(buildCharacter(model))
       (model, Cmd.None)
 
