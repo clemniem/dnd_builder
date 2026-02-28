@@ -1,6 +1,7 @@
 package dndbuilder.dnd
 
 import io.circe.*
+import io.circe.generic.semiauto.*
 import io.circe.syntax.*
 
 object Codecs:
@@ -86,6 +87,18 @@ object Codecs:
 
   given Encoder[DragonAncestry] = mkEncoder(_.toString)
   given Decoder[DragonAncestry] = mkDecoder(DragonAncestry.values, _.toString)
+
+  given Encoder[FightingStyle] = mkEncoder(_.label)
+  given Decoder[FightingStyle] = mkDecoder(FightingStyle.values, _.label)
+  given Encoder[DivineOrder] = mkEncoder(_.label)
+  given Decoder[DivineOrder] = mkDecoder(DivineOrder.values, _.label)
+  given Encoder[PrimalOrder] = mkEncoder(_.label)
+  given Decoder[PrimalOrder] = mkDecoder(PrimalOrder.values, _.label)
+  given Encoder[EldritchInvocation] = mkEncoder(_.label)
+  given Decoder[EldritchInvocation] = mkDecoder(EldritchInvocation.values, _.label)
+
+  given Encoder[ClassFeatureSelections] = deriveEncoder
+  given Decoder[ClassFeatureSelections] = deriveDecoder
 
   given Encoder[AbilityScores] = Encoder.instance { s =>
     Json.obj(
@@ -206,6 +219,7 @@ object Codecs:
       "chosenCantrips"   -> ch.chosenCantrips.asJson,
       "preparedSpells"   -> ch.preparedSpells.asJson,
       "spellbookSpells"  -> ch.spellbookSpells.asJson,
+      "featureSelections" -> ch.featureSelections.asJson,
       "level"            -> ch.level.asJson
     )
   }
@@ -225,6 +239,8 @@ object Codecs:
       cantrips <- c.downField("chosenCantrips").as[Option[List[Spell]]].map(_.getOrElse(Nil))
       prepared <- c.downField("preparedSpells").as[Option[List[Spell]]].map(_.getOrElse(Nil))
       spellbook <- c.downField("spellbookSpells").as[Option[List[Spell]]].map(_.getOrElse(Nil))
+      featureSelections <- c.downField("featureSelections").as[Option[ClassFeatureSelections]].map(_.getOrElse(ClassFeatureSelections.empty))
       level  <- c.downField("level").as[Int]
-    yield Character(name, sp, cls, bg, scores, bonus, skills.toSet, armor, shield, weapons, cantrips, prepared, spellbook, level)
+    yield Character(name, sp, cls, bg, scores, bonus, skills.toSet, armor, shield, weapons, cantrips, prepared, spellbook,
+      featureSelections, level)
   }

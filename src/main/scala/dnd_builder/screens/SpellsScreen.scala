@@ -14,15 +14,17 @@ object SpellsScreen extends Screen:
 
   def init(previous: Option[ScreenOutput]): (Model, Cmd[IO, Msg]) =
     val base = previous match
+      case Some(ScreenOutput.ClassFeaturesChosen(s, c, b, sc, bn, sk, ar, sh, wp, fs)) =>
+        SpellsModel(c, s, b, sc, bn, sk, ar, sh, wp, Nil, Nil, Nil, fs, Phase.Cantrips)
       case Some(ScreenOutput.EquipmentChosen(s, c, b, sc, bn, sk, ar, sh, wp)) =>
-        SpellsModel(c, s, b, sc, bn, sk, ar, sh, wp, Nil, Nil, Nil, Phase.Cantrips)
-      case Some(ScreenOutput.SpellsChosen(s, c, b, sc, bn, sk, ar, sh, wp, ct, ps, sb)) =>
+        SpellsModel(c, s, b, sc, bn, sk, ar, sh, wp, Nil, Nil, Nil, ClassFeatureSelections.empty, Phase.Cantrips)
+      case Some(ScreenOutput.SpellsChosen(s, c, b, sc, bn, sk, ar, sh, wp, ct, ps, sb, fs)) =>
         val phase = if c.cantripsKnown > 0 then Phase.Cantrips else Phase.Prepared
-        SpellsModel(c, s, b, sc, bn, sk, ar, sh, wp, ct, ps, sb, phase)
+        SpellsModel(c, s, b, sc, bn, sk, ar, sh, wp, ct, ps, sb, fs, phase)
       case _ =>
         SpellsModel(Wizard, Human, Acolyte, AbilityScores.default,
           BackgroundBonus.ThreePlusOnes(Ability.Strength, Ability.Dexterity, Ability.Constitution),
-          Set.empty, None, false, Nil, Nil, Nil, Nil, Phase.Cantrips)
+          Set.empty, None, false, Nil, Nil, Nil, Nil, ClassFeatureSelections.empty, Phase.Cantrips)
     val model =
       if base.dndClass.cantripsKnown == 0 then base.copy(phase = Phase.Prepared)
       else base
@@ -85,12 +87,13 @@ object SpellsScreen extends Screen:
         case Phase.Spellbook if model.dndClass.cantripsKnown > 0 =>
           (model.copy(phase = Phase.Cantrips), Cmd.None)
         case _ =>
-          val output = ScreenOutput.EquipmentChosen(
+          val output = ScreenOutput.ClassFeaturesChosen(
             model.species, model.dndClass, model.background,
             model.baseScores, model.backgroundBonus, model.chosenSkills,
-            model.equippedArmor, model.equippedShield, model.equippedWeapons
+            model.equippedArmor, model.equippedShield, model.equippedWeapons,
+            model.featureSelections
           )
-          (model, Cmd.Emit(NavigateNext(ScreenId.EquipmentId, Some(output))))
+          (model, Cmd.Emit(NavigateNext(ScreenId.ClassFeaturesId, Some(output))))
 
     case _: NavigateNext => (model, Cmd.None)
 
@@ -99,13 +102,14 @@ object SpellsScreen extends Screen:
       model.species, model.dndClass, model.background,
       model.baseScores, model.backgroundBonus, model.chosenSkills,
       model.equippedArmor, model.equippedShield, model.equippedWeapons,
-      model.chosenCantrips, model.preparedSpells, model.spellbookSpells
+      model.chosenCantrips, model.preparedSpells, model.spellbookSpells,
+      model.featureSelections
     )
     (model, Cmd.Emit(NavigateNext(ScreenId.ReviewId, Some(output))))
 
   def view(model: Model): Html[Msg] =
     div(`class` := "screen-container")(
-      StepIndicator(7, model.dndClass.isSpellcaster),
+      StepIndicator(8, model.dndClass.isSpellcaster),
       model.phase match
         case Phase.Cantrips  => cantripsView(model)
         case Phase.Spellbook => spellbookView(model)
@@ -120,7 +124,7 @@ object SpellsScreen extends Screen:
       else "Next: Review >"
 
     div(
-      StepNav("< Equipment", SpellsMsg.Back, nextLabel, SpellsMsg.Next, remaining == 0),
+      StepNav("< Class Features", SpellsMsg.Back, nextLabel, SpellsMsg.Next, remaining == 0),
       h1(`class` := "screen-title")(text("Choose Cantrips")),
       p(`class` := "screen-intro")(
         text(s"Select ${model.dndClass.cantripsKnown} cantrips from the ${model.dndClass.name} spell list.")
@@ -157,7 +161,7 @@ object SpellsScreen extends Screen:
     val backLabel =
       if model.dndClass.spellbookSize > 0 then "< Spellbook"
       else if model.dndClass.cantripsKnown > 0 then "< Cantrips"
-      else "< Equipment"
+      else "< Class Features"
 
     val title =
       if model.dndClass.spellbookSize > 0 then "Prepare Spells from Spellbook"
@@ -221,6 +225,7 @@ final case class SpellsModel(
     chosenCantrips: List[Spell],
     preparedSpells: List[Spell],
     spellbookSpells: List[Spell],
+    featureSelections: ClassFeatureSelections,
     phase: Phase)
 
 enum SpellsMsg:

@@ -53,8 +53,7 @@ object EquipmentScreen extends Screen:
         model.baseScores, model.backgroundBonus, model.chosenSkills,
         model.selectedArmor, model.selectedShield, model.selectedWeapons
       )
-      val nextScreen = if model.dndClass.isSpellcaster then ScreenId.SpellsId else ScreenId.ReviewId
-      (model, Cmd.Emit(NavigateNext(nextScreen, Some(output))))
+      (model, Cmd.Emit(NavigateNext(ScreenId.ClassFeaturesId, Some(output))))
     case EquipmentMsg.Back =>
       val output = ScreenOutput.SkillsChosen(
         model.species, model.dndClass, model.background,
@@ -77,7 +76,7 @@ object EquipmentScreen extends Screen:
     div(`class` := "screen-container")(
       StepIndicator(6, model.dndClass.isSpellcaster),
       StepNav("< Skills", EquipmentMsg.Back,
-        if model.dndClass.isSpellcaster then "Next: Spells >" else "Next: Review >",
+        "Next: Class Features >",
         EquipmentMsg.Next, nextEnabled),
       h1(`class` := "screen-title")(text("Choose Equipment")),
       p(`class` := "screen-intro")(text("Select weapons and armor you are proficient with. Each item has a star cost (1–5); stay within your budget.")),

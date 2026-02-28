@@ -18,14 +18,16 @@ object ReviewScreen extends Screen:
 
   def init(previous: Option[ScreenOutput]): (Model, Cmd[IO, Msg]) =
     val model = previous match
-      case Some(ScreenOutput.SpellsChosen(s, c, b, sc, bn, sk, ar, sh, wp, ct, ps, sb)) =>
-        ReviewModel(c, s, b, sc, bn, sk, ar, sh, wp, ct, ps, sb, "", Nil, false)
+      case Some(ScreenOutput.SpellsChosen(s, c, b, sc, bn, sk, ar, sh, wp, ct, ps, sb, fs)) =>
+        ReviewModel(c, s, b, sc, bn, sk, ar, sh, wp, ct, ps, sb, fs, "", Nil, false)
+      case Some(ScreenOutput.ClassFeaturesChosen(s, c, b, sc, bn, sk, ar, sh, wp, fs)) =>
+        ReviewModel(c, s, b, sc, bn, sk, ar, sh, wp, Nil, Nil, Nil, fs, "", Nil, false)
       case Some(ScreenOutput.EquipmentChosen(s, c, b, sc, bn, sk, ar, sh, wp)) =>
-        ReviewModel(c, s, b, sc, bn, sk, ar, sh, wp, Nil, Nil, Nil, "", Nil, false)
+        ReviewModel(c, s, b, sc, bn, sk, ar, sh, wp, Nil, Nil, Nil, ClassFeatureSelections.empty, "", Nil, false)
       case _ =>
         ReviewModel(Barbarian, Human, Acolyte, AbilityScores.default,
           BackgroundBonus.ThreePlusOnes(Ability.Strength, Ability.Dexterity, Ability.Constitution),
-          Set.empty[Skill], None, false, Nil, Nil, Nil, Nil, "", Nil, false)
+          Set.empty[Skill], None, false, Nil, Nil, Nil, Nil, ClassFeatureSelections.empty, "", Nil, false)
     (model, Cmd.None)
 
   def update(model: Model): Msg => (Model, Cmd[IO, Msg]) =
@@ -37,7 +39,8 @@ object ReviewScreen extends Screen:
         model.name, model.species, model.dndClass, model.background,
         model.baseScores, model.backgroundBonus, model.chosenSkills,
         model.equippedArmor, model.equippedShield, model.equippedWeapons,
-        model.chosenCantrips, model.preparedSpells, model.spellbookSpells, 1
+        model.chosenCantrips, model.preparedSpells, model.spellbookSpells,
+        model.featureSelections, 1
       )
       result match
         case Left(errors) =>
@@ -78,16 +81,18 @@ object ReviewScreen extends Screen:
           model.species, model.dndClass, model.background,
           model.baseScores, model.backgroundBonus, model.chosenSkills,
           model.equippedArmor, model.equippedShield, model.equippedWeapons,
-          model.chosenCantrips, model.preparedSpells, model.spellbookSpells
+          model.chosenCantrips, model.preparedSpells, model.spellbookSpells,
+          model.featureSelections
         )
         (model, Cmd.Emit(NavigateNext(ScreenId.SpellsId, Some(output))))
       else
-        val output = ScreenOutput.EquipmentChosen(
+        val output = ScreenOutput.ClassFeaturesChosen(
           model.species, model.dndClass, model.background,
           model.baseScores, model.backgroundBonus, model.chosenSkills,
-          model.equippedArmor, model.equippedShield, model.equippedWeapons
+          model.equippedArmor, model.equippedShield, model.equippedWeapons,
+          model.featureSelections
         )
-        (model, Cmd.Emit(NavigateNext(ScreenId.EquipmentId, Some(output))))
+        (model, Cmd.Emit(NavigateNext(ScreenId.ClassFeaturesId, Some(output))))
 
     case _: NavigateNext =>
       (model, Cmd.None)
@@ -98,14 +103,16 @@ object ReviewScreen extends Screen:
       model.species, model.dndClass, model.background,
       model.baseScores, model.backgroundBonus, model.chosenSkills,
       model.equippedArmor, model.equippedShield, model.equippedWeapons,
-      model.chosenCantrips, model.preparedSpells, model.spellbookSpells, 1
+      model.chosenCantrips, model.preparedSpells, model.spellbookSpells,
+      model.featureSelections,
+      1
     )
 
   def view(model: Model): Html[Msg] =
     val character = buildCharacter(model)
 
     div(`class` := "screen-container")(
-      StepIndicator(if model.dndClass.isSpellcaster then 8 else 7, model.dndClass.isSpellcaster),
+      StepIndicator(if model.dndClass.isSpellcaster then 9 else 8, model.dndClass.isSpellcaster),
       StepNav(
         if model.dndClass.isSpellcaster then "< Spells" else "< Equipment",
         ReviewMsg.Back, if model.saving then "Saving..." else "Save Character", ReviewMsg.Save, !model.saving),
@@ -274,6 +281,7 @@ final case class ReviewModel(
     chosenCantrips: List[Spell],
     preparedSpells: List[Spell],
     spellbookSpells: List[Spell],
+    featureSelections: ClassFeatureSelections,
     name: String,
     errors: List[String],
     saving: Boolean)

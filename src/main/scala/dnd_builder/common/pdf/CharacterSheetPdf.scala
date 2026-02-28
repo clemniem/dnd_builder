@@ -38,6 +38,18 @@ object CharacterSheetPdf:
         Weapon.all.find(_.name == "Handaxe").get
       ),
       Nil, Nil, Nil,
+      ClassFeatureSelections(
+        fightingStyle = Some(FightingStyle.Defense),
+        divineOrder = None,
+        primalOrder = None,
+        eldritchInvocation = None,
+        expertiseSkills = Set.empty,
+        weaponMasteries = List(
+          Weapon.byName("Longsword").get,
+          Weapon.byName("Handaxe").get,
+          Weapon.byName("Greatsword").get
+        )
+      ),
       1
     )
     generate(testChar)
@@ -258,13 +270,42 @@ object CharacterSheetPdf:
     setFieldPadded(form, "SPECIES TRAITS", traitsText, 16)
 
     val features = ch.dndClass.level1Features
-    val mid = (features.size + 1) / 2
-    val col1 = features.take(mid)
-    val col2 = features.drop(mid)
+    val featureLines = features.map(f => featureLine(f, ch))
+    val mid = (featureLines.size + 1) / 2
+    val col1Text = featureLines.take(mid).mkString("\n")
+    val col2Text = featureLines.drop(mid)
 
-    val col1Text = col1.map(f => s" * ${f.name} - ${f.description}\n").mkString("\n")
     setFieldPadded(form, "CLASS FEATURES 1", col1Text, 20)
 
-    if col2.nonEmpty then
-      val col2Text = col2.map(f => s" * ${f.name} - ${f.description}\n").mkString("\n")
-      setFieldPadded(form, "CLASS FEATURES 2", col2Text, 21)
+    if col2Text.nonEmpty then
+      setFieldPadded(form, "CLASS FEATURES 2", col2Text.mkString("\n"), 21)
+
+  private def featureLine(f: ClassFeature, ch: Character): String =
+    val base = f.name + " - "
+    val desc = resolvedFeatureDescription(f, ch)
+    val tracking = f.uses match
+      case Some(n) => " " + ("○ " * n).trim
+      case None    => ""
+    s" * $base$desc$tracking"
+
+  private def resolvedFeatureDescription(f: ClassFeature, ch: Character): String =
+    val fs = ch.featureSelections
+    f.name match
+      case "Fighting Style" =>
+        fs.fightingStyle.fold(f.description)(s => s"${s.label} (${s.description})")
+      case "Divine Order" =>
+        fs.divineOrder.fold(f.description)(o => s"${o.label} (${o.description})")
+      case "Primal Order" =>
+        fs.primalOrder.fold(f.description)(o => s"${o.label} (${o.description})")
+      case "Eldritch Invocations" | "Eldritch Invocation" =>
+        fs.eldritchInvocation.fold(f.description)(i => s"${i.label} (${i.description})")
+      case "Expertise" =>
+        if fs.expertiseSkills.nonEmpty then
+          fs.expertiseSkills.toList.sortBy(_.label).map(_.label).mkString(", ")
+        else f.description
+      case "Weapon Mastery" =>
+        if fs.weaponMasteries.nonEmpty then
+          fs.weaponMasteries.map(w => s"${w.name} (${w.mastery})").mkString(", ")
+        else f.description
+      case _ =>
+        f.description

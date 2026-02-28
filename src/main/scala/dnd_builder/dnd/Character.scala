@@ -14,6 +14,7 @@ final case class Character(
     chosenCantrips: List[Spell],
     preparedSpells: List[Spell],
     spellbookSpells: List[Spell],
+    featureSelections: ClassFeatureSelections,
     level: Int):
 
   def finalScores: AbilityScores =

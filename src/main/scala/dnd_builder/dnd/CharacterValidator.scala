@@ -172,6 +172,7 @@ object CharacterValidator:
       chosenCantrips: List[Spell],
       preparedSpells: List[Spell],
       spellbookSpells: List[Spell],
+      featureSelections: ClassFeatureSelections,
       level: Int
   ): Either[List[ValidationError], Character] =
     val finalScores = AbilityScores.applyBonus(baseScores, bonus)
@@ -184,4 +185,5 @@ object CharacterValidator:
 
     if errors.nonEmpty then Left(errors)
     else Right(Character(name, species, dndClass, background, baseScores, bonus, chosenSkills,
-      equippedArmor, equippedShield, equippedWeapons, chosenCantrips, preparedSpells, spellbookSpells, level))
+      equippedArmor, equippedShield, equippedWeapons, chosenCantrips, preparedSpells, spellbookSpells,
+      featureSelections, level))
