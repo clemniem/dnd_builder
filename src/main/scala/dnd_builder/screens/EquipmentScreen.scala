@@ -17,7 +17,11 @@ object EquipmentScreen extends Screen {
       case Some(ScreenOutput.Draft(d)) => d
       case _ => CharacterDraft.empty
     }
-    (EquipmentModel(draft, draft.equippedArmor, draft.equippedShield, draft.equippedWeapons, 4), Cmd.None)
+    val initialCoins =
+      if draft.coins == Coins.empty then
+        draft.background.fold(Coins.empty)(bg => Coins(bg.startingGold, 0, 0, 0, 0))
+      else draft.coins
+    (EquipmentModel(draft, draft.equippedArmor, draft.equippedShield, draft.equippedWeapons, 4, initialCoins), Cmd.None)
   }
 
   private def totalStars(model: EquipmentModel): Int =
@@ -47,18 +51,22 @@ object EquipmentScreen extends Screen {
       else (model, Cmd.None)
     case EquipmentMsg.RemoveWeapon(weapon) =>
       (model.copy(selectedWeapons = model.selectedWeapons.filter(_ != weapon)), Cmd.None)
+    case EquipmentMsg.SetCoins(coins) =>
+      (model.copy(coins = coins), Cmd.None)
     case EquipmentMsg.Next =>
       val updated = model.draft.copy(
         equippedArmor = model.selectedArmor,
         equippedShield = model.selectedShield,
-        equippedWeapons = model.selectedWeapons
+        equippedWeapons = model.selectedWeapons,
+        coins = model.coins
       )
       (model, Cmd.Emit(NavigateNext(ScreenId.ClassFeaturesId, Some(ScreenOutput.Draft(updated)))))
     case EquipmentMsg.Back =>
       val updated = model.draft.copy(
         equippedArmor = model.selectedArmor,
         equippedShield = model.selectedShield,
-        equippedWeapons = model.selectedWeapons
+        equippedWeapons = model.selectedWeapons,
+        coins = model.coins
       )
       (model, Cmd.Emit(NavigateNext(ScreenId.SkillsId, Some(ScreenOutput.Draft(updated)))))
     case EquipmentMsg.NoOp =>
@@ -68,6 +76,18 @@ object EquipmentScreen extends Screen {
   }
 
   private def starsDisplay(n: Int): String = "★" * n + "☆" * (5 - n)
+
+  private def coinInput(label: String, amount: Int, onChange: Int => EquipmentMsg): Html[EquipmentMsg] =
+    div(style := "display: flex; align-items: center; gap: 0.35rem;")(
+      span(style := "min-width: 2ch; font-weight: 500;")(text(label)),
+      input(
+        `type` := "number",
+        value := amount.toString,
+        min := "0",
+        style := "width: 4rem; padding: 0.35rem;",
+        onInput(s => onChange(math.max(0, s.toIntOption.getOrElse(0))))
+      )
+    )
 
   def view(model: Model): Html[Msg] = {
     val cls = model.draft.dndClass.getOrElse(Barbarian)
@@ -98,6 +118,14 @@ object EquipmentScreen extends Screen {
           text("Used: "),
           span(`class` := "points-pool-value")(text(s"$usedStars / ${model.maxStars}"))
         )
+      ),
+      h2(`class` := "about-heading", style := "margin-top: 1rem;")(text("Starting coins")),
+      div(`class` := "flex-row", style := "gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center;")(
+        coinInput("GP", model.coins.gp, gp => EquipmentMsg.SetCoins(model.coins.withGp(gp))),
+        coinInput("SP", model.coins.sp, sp => EquipmentMsg.SetCoins(model.coins.withSp(sp))),
+        coinInput("EP", model.coins.ep, ep => EquipmentMsg.SetCoins(model.coins.withEp(ep))),
+        coinInput("CP", model.coins.cp, cp => EquipmentMsg.SetCoins(model.coins.withCp(cp))),
+        coinInput("PP", model.coins.pp, pp => EquipmentMsg.SetCoins(model.coins.withPp(pp)))
       ),
       h2(`class` := "about-heading", style := "margin-top: 0.5rem;")(text("Weapons (choose 1–2)")),
       div(`class` := "points-pool", style := "margin-bottom: 0.5rem;")(
@@ -187,10 +215,12 @@ final case class EquipmentModel(
     selectedArmor: Option[Armor],
     selectedShield: Boolean,
     selectedWeapons: List[Weapon],
-    maxStars: Int)
+    maxStars: Int,
+    coins: Coins)
 
 enum EquipmentMsg {
   case SetMaxStars(n: Int)
+  case SetCoins(coins: Coins)
   case SelectArmor(armor: Option[Armor])
   case ToggleShield
   case AddWeapon(weapon: Weapon)

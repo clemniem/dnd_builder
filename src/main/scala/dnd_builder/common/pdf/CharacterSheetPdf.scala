@@ -51,7 +51,8 @@ object CharacterSheetPdf {
           Weapon.byName("Greatsword").get
         )
       ),
-      Dwarf.languages
+      Dwarf.languages,
+      Coins(Soldier.startingGold, 0, 0, 0, 0)
     )
     generate(testChar)
   }
@@ -105,6 +106,14 @@ object CharacterSheetPdf {
   private def setFieldPadded(form: js.Dynamic, name: String, value: String, targetLines: Int): Unit = {
     val field = PdfLib.getTextField(form, name)
     PdfLib.removeMaxLength(field)
+    PdfLib.setText(field, padToLines(value, targetLines))
+  }
+
+  /** Like setFieldPadded but sets font size (pt) so text is a bit larger (e.g. tools/equipment). */
+  private def setFieldPaddedSized(form: js.Dynamic, name: String, value: String, targetLines: Int, fontSizePt: Int): Unit = {
+    val field = PdfLib.getTextField(form, name)
+    PdfLib.removeMaxLength(field)
+    PdfLib.setFontSize(field, fontSizePt)
     PdfLib.setText(field, padToLines(value, targetLines))
   }
 
@@ -272,21 +281,22 @@ object CharacterSheetPdf {
     catch case _: Throwable => ()
 
   private def fillCurrency(form: js.Dynamic, ch: Character): Unit = {
-    setField(form, "GP", ch.background.startingGold.toString)
-    setField(form, "CP", "0")
-    setField(form, "SP", "0")
-    setField(form, "EP", "0")
-    setField(form, "PP", "0")
+    def coinValue(n: Int): String = if n == 0 then "" else n.toString
+    setField(form, "GP", coinValue(ch.coins.gp))
+    setField(form, "SP", coinValue(ch.coins.sp))
+    setField(form, "EP", coinValue(ch.coins.ep))
+    setField(form, "CP", coinValue(ch.coins.cp))
+    setField(form, "PP", coinValue(ch.coins.pp))
   }
 
   private def fillProficienciesAndFeatures(form: js.Dynamic, ch: Character): Unit = {
     val langStr = ch.languages.toList.sortBy(_.label).map(_.label).mkString(", ")
     trySetField(form, "LANGUAGES", langStr)
     setFieldPadded(form, "WEAPON PROF", ch.primaryClass.weaponSummary, 4)
-    setFieldPadded(form, "TOOL PROF", ch.background.toolProficiency, 2)
+    setFieldPaddedSized(form, "TOOL PROF", ch.background.toolProficiency, 2, 11)
     val featText = ch.originFeat.name + ":\n" + ch.originFeat.description
     setFieldPadded(form, "FEATS", featText, 28)
-    setFieldPadded(form, "EQUIPMENT", ch.equipmentSummary, 40)
+    setFieldPaddedSized(form, "EQUIPMENT", ch.equipmentSummary, 40, 11)
     val traitsText = ch.species.traits.map(t => s" * $t").mkString("\n")
     setFieldPadded(form, "SPECIES TRAITS", traitsText, 25)
 

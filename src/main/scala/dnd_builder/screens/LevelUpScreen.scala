@@ -21,7 +21,7 @@ object LevelUpScreen extends Screen {
           "Unknown", Human, List(ClassLevel(Barbarian, 1)),
           Acolyte, AbilityScores.default,
           BackgroundBonus.ThreePlusOnes(Ability.Intelligence, Ability.Wisdom, Ability.Charisma),
-          Set.empty, None, false, Nil, Nil, Nil, Nil, ClassFeatureSelections.empty, Human.languages
+          Set.empty, None, false, Nil, Nil, Nil, Nil, ClassFeatureSelections.empty, Human.languages, Coins.empty
         ))
     }
     (LevelUpModel(sc, false, Nil), Cmd.None)

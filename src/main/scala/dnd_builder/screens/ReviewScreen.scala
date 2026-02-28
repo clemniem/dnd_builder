@@ -41,7 +41,7 @@ object ReviewScreen extends Screen {
         model.name, sp, cls, bg, scores, bonus, d.chosenSkills,
         d.equippedArmor, d.equippedShield, d.equippedWeapons,
         d.chosenCantrips, d.preparedSpells, d.spellbookSpells,
-        d.featureSelections, languages, lvl
+        d.featureSelections, languages, lvl, d.coins
       )
       result match {
         case Left(errors) =>
@@ -99,7 +99,8 @@ object ReviewScreen extends Screen {
       sp, List(ClassLevel(cls, lvl)), bg, scores, bonus, d.chosenSkills,
       d.equippedArmor, d.equippedShield, d.equippedWeapons,
       d.chosenCantrips, d.preparedSpells, d.spellbookSpells,
-      d.featureSelections, languages
+      d.featureSelections, languages,
+      d.coins
     )
   }
 

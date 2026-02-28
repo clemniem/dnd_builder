@@ -65,3 +65,16 @@ enum ProficiencyLevel {
 }
 
 final case class ClassLevel(dndClass: DndClass, classLevel: Int)
+
+/** Currency in D&D coin types. Zero values are shown as empty in PDF. */
+final case class Coins(gp: Int, sp: Int, ep: Int, cp: Int, pp: Int) {
+  def withGp(n: Int): Coins = copy(gp = n)
+  def withSp(n: Int): Coins = copy(sp = n)
+  def withEp(n: Int): Coins = copy(ep = n)
+  def withCp(n: Int): Coins = copy(cp = n)
+  def withPp(n: Int): Coins = copy(pp = n)
+}
+
+object Coins {
+  val empty: Coins = Coins(0, 0, 0, 0, 0)
+}

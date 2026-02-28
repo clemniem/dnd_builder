@@ -212,6 +212,26 @@ object Codecs {
     Background.all.find(_.name == s).toRight(s"Unknown background: $s")
   }
 
+  given Encoder[Coins] = Encoder.instance { c =>
+    Json.obj(
+      "gp" -> c.gp.asJson,
+      "sp" -> c.sp.asJson,
+      "ep" -> c.ep.asJson,
+      "cp" -> c.cp.asJson,
+      "pp" -> c.pp.asJson
+    )
+  }
+
+  given Decoder[Coins] = Decoder.instance { c =>
+    for {
+      gp <- c.downField("gp").as[Int]
+      sp <- c.downField("sp").as[Int]
+      ep <- c.downField("ep").as[Int]
+      cp <- c.downField("cp").as[Int]
+      pp <- c.downField("pp").as[Int]
+    } yield Coins(gp, sp, ep, cp, pp)
+  }
+
   given Encoder[ClassLevel] = Encoder.instance { cl =>
     Json.obj("dndClass" -> cl.dndClass.asJson, "classLevel" -> cl.classLevel.asJson)
   }
@@ -239,7 +259,8 @@ object Codecs {
       "preparedSpells"   -> ch.preparedSpells.asJson,
       "spellbookSpells"  -> ch.spellbookSpells.asJson,
       "featureSelections" -> ch.featureSelections.asJson,
-      "languages"        -> ch.languages.toList.asJson
+      "languages"        -> ch.languages.toList.asJson,
+      "coins"            -> ch.coins.asJson
     )
   }
 
@@ -260,8 +281,9 @@ object Codecs {
       spellbook <- c.downField("spellbookSpells").as[Option[List[Spell]]].map(_.getOrElse(Nil))
       featureSelections <- c.downField("featureSelections").as[Option[ClassFeatureSelections]].map(_.getOrElse(ClassFeatureSelections.empty))
       languages <- c.downField("languages").as[Option[List[Language]]].map(_.fold(sp.languages.toList)(identity))
+      coins     <- c.downField("coins").as[Option[Coins]].map(_.getOrElse(Coins(bg.startingGold, 0, 0, 0, 0)))
     }
     yield Character(name, sp, classLevels, bg, scores, bonus, skills.toSet, armor, shield, weapons, cantrips, prepared, spellbook,
-      featureSelections, languages.toSet)
+      featureSelections, languages.toSet, coins)
   }
 }

@@ -16,13 +16,14 @@ case class CharacterDraft(
     preparedSpells: List[Spell],
     spellbookSpells: List[Spell],
     featureSelections: ClassFeatureSelections,
-    chosenExtraLanguages: Set[Language]
+    chosenExtraLanguages: Set[Language],
+    coins: Coins
 )
 
 object CharacterDraft {
   val empty: CharacterDraft = CharacterDraft(
     None, None, Some(1), None, None, None, Set.empty,
     None, false, Nil, Nil, Nil, Nil,
-    ClassFeatureSelections.empty, Set.empty
+    ClassFeatureSelections.empty, Set.empty, Coins.empty
   )
 }

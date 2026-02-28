@@ -17,7 +17,8 @@ final case class Character(
     preparedSpells: List[Spell],
     spellbookSpells: List[Spell],
     featureSelections: ClassFeatureSelections,
-    languages: Set[Language]) {
+    languages: Set[Language],
+    coins: Coins) {
 
   def primaryClass: DndClass = classLevels.head.dndClass
 
