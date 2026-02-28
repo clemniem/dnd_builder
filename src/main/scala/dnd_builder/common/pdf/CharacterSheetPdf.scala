@@ -49,8 +49,11 @@ object CharacterSheetPdf {
           Weapon.byName("Longsword").get,
           Weapon.byName("Handaxe").get,
           Weapon.byName("Greatsword").get
-        )
+        ),
+        landType = None,
+        hunterPrey = None
       ),
+      None,
       Dwarf.languages,
       Coins(Soldier.startingGold, 0, 0, 0, 0)
     )
@@ -127,7 +130,6 @@ object CharacterSheetPdf {
     setField(form, "Background", ch.background.name)
     setField(form, "Level", ch.characterLevel.toString)
     setField(form, "XP Points", "0")
-    // Subclass = class archetype at level 3+, not species subrace; leave empty until we support it
   }
 
   private def fillCombatStats(form: js.Dynamic, ch: Character): Unit = {

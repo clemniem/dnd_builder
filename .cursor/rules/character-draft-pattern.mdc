@@ -29,6 +29,9 @@ All character-creation screens pass a single `CharacterDraft` through the flow v
 
 When adding a new species or class, only specify values that differ from these defaults.
 
+## Creation Flow Order
+Steps: Race → Class → **Background (incl. languages)** → Abilities → Skills → **Class Features** → **Equipment** → Spells (if caster) → Review. Class Features come before Equipment so class features that affect equipment (e.g. proficiencies) are chosen first. Languages are chosen on the Background step (no separate Languages screen).
+
 ## Adding a New Creation Screen
 1. Create a screen object extending `Screen` with brace syntax (`object FooScreen extends Screen {`).
 2. Its model must include `draft: CharacterDraft`.

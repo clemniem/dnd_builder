@@ -101,7 +101,7 @@ object SpellsScreen extends Screen {
             preparedSpells = model.preparedSpells,
             spellbookSpells = model.spellbookSpells
           )
-          (model, Cmd.Emit(NavigateNext(ScreenId.ClassFeaturesId, Some(ScreenOutput.Draft(updated)))))
+          (model, Cmd.Emit(NavigateNext(ScreenId.EquipmentId, Some(ScreenOutput.Draft(updated)))))
       }
 
     case _: NavigateNext => (model, Cmd.None)
@@ -113,7 +113,7 @@ object SpellsScreen extends Screen {
       preparedSpells = model.preparedSpells,
       spellbookSpells = model.spellbookSpells
     )
-    (model, Cmd.Emit(NavigateNext(ScreenId.LanguagesId, Some(ScreenOutput.Draft(updated)))))
+    (model, Cmd.Emit(NavigateNext(ScreenId.ReviewId, Some(ScreenOutput.Draft(updated)))))
   }
 
   def view(model: Model): Html[Msg] = {
@@ -137,7 +137,7 @@ object SpellsScreen extends Screen {
       else "Next: Review >"
 
     div(
-      StepNav("< Class Features", SpellsMsg.Back, nextLabel, SpellsMsg.Next, remaining == 0),
+      StepNav("< Equipment", SpellsMsg.Back, nextLabel, SpellsMsg.Next, remaining == 0),
       h1(`class` := "screen-title")(text("Choose Cantrips")),
       p(`class` := "screen-intro")(
         text(s"Select $cantrips cantrips from the ${cls.name} spell list.")
@@ -178,7 +178,7 @@ object SpellsScreen extends Screen {
     val backLabel =
       if spellbookSize > 0 then "< Spellbook"
       else if cantrips > 0 then "< Cantrips"
-      else "< Class Features"
+      else "< Equipment"
 
     val title =
       if spellbookSize > 0 then "Prepare Spells from Spellbook"
@@ -190,7 +190,7 @@ object SpellsScreen extends Screen {
         s"Select $prepared spells from the ${cls.name} spell list."
 
     div(
-      StepNav(backLabel, SpellsMsg.Back, "Next: Languages >", SpellsMsg.Next, remaining == 0),
+      StepNav(backLabel, SpellsMsg.Back, "Next: Review >", SpellsMsg.Next, remaining == 0),
       h1(`class` := "screen-title")(text(title)),
       p(`class` := "screen-intro")(text(intro)),
       div(`class` := "points-pool", style := "margin-bottom: 1rem;")(

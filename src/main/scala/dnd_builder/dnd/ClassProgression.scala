@@ -11,6 +11,10 @@ object LevelGain {
 sealed trait LevelChoice
 object LevelChoice {
   case object ASI extends LevelChoice
+  case object ChooseSubclass extends LevelChoice
+  case class ChooseExtraSkills(count: Int, pool: Set[Skill]) extends LevelChoice
+  case object ChooseLandType extends LevelChoice
+  case object ChooseHunterPrey extends LevelChoice
 }
 
 object ClassProgression {
@@ -74,11 +78,65 @@ object ClassProgression {
       ), Nil)
   )
 
+  private val level3Entries: List[((DndClass, Int), LevelGain)] = List(
+    (Barbarian, 3) -> LevelGain(
+      List(
+        ClassFeature(
+          "Primal Knowledge",
+          "Gain proficiency in one more skill from the Barbarian skill list. While Rage is active, you can make Acrobatics, Intimidation, Perception, Stealth, or Survival checks using Strength.",
+          None
+        )
+      ),
+      List(LevelChoice.ChooseSubclass, LevelChoice.ChooseExtraSkills(1, Barbarian.skillPool))
+    ),
+    (Bard, 3) -> LevelGain(
+      Nil,
+      List(LevelChoice.ChooseSubclass, LevelChoice.ChooseExtraSkills(3, Skill.values.toSet))
+    ),
+    (Cleric, 3) -> LevelGain(Nil, List(LevelChoice.ChooseSubclass)),
+    (Druid, 3) -> LevelGain(Nil, List(LevelChoice.ChooseSubclass, LevelChoice.ChooseLandType)),
+    (Fighter, 3) -> LevelGain(Nil, List(LevelChoice.ChooseSubclass)),
+    (Monk, 3) -> LevelGain(
+      List(
+        ClassFeature(
+          "Deflect Attacks",
+          "When an attack hits you and deals B/P/S damage, use a Reaction to reduce damage by 1d10 + DEX mod + Monk level. If reduced to 0, spend 1 Focus Point to redirect force at another creature.",
+          None
+        )
+      ),
+      List(LevelChoice.ChooseSubclass)
+    ),
+    (Paladin, 3) -> LevelGain(
+      List(
+        ClassFeature(
+          "Channel Divinity",
+          "2 uses per Short/Long Rest. Divine Sense: detect Celestials, Fiends, Undead within 60 ft for 10 min.",
+          Some(2)
+        )
+      ),
+      List(LevelChoice.ChooseSubclass)
+    ),
+    (Ranger, 3) -> LevelGain(Nil, List(LevelChoice.ChooseSubclass, LevelChoice.ChooseHunterPrey)),
+    (Rogue, 3) -> LevelGain(
+      List(
+        ClassFeature(
+          "Steady Aim",
+          "Bonus Action: gain Advantage on your next attack roll this turn. You cannot have moved this turn; after use, Speed is 0 until end of turn.",
+          None
+        )
+      ),
+      List(LevelChoice.ChooseSubclass)
+    ),
+    (Sorcerer, 3) -> LevelGain(Nil, List(LevelChoice.ChooseSubclass)),
+    (Warlock, 3) -> LevelGain(Nil, List(LevelChoice.ChooseSubclass)),
+    (Wizard, 3) -> LevelGain(Nil, List(LevelChoice.ChooseSubclass))
+  )
+
   private lazy val registry: Map[(DndClass, Int), LevelGain] = {
     val level1 = DndClass.all.map { cls =>
       (cls, 1) -> LevelGain(cls.level1Features, Nil)
     }
-    (level1 ++ level2Entries).toMap
+    (level1 ++ level2Entries ++ level3Entries).toMap
   }
 
   def atLevel(dndClass: DndClass, level: Int): LevelGain =

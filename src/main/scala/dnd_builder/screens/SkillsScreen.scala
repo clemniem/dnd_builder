@@ -42,7 +42,7 @@ object SkillsScreen extends Screen {
       val cls = model.draft.dndClass.getOrElse(Barbarian)
       if model.chosenSkills.size == cls.numSkillChoices then {
         val updated = model.draft.copy(chosenSkills = model.chosenSkills)
-        (model, Cmd.Emit(NavigateNext(ScreenId.EquipmentId, Some(ScreenOutput.Draft(updated)))))
+        (model, Cmd.Emit(NavigateNext(ScreenId.ClassFeaturesId, Some(ScreenOutput.Draft(updated)))))
       }
       else (model, Cmd.None)
 

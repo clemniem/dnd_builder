@@ -66,8 +66,7 @@ object ClassFeaturesScreen extends Screen {
     val cls = draft.dndClass.getOrElse(Barbarian)
     val model = ClassFeaturesModel(draft, draft.featureSelections)
     if !hasClassFeatureChoices(cls) then {
-      val nextScreen = if cls.isSpellcaster then ScreenId.SpellsId else ScreenId.LanguagesId
-      (model, Cmd.Emit(NavigateNext(nextScreen, Some(ScreenOutput.Draft(draft)))))
+      (model, Cmd.Emit(NavigateNext(ScreenId.EquipmentId, Some(ScreenOutput.Draft(draft)))))
     }
     else
       (model, Cmd.None)
@@ -76,12 +75,10 @@ object ClassFeaturesScreen extends Screen {
   def update(model: Model): Msg => (Model, Cmd[IO, Msg]) = {
     case ClassFeaturesMsg.Next =>
       val updated = model.draft.copy(featureSelections = model.featureSelections)
-      val cls = model.draft.dndClass.getOrElse(Barbarian)
-      val nextScreen = if cls.isSpellcaster then ScreenId.SpellsId else ScreenId.LanguagesId
-      (model, Cmd.Emit(NavigateNext(nextScreen, Some(ScreenOutput.Draft(updated)))))
+      (model, Cmd.Emit(NavigateNext(ScreenId.EquipmentId, Some(ScreenOutput.Draft(updated)))))
     case ClassFeaturesMsg.Back =>
       val updated = model.draft.copy(featureSelections = model.featureSelections)
-      (model, Cmd.Emit(NavigateNext(ScreenId.EquipmentId, Some(ScreenOutput.Draft(updated)))))
+      (model, Cmd.Emit(NavigateNext(ScreenId.SkillsId, Some(ScreenOutput.Draft(updated)))))
     case ClassFeaturesMsg.SetFightingStyle(style) =>
       (model.copy(featureSelections = model.featureSelections.copy(fightingStyle = style)), Cmd.None)
     case ClassFeaturesMsg.SetDivineOrder(order) =>
@@ -116,9 +113,9 @@ object ClassFeaturesScreen extends Screen {
     val cls = model.draft.dndClass.getOrElse(Barbarian)
     val nextEnabled = canProceed(model)
     div(`class` := "screen-container")(
-      StepIndicator(7, cls.isSpellcaster),
-      StepNav("< Equipment", ClassFeaturesMsg.Back,
-        if cls.isSpellcaster then "Next: Spells >" else "Next: Languages >",
+      StepIndicator(6, cls.isSpellcaster),
+      StepNav("< Skills", ClassFeaturesMsg.Back,
+        "Next: Equipment >",
         ClassFeaturesMsg.Next, nextEnabled),
       h1(`class` := "screen-title")(text("Class Features")),
       p(`class` := "screen-intro")(text("Choose your class feature options.")),

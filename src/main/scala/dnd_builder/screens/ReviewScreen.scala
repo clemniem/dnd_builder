@@ -41,7 +41,7 @@ object ReviewScreen extends Screen {
         model.name, sp, cls, bg, scores, bonus, d.chosenSkills,
         d.equippedArmor, d.equippedShield, d.equippedWeapons,
         d.chosenCantrips, d.preparedSpells, d.spellbookSpells,
-        d.featureSelections, languages, lvl, d.coins
+        d.featureSelections, d.subclass, languages, lvl, d.coins
       )
       result match {
         case Left(errors) =>
@@ -79,7 +79,9 @@ object ReviewScreen extends Screen {
       (model, Cmd.None)
 
     case ReviewMsg.Back =>
-      (model, Cmd.Emit(NavigateNext(ScreenId.LanguagesId, Some(ScreenOutput.Draft(model.draft)))))
+      val cls = model.draft.dndClass.getOrElse(Barbarian)
+      val backScreen = if cls.isSpellcaster then ScreenId.SpellsId else ScreenId.EquipmentId
+      (model, Cmd.Emit(NavigateNext(backScreen, Some(ScreenOutput.Draft(model.draft)))))
 
     case _: NavigateNext =>
       (model, Cmd.None)
@@ -99,7 +101,7 @@ object ReviewScreen extends Screen {
       sp, List(ClassLevel(cls, lvl)), bg, scores, bonus, d.chosenSkills,
       d.equippedArmor, d.equippedShield, d.equippedWeapons,
       d.chosenCantrips, d.preparedSpells, d.spellbookSpells,
-      d.featureSelections, languages,
+      d.featureSelections, d.subclass, languages,
       d.coins
     )
   }
@@ -109,9 +111,9 @@ object ReviewScreen extends Screen {
     val character = buildCharacter(model)
 
     div(`class` := "screen-container")(
-      StepIndicator(if cls.isSpellcaster then 10 else 9, cls.isSpellcaster),
+      StepIndicator(if cls.isSpellcaster then 9 else 8, cls.isSpellcaster),
       StepNav(
-        "< Languages",
+        if cls.isSpellcaster then "< Spells" else "< Equipment",
         ReviewMsg.Back, if model.saving then "Saving..." else "Save Character", ReviewMsg.Save, !model.saving),
       h1(`class` := "screen-title")(text("Review & Save")),
       div(`class` := "field-block")(

@@ -192,6 +192,7 @@ object CharacterValidator {
       preparedSpells: List[Spell],
       spellbookSpells: List[Spell],
       featureSelections: ClassFeatureSelections,
+      subclass: Option[Subclass],
       languages: Set[Language],
       level: Int,
       coins: Coins
@@ -208,6 +209,6 @@ object CharacterValidator {
     if errors.nonEmpty then Left(errors)
     else Right(Character(name, species, classLevels, background, baseScores, bonus, chosenSkills,
       equippedArmor, equippedShield, equippedWeapons, chosenCantrips, preparedSpells, spellbookSpells,
-      featureSelections, languages, coins))
+      featureSelections, subclass, languages, coins))
   }
 }

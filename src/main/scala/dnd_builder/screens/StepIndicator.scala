@@ -5,9 +5,9 @@ import tyrian.*
 
 object StepIndicator {
 
-  private val baseSteps = List("Race", "Class", "Background", "Abilities", "Skills", "Equipment")
-  private val casterSteps = baseSteps :+ "Class Features" :+ "Spells" :+ "Languages" :+ "Review"
-  private val nonCasterSteps = baseSteps :+ "Class Features" :+ "Languages" :+ "Review"
+  private val baseSteps = List("Race", "Class", "Background", "Abilities", "Skills")
+  private val casterSteps = baseSteps :+ "Class Features" :+ "Equipment" :+ "Spells" :+ "Review"
+  private val nonCasterSteps = baseSteps :+ "Class Features" :+ "Equipment" :+ "Review"
 
   def apply[Msg](currentStep: Int, isSpellcaster: Boolean): Html[Msg] = {
     val steps = if isSpellcaster then casterSteps else nonCasterSteps

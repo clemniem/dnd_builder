@@ -101,6 +101,17 @@ object Codecs {
   given Encoder[EldritchInvocation] = mkEncoder(_.label)
   given Decoder[EldritchInvocation] = mkDecoder(EldritchInvocation.values, _.label)
 
+  given Encoder[LandType] = mkEncoder(_.label)
+  given Decoder[LandType] = mkDecoder(LandType.values, _.label)
+
+  given Encoder[HunterPreyChoice] = mkEncoder(_.label)
+  given Decoder[HunterPreyChoice] = mkDecoder(HunterPreyChoice.values, _.label)
+
+  given Encoder[Subclass] = Encoder.encodeString.contramap(_.name)
+  given Decoder[Subclass] = Decoder.decodeString.emap { s =>
+    Subclass.byName(s).toRight(s"Unknown subclass: $s")
+  }
+
   given Encoder[ClassFeatureSelections] = deriveEncoder
   given Decoder[ClassFeatureSelections] = deriveDecoder
 
@@ -259,6 +270,7 @@ object Codecs {
       "preparedSpells"   -> ch.preparedSpells.asJson,
       "spellbookSpells"  -> ch.spellbookSpells.asJson,
       "featureSelections" -> ch.featureSelections.asJson,
+      "subclass"         -> ch.subclass.asJson,
       "languages"        -> ch.languages.toList.asJson,
       "coins"            -> ch.coins.asJson
     )
@@ -280,10 +292,11 @@ object Codecs {
       prepared <- c.downField("preparedSpells").as[Option[List[Spell]]].map(_.getOrElse(Nil))
       spellbook <- c.downField("spellbookSpells").as[Option[List[Spell]]].map(_.getOrElse(Nil))
       featureSelections <- c.downField("featureSelections").as[Option[ClassFeatureSelections]].map(_.getOrElse(ClassFeatureSelections.empty))
+      subclass <- c.downField("subclass").as[Option[Subclass]].orElse(Right(None))
       languages <- c.downField("languages").as[Option[List[Language]]].map(_.fold(sp.languages.toList)(identity))
       coins     <- c.downField("coins").as[Option[Coins]].map(_.getOrElse(Coins(bg.startingGold, 0, 0, 0, 0)))
     }
     yield Character(name, sp, classLevels, bg, scores, bonus, skills.toSet, armor, shield, weapons, cantrips, prepared, spellbook,
-      featureSelections, languages.toSet, coins)
+      featureSelections, subclass, languages.toSet, coins)
   }
 }

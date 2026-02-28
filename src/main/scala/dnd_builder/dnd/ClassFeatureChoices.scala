@@ -34,16 +34,38 @@ enum EldritchInvocation(val label: String, val description: String) {
   case PactOfTheTome   extends EldritchInvocation("Pact of the Tome", "Book of Shadows with 3 cantrips")
 }
 
+enum LandType(val label: String) {
+  case Arid      extends LandType("Arid")
+  case Polar     extends LandType("Polar")
+  case Temperate extends LandType("Temperate")
+  case Tropical  extends LandType("Tropical")
+}
+
+enum HunterPreyChoice(val label: String, val description: String) {
+  case ColossusSlayer
+      extends HunterPreyChoice(
+        "Colossus Slayer",
+        "Extra 1d8 damage when target is missing HP (once per turn)"
+      )
+  case HordeBreaker
+      extends HunterPreyChoice(
+        "Horde Breaker",
+        "Extra attack against different creature within 5 ft"
+      )
+}
+
 final case class ClassFeatureSelections(
     fightingStyle: Option[FightingStyle],
     divineOrder: Option[DivineOrder],
     primalOrder: Option[PrimalOrder],
     eldritchInvocation: Option[EldritchInvocation],
     expertiseSkills: Set[Skill],
-    weaponMasteries: List[Weapon]
+    weaponMasteries: List[Weapon],
+    landType: Option[LandType],
+    hunterPrey: Option[HunterPreyChoice]
 )
 
 object ClassFeatureSelections {
   val empty: ClassFeatureSelections =
-    ClassFeatureSelections(None, None, None, None, Set.empty, Nil)
+    ClassFeatureSelections(None, None, None, None, Set.empty, Nil, None, None)
 }

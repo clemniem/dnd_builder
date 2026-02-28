@@ -60,7 +60,9 @@ object EquipmentScreen extends Screen {
         equippedWeapons = model.selectedWeapons,
         coins = model.coins
       )
-      (model, Cmd.Emit(NavigateNext(ScreenId.ClassFeaturesId, Some(ScreenOutput.Draft(updated)))))
+      val cls = model.draft.dndClass.getOrElse(Barbarian)
+      val nextScreen = if cls.isSpellcaster then ScreenId.SpellsId else ScreenId.ReviewId
+      (model, Cmd.Emit(NavigateNext(nextScreen, Some(ScreenOutput.Draft(updated)))))
     case EquipmentMsg.Back =>
       val updated = model.draft.copy(
         equippedArmor = model.selectedArmor,
@@ -68,7 +70,7 @@ object EquipmentScreen extends Screen {
         equippedWeapons = model.selectedWeapons,
         coins = model.coins
       )
-      (model, Cmd.Emit(NavigateNext(ScreenId.SkillsId, Some(ScreenOutput.Draft(updated)))))
+      (model, Cmd.Emit(NavigateNext(ScreenId.ClassFeaturesId, Some(ScreenOutput.Draft(updated)))))
     case EquipmentMsg.NoOp =>
       (model, Cmd.None)
     case _: NavigateNext =>
@@ -97,9 +99,9 @@ object EquipmentScreen extends Screen {
     val nextEnabled = model.selectedWeapons.nonEmpty
 
     div(`class` := "screen-container")(
-      StepIndicator(6, cls.isSpellcaster),
-      StepNav("< Skills", EquipmentMsg.Back,
-        "Next: Class Features >",
+      StepIndicator(7, cls.isSpellcaster),
+      StepNav("< Class Features", EquipmentMsg.Back,
+        if cls.isSpellcaster then "Next: Spells >" else "Next: Review >",
         EquipmentMsg.Next, nextEnabled),
       h1(`class` := "screen-title")(text("Choose Equipment")),
       p(`class` := "screen-intro")(text("Select weapons and armor you are proficient with. Each item has a star cost (1–5); stay within your budget.")),

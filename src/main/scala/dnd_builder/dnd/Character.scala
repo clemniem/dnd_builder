@@ -17,6 +17,7 @@ final case class Character(
     preparedSpells: List[Spell],
     spellbookSpells: List[Spell],
     featureSelections: ClassFeatureSelections,
+    subclass: Option[Subclass],
     languages: Set[Language],
     coins: Coins) {
 
@@ -169,6 +170,8 @@ final case class Character(
     classLevels.map(cl => s"${cl.classLevel}d${cl.dndClass.hitDie.sides}").mkString(" + ")
 
   def classLabel: String =
-    if classLevels.size == 1 then primaryClass.name
-    else classLevels.map(cl => s"${cl.dndClass.name} ${cl.classLevel}").mkString(" / ")
+    if classLevels.size == 1 then {
+      val base = s"${primaryClass.name} $primaryClassLevel"
+      subclass.fold(base)(s => s"$base (${s.name})")
+    } else classLevels.map(cl => s"${cl.dndClass.name} ${cl.classLevel}").mkString(" / ")
 }
