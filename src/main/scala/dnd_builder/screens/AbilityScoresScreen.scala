@@ -2,6 +2,7 @@ package dndbuilder.screens
 
 import cats.effect.IO
 import dndbuilder.{NavigateNext, Screen, ScreenId, ScreenOutput}
+import dndbuilder.dnd.DndTypes.Score
 import dndbuilder.dnd.*
 import tyrian.Html.*
 import tyrian.*
@@ -27,7 +28,7 @@ object AbilityScoresScreen extends Screen {
     (AbilityScoresModel(draft, initialScores, initialBonus, ScoreMethod.StandardArray, Nil), Cmd.None)
   }
 
-  private val stdArraySum: Int = AbilityScores.standardArray.sum
+  private val stdArraySum: Int = AbilityScores.standardArray.map(_.value).sum
 
   def update(model: Model): Msg => (Model, Cmd[IO, Msg]) = {
     case AbilityScoresMsg.SetMethod(m) =>
@@ -40,7 +41,7 @@ object AbilityScoresScreen extends Screen {
 
     case AbilityScoresMsg.Increment(ability) =>
       val current = model.baseScores.get(ability)
-      if current < 15 then {
+      if current.value < 15 then {
         val newScores = model.baseScores.adjust(ability, 1)
         val valid = model.method match {
           case ScoreMethod.PointBuy =>
@@ -49,7 +50,7 @@ object AbilityScoresScreen extends Screen {
               case Left(_) => false
             }
           case ScoreMethod.StandardArray =>
-            newScores.toList.map(_._2).sum <= stdArraySum
+            newScores.toList.map(_._2.value).sum <= stdArraySum
         }
         if valid then (model.copy(baseScores = newScores), Cmd.None)
         else (model, Cmd.None)
@@ -58,7 +59,7 @@ object AbilityScoresScreen extends Screen {
 
     case AbilityScoresMsg.Decrement(ability) =>
       val current = model.baseScores.get(ability)
-      if current > 8 then
+      if current.value > 8 then
         (model.copy(baseScores = model.baseScores.adjust(ability, -1)), Cmd.None)
       else (model, Cmd.None)
 
@@ -91,7 +92,7 @@ object AbilityScoresScreen extends Screen {
       }
 
     case AbilityScoresMsg.AssignStdArray(ability, score) =>
-      (model.copy(baseScores = model.baseScores.set(ability, score)), Cmd.None)
+      (model.copy(baseScores = model.baseScores.set(ability, Score(score))), Cmd.None)
 
     case AbilityScoresMsg.Next =>
       val updated = model.draft.copy(
@@ -147,7 +148,7 @@ object AbilityScoresScreen extends Screen {
     val bonusUsed  = model.backgroundBonus.totalPoints
 
     div(`class` := "screen-container")(
-      StepIndicator(5, cls.isSpellcaster),
+      StepIndicator(4, cls.isSpellcaster),
       StepNav("< Background", AbilityScoresMsg.Back, "Next: Skills >", AbilityScoresMsg.Next, bonusUsed == 3),
       h1(`class` := "screen-title")(text("Ability Scores")),
       p(`class` := "screen-intro")(text("Assign your ability scores and distribute background bonuses.")),
@@ -160,7 +161,7 @@ object AbilityScoresScreen extends Screen {
               span(`class` := "points-pool-value")(text(s"$pointsUsed / ${AbilityScores.pointBuyTotal}"))
             )
           case ScoreMethod.StandardArray =>
-            val currentSum = model.baseScores.toList.map(_._2).sum
+            val currentSum = model.baseScores.toList.map(_._2.value).sum
             val spare = stdArraySum - currentSum
             val clsName = if spare > 0 then "points-pool points-pool--over" else "points-pool"
             div(`class` := clsName)(
@@ -217,7 +218,7 @@ object AbilityScoresScreen extends Screen {
           val mod = AbilityScores.modifierString(final_)
           tr(
             td(`class` := "ability-name")(text(ability.label)),
-            td(`class` := "ability-score")(text(base.toString)),
+            td(`class` := "ability-score")(text(base.value.toString)),
             td(
               div(`class` := "ability-controls")(
                 button(onClick(AbilityScoresMsg.Decrement(ability)))(text("-")),
@@ -227,7 +228,7 @@ object AbilityScoresScreen extends Screen {
             td(style := "text-align: center; color: var(--color-success);")(
               text(if bonusAmt > 0 then s"+$bonusAmt" else "-")
             ),
-            td(`class` := "ability-score")(text(final_.toString)),
+            td(`class` := "ability-score")(text(final_.value.toString)),
             td(`class` := "ability-mod")(text(mod))
           )
         }*

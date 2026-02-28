@@ -41,13 +41,15 @@ object CharacterValidator {
 
   def validateFinalScores(scores: AbilityScores): List[ValidationError] =
     scores.toList.flatMap { case (ability, value) =>
-      if value < 1 || value > 30 then List(ValidationError.ScoreOutOfRange(ability, value))
+      val v = value.value
+      if v < 1 || v > 30 then List(ValidationError.ScoreOutOfRange(ability, v))
       else Nil
     }
 
   def validatePointBuy(scores: AbilityScores): List[ValidationError] = {
     val rangeErrors = scores.toList.flatMap { case (ability, value) =>
-      if value < 8 || value > 15 then List(ValidationError.PointBuyScoreOutOfRange(ability, value))
+      val v = value.value
+      if v < 8 || v > 15 then List(ValidationError.PointBuyScoreOutOfRange(ability, v))
       else Nil
     }
     if rangeErrors.nonEmpty then rangeErrors

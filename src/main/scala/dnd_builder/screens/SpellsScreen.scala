@@ -119,7 +119,7 @@ object SpellsScreen extends Screen {
   def view(model: Model): Html[Msg] = {
     val cls = model.draft.dndClass.getOrElse(Wizard)
     div(`class` := "screen-container")(
-      StepIndicator(9, cls.isSpellcaster),
+      StepIndicator(8, cls.isSpellcaster),
       model.phase match {
         case Phase.Cantrips  => cantripsView(model)
         case Phase.Spellbook => spellbookView(model)

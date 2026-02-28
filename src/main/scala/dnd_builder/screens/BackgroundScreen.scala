@@ -34,7 +34,7 @@ object BackgroundScreen extends Screen {
       }
 
     case BackgroundMsg.Back =>
-      (model, Cmd.Emit(NavigateNext(ScreenId.LevelSelectId, Some(ScreenOutput.Draft(model.draft)))))
+      (model, Cmd.Emit(NavigateNext(ScreenId.ClassSelectId, Some(ScreenOutput.Draft(model.draft)))))
 
     case _: NavigateNext =>
       (model, Cmd.None)
@@ -43,8 +43,8 @@ object BackgroundScreen extends Screen {
   def view(model: Model): Html[Msg] = {
     val cls = model.draft.dndClass.getOrElse(Barbarian)
     div(`class` := "screen-container")(
-      StepIndicator(4, cls.isSpellcaster),
-      StepNav("< Level", BackgroundMsg.Back, "Next: Abilities >", BackgroundMsg.Next, model.selectedBackground.isDefined),
+      StepIndicator(3, cls.isSpellcaster),
+      StepNav("< Class", BackgroundMsg.Back, "Next: Abilities >", BackgroundMsg.Next, model.selectedBackground.isDefined),
       h1(`class` := "screen-title")(text("Choose Your Background")),
       p(`class` := "screen-intro")(text("Your background determines ability bonuses, skill proficiencies, and your origin feat.")),
       div(`class` := "card-grid--2col card-grid")(

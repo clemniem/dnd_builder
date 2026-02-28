@@ -1,5 +1,6 @@
 package dndbuilder.dnd
 
+import dndbuilder.dnd.DndTypes.Score
 import io.circe.*
 import io.circe.generic.semiauto.*
 import io.circe.syntax.*
@@ -105,12 +106,12 @@ object Codecs {
 
   given Encoder[AbilityScores] = Encoder.instance { s =>
     Json.obj(
-      "strength"     -> s.strength.asJson,
-      "dexterity"    -> s.dexterity.asJson,
-      "constitution" -> s.constitution.asJson,
-      "intelligence" -> s.intelligence.asJson,
-      "wisdom"       -> s.wisdom.asJson,
-      "charisma"     -> s.charisma.asJson
+      "strength"     -> s.strength.value.asJson,
+      "dexterity"    -> s.dexterity.value.asJson,
+      "constitution" -> s.constitution.value.asJson,
+      "intelligence" -> s.intelligence.value.asJson,
+      "wisdom"       -> s.wisdom.value.asJson,
+      "charisma"     -> s.charisma.value.asJson
     )
   }
 
@@ -123,7 +124,7 @@ object Codecs {
       wis <- c.downField("wisdom").as[Int]
       cha <- c.downField("charisma").as[Int]
     }
-    yield AbilityScores(str, dex, con, int, wis, cha)
+    yield AbilityScores(Score(str), Score(dex), Score(con), Score(int), Score(wis), Score(cha))
   }
 
   given Encoder[BackgroundBonus] = Encoder.instance {

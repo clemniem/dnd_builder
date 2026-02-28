@@ -68,7 +68,7 @@ object CharacterDetailScreen extends Screen {
         statBox("Hit Points", ch.maxHitPoints.toString, ch.hitDiceString),
         statBox("Armor Class", ch.armorClass.toString, "unarmored"),
         statBox("Speed", s"${ch.speed}ft", ""),
-        statBox("Initiative", AbilityScores.modifierString(10 + ch.initiative - 10), ""),
+        statBox("Initiative", ch.initiative.format, ""),
         statBox("Prof. Bonus", s"+${ch.proficiencyBonus}", ""),
         statBox("Passive Perc.", ch.passivePerception.toString, "")
       ),
@@ -77,7 +77,7 @@ object CharacterDetailScreen extends Screen {
           val slotsStr = row.slots.zipWithIndex.collect { case (n, i) if n > 0 => s"Lv${i + 1}: $n" }.mkString("  ")
           div(`class` := "stat-block")(
             statBox("Spell Save DC", dc.toString, ""),
-            statBox("Spell Attack", s"+${ch.spellAttackBonus.getOrElse(0)}", ""),
+            statBox("Spell Attack", ch.spellAttackBonus.getOrElse(dndbuilder.dnd.DndTypes.Modifier.zero).format, ""),
             (if row.cantrips > 0 then statBox("Cantrips", row.cantrips.toString, "") else div()),
             statBox("Spell Slots", slotsStr, "")
           )
@@ -91,7 +91,7 @@ object CharacterDetailScreen extends Screen {
             val score = ch.finalScores.get(ability)
             val mod   = AbilityScores.modifierString(score)
             val saveBonus = ch.savingThrowBonus(ability)
-            val saveStr = AbilityScores.modifierString(10 + saveBonus - 10)
+            val saveStr = saveBonus.format
             val profMark = if ch.isProficientInSave(ability) then " *" else ""
             tr(
               td(`class` := "ability-name")(text(ability.label)),
@@ -106,7 +106,7 @@ object CharacterDetailScreen extends Screen {
       div(`class` := "prof-list")(
         Skill.values.toList.map { skill =>
           val bonus = ch.skillBonus(skill)
-          val bonusStr = AbilityScores.modifierString(bonus)
+          val bonusStr = bonus.format
           val isProficient = ch.isSkillProficient(skill)
           div(`class` := (if isProficient then "prof-item prof-item--proficient" else "prof-item"))(
             text(s"${if isProficient then "* " else ""}${skill.label} (${skill.ability.abbreviation}) $bonusStr")

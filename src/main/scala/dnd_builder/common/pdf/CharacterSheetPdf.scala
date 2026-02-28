@@ -1,5 +1,6 @@
 package dndbuilder.common.pdf
 
+import dndbuilder.dnd.DndTypes.Score
 import dndbuilder.dnd.*
 
 import scala.scalajs.js
@@ -28,7 +29,7 @@ object CharacterSheetPdf {
       Dwarf,
       List(ClassLevel(Fighter, 1)),
       Soldier,
-      AbilityScores(15, 14, 13, 8, 10, 12),
+      AbilityScores(Score(15), Score(14), Score(13), Score(8), Score(10), Score(12)),
       BackgroundBonus.TwoPlusOne(Ability.Strength, Ability.Constitution),
       Set(Skill.Perception, Skill.Survival),
       Some(Armor.all.find(_.name == "Chain Mail").get),
@@ -110,9 +111,6 @@ object CharacterSheetPdf {
   private def checkBox(form: js.Dynamic, name: String): Unit =
     PdfLib.check(PdfLib.getCheckBox(form, name))
 
-  private def modStr(v: Int): String =
-    if v >= 0 then s"+$v" else v.toString
-
   private def fillHeader(form: js.Dynamic, ch: Character): Unit = {
     setField(form, "Name", ch.name)
     setField(form, "Class", ch.classLabel)
@@ -130,9 +128,9 @@ object CharacterSheetPdf {
     setField(form, "Max HP", ch.maxHitPoints.toString)
     setField(form, "Max HD", ch.hitDiceString)
     // Spent HD: left empty for the player to fill during play (count spent since last long rest)
-    setFieldSized(form, "PROF BONUS", modStr(ch.proficiencyBonus), 12)
+    setFieldSized(form, "PROF BONUS", ch.proficiencyBonus.format, 12)
     setField(form, "PASSIVE PERCEPTION", ch.passivePerception.toString)
-    setFieldSized(form, "init", modStr(ch.initiative), 12)
+    setFieldSized(form, "init", ch.initiative.format, 12)
     setField(form, "SPEED", s"${ch.speed}ft")
     setField(form, "SIZE", ch.species.size.label)
   }
@@ -150,8 +148,8 @@ object CharacterSheetPdf {
     abilities.foreach { case (abbr, ability) =>
       val score = scores.get(ability)
       val mod   = AbilityScores.modifier(score)
-      setField(form, s"$abbr SCORE", score.toString)
-      setFieldSized(form, s"$abbr MOD", modStr(mod), 14)
+      setField(form, s"$abbr SCORE", score.value.toString)
+      setFieldSized(form, s"$abbr MOD", mod.format, 14)
     }
   }
 
@@ -176,7 +174,7 @@ object CharacterSheetPdf {
   private def fillSavingThrows(form: js.Dynamic, ch: Character): Unit =
     Ability.values.foreach { ability =>
       val bonus = ch.savingThrowBonus(ability)
-      saveFields.get(ability).foreach(f => setFieldSized(form, f, modStr(bonus), 10))
+      saveFields.get(ability).foreach(f => setFieldSized(form, f, bonus.format, 10))
       if ch.isProficientInSave(ability) then
         saveCheckboxes.get(ability).foreach(c => checkBox(form, c))
     }
@@ -226,7 +224,7 @@ object CharacterSheetPdf {
   private def fillSkills(form: js.Dynamic, ch: Character): Unit =
     Skill.values.foreach { skill =>
       val bonus = ch.skillBonus(skill)
-      skillFields.get(skill).foreach(f => setFieldSized(form, f, modStr(bonus), 10))
+      skillFields.get(skill).foreach(f => setFieldSized(form, f, bonus.format, 10))
       if ch.isSkillProficient(skill) then
         skillCheckboxes.get(skill).foreach(c => checkBox(form, c))
     }
@@ -245,7 +243,7 @@ object CharacterSheetPdf {
       val n = idx + 1
       if n <= 6 then {
         setField(form, s"NAME - WEAPON $n", weapon.name)
-        setField(form, s"BONUS/DC - WEAPON $n", modStr(ch.weaponAttackBonus(weapon)))
+        setField(form, s"BONUS/DC - WEAPON $n", ch.weaponAttackBonus(weapon).format)
         setField(form, s"DAMAGE/TYPE - WEAPON $n", ch.weaponDamageString(weapon))
         setField(form, s"NOTES - WEAPON $n", ch.weaponPropertiesSummary(weapon))
       }
@@ -254,9 +252,9 @@ object CharacterSheetPdf {
   private def fillSpellcasting(form: js.Dynamic, ch: Character): Unit = {
     ch.primaryClass.spellcastingAbility.foreach { ability =>
       setField(form, "SPELLCASTING ABILITY", ability.label)
-      setField(form, "SPELLCASTING MOD", modStr(ch.modifier(ability)))
+      setField(form, "SPELLCASTING MOD", ch.modifier(ability).format)
       ch.spellSaveDC.foreach(dc => setField(form, "SPELL SAVE DC", dc.toString))
-      ch.spellAttackBonus.foreach(b => setField(form, "SPELL ATTACK BONUS", modStr(b)))
+      ch.spellAttackBonus.foreach(b => setField(form, "SPELL ATTACK BONUS", b.format))
     }
     ch.chosenCantrips.zipWithIndex.foreach { case (spell, idx) =>
       trySetField(form, s"CANTRIP ${idx + 1}", spell.name)

@@ -116,7 +116,7 @@ object ClassFeaturesScreen extends Screen {
     val cls = model.draft.dndClass.getOrElse(Barbarian)
     val nextEnabled = canProceed(model)
     div(`class` := "screen-container")(
-      StepIndicator(8, cls.isSpellcaster),
+      StepIndicator(7, cls.isSpellcaster),
       StepNav("< Equipment", ClassFeaturesMsg.Back,
         if cls.isSpellcaster then "Next: Spells >" else "Next: Languages >",
         ClassFeaturesMsg.Next, nextEnabled),

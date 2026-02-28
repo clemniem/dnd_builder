@@ -63,12 +63,12 @@ object ReviewScreen extends Screen {
       val updated = existing :+ newChar
       (model,
         LocalStorageUtils.saveList(StorageKeys.characters, updated)(
-          _ => ReviewMsg.Saved,
+          _ => ReviewMsg.Saved(newChar),
           (msg, _) => ReviewMsg.Error(msg)
         ))
 
-    case ReviewMsg.Saved =>
-      (model, Cmd.Emit(NavigateNext(ScreenId.GalleryId, None)))
+    case ReviewMsg.Saved(saved) =>
+      (model, Cmd.Emit(NavigateNext(ScreenId.DetailId, Some(ScreenOutput.ViewCharacter(saved)))))
 
     case ReviewMsg.Error(msg) =>
       (model.copy(errors = List(msg), saving = false), Cmd.None)
@@ -108,7 +108,7 @@ object ReviewScreen extends Screen {
     val character = buildCharacter(model)
 
     div(`class` := "screen-container")(
-      StepIndicator(if cls.isSpellcaster then 11 else 10, cls.isSpellcaster),
+      StepIndicator(if cls.isSpellcaster then 10 else 9, cls.isSpellcaster),
       StepNav(
         "< Languages",
         ReviewMsg.Back, if model.saving then "Saving..." else "Save Character", ReviewMsg.Save, !model.saving),
@@ -147,7 +147,7 @@ object ReviewScreen extends Screen {
         statBox("HP", ch.maxHitPoints.toString, s"d${ch.primaryClass.hitDie.sides}"),
         statBox("AC", ch.armorClass.toString, "unarmored"),
         statBox("Speed", s"${ch.speed}ft", ""),
-        statBox("Initiative", AbilityScores.modifierString(10 + ch.initiative), ""),
+        statBox("Initiative", ch.initiative.format, ""),
         statBox("Prof. Bonus", s"+${ch.proficiencyBonus}", ""),
         statBox("Passive Perc.", ch.passivePerception.toString, "")
       ),
@@ -156,7 +156,7 @@ object ReviewScreen extends Screen {
           val slotsStr = row.slots.zipWithIndex.collect { case (n, i) if n > 0 => s"Lv${i + 1}: $n" }.mkString(" ")
           div(`class` := "stat-block")(
             statBox("Spell Save DC", dc.toString, ""),
-            statBox("Spell Attack", AbilityScores.modifierString(ch.spellAttackBonus.getOrElse(0)), ""),
+            statBox("Spell Attack", ch.spellAttackBonus.getOrElse(dndbuilder.dnd.DndTypes.Modifier.zero).format, ""),
             (if row.cantrips > 0 then statBox("Cantrips", row.cantrips.toString, "") else div()),
             statBox("Spell Slots", slotsStr, "")
           )
@@ -169,7 +169,7 @@ object ReviewScreen extends Screen {
           Ability.values.toList.map { ability =>
             val score = ch.finalScores.get(ability)
             val mod   = AbilityScores.modifierString(score)
-            val save  = AbilityScores.modifierString(10 + ch.savingThrowBonus(ability) - 10)
+            val save  = ch.savingThrowBonus(ability).format
             val profMark = if ch.isProficientInSave(ability) then " *" else ""
             tr(
               td(`class` := "ability-name")(text(ability.label)),
@@ -184,7 +184,7 @@ object ReviewScreen extends Screen {
       div(`class` := "prof-list")(
         ch.allSkillProficiencies.toList.sortBy(_.label).map { skill =>
           div(`class` := "prof-item prof-item--proficient")(
-            text(s"${skill.label} (${skill.ability.abbreviation}) ${AbilityScores.modifierString(ch.skillBonus(skill))}")
+            text(s"${skill.label} (${skill.ability.abbreviation}) ${ch.skillBonus(skill).format}")
           )
         }*
       ),
@@ -288,7 +288,7 @@ enum ReviewMsg {
   case Save
   case ExportPdf
   case Loaded(existing: List[StoredCharacter], newChar: StoredCharacter)
-  case Saved
+  case Saved(saved: StoredCharacter)
   case Error(msg: String)
   case Back
 }

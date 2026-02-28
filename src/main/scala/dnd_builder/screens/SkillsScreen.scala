@@ -62,7 +62,7 @@ object SkillsScreen extends Screen {
     val remaining = cls.numSkillChoices - model.chosenSkills.size
 
     div(`class` := "screen-container")(
-      StepIndicator(6, cls.isSpellcaster),
+      StepIndicator(5, cls.isSpellcaster),
       StepNav("< Abilities", SkillsMsg.Back, "Next: Equipment >", SkillsMsg.Next, remaining == 0),
       h1(`class` := "screen-title")(text("Choose Skills")),
       p(`class` := "screen-intro")(

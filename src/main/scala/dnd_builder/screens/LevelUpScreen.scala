@@ -69,13 +69,14 @@ object LevelUpScreen extends Screen {
 
   def view(model: Model): Html[Msg] = {
     val ch = model.storedCharacter.character
+    val cls = ch.primaryClass
     val currentLevel = ch.characterLevel
     val nextLevel = currentLevel + 1
-    val cls = ch.primaryClass
     val nextClassLevel = ch.primaryClassLevel + 1
     val gain = ClassProgression.atLevel(cls, nextClassLevel)
     val conMod = ch.modifier(Ability.Constitution)
-    val hpGain = cls.hitDie.avgGain + conMod + ch.species.hpBonusPerLevel
+    val hpGain = cls.hitDie.avgGain + conMod.toInt + ch.species.hpBonusPerLevel
+    val oldProf = ch.proficiencyBonus
     val newProf = nextLevel match {
       case l if l <= 4  => 2
       case l if l <= 8  => 3
@@ -83,28 +84,22 @@ object LevelUpScreen extends Screen {
       case l if l <= 16 => 5
       case _            => 6
     }
-    val oldProf = ch.proficiencyBonus
-    val profChanged = newProf != oldProf
-
-    val newProg = SpellProgression.forClass(cls, nextClassLevel)
     val oldProg = ch.spellProgression
+    val newProg = SpellProgression.forClass(cls, nextClassLevel)
 
     div(`class` := "screen-container")(
       div(`class` := "screen-header")(
         h1(`class` := "screen-title")(text(s"Level Up: ${ch.name}")),
         button(`class` := "btn-ghost", onClick(LevelUpMsg.Cancel))(text("< Back"))
       ),
-      div(`class` := "flex-row", style := "margin-bottom: 1rem; gap: 0.5rem;")(
+      div(`class` := "flex-row", style := "margin-bottom: 1.5rem; gap: 0.5rem;")(
         span(`class` := "badge")(text(s"${cls.name} ${ch.primaryClassLevel}")),
-        span(`class` := "badge", style := "font-weight: bold;")(text(s"-> Level $nextLevel"))
+        span(style := "font-size: 1.2rem; font-weight: bold; color: var(--color-text-muted);")(text("->")),
+        span(`class` := "badge", style := "font-weight: bold;")(text(s"${cls.name} $nextClassLevel"))
       ),
-      div(`class` := "section-title")(text("You Gain")),
-      div(`class` := "stat-block", style := "margin-bottom: 1rem;")(
-        statBox("HP", s"+$hpGain", s"d${cls.hitDie.sides} + CON"),
-        statBox("Hit Dice", s"${nextLevel}d${cls.hitDie.sides}", ""),
-        (if profChanged then statBox("Prof. Bonus", s"+$newProf", s"was +$oldProf") else div())
-      ),
-      spellChanges(oldProg, newProg),
+      div(`class` := "section-title")(text("Stats Comparison")),
+      combatTable(ch, hpGain, oldProf.toInt, newProf, nextLevel, cls),
+      spellTable(oldProg, newProg),
       (if gain.features.nonEmpty then
         div(
           div(`class` := "section-title")(text("New Features")),
@@ -119,7 +114,8 @@ object LevelUpScreen extends Screen {
         )
       else div()),
       errorsView(model.errors),
-      div(style := "margin-top: 1.5rem;")(
+      div(style := "margin-top: 1.5rem; display: flex; gap: 1rem;")(
+        button(`class` := "btn-ghost", onClick(LevelUpMsg.Cancel))(text("Cancel")),
         button(
           `class` := (if model.saving then "btn-primary btn-lg btn-disabled" else "btn-primary btn-lg"),
           onClick(LevelUpMsg.Confirm)
@@ -128,51 +124,90 @@ object LevelUpScreen extends Screen {
     )
   }
 
-  private def spellChanges(
+  private def combatTable(
+      ch: Character,
+      hpGain: Int,
+      oldProf: Int,
+      newProf: Int,
+      nextLevel: Int,
+      cls: DndClass
+  ): Html[Msg] = {
+    val oldHp = ch.maxHitPoints
+    val newHp = oldHp + hpGain
+    val oldHitDice = ch.hitDiceString
+    val newHitDice = s"${nextLevel}d${cls.hitDie.sides}"
+
+    val rows: List[Html[Msg]] = List(
+      compareRow("Level", ch.characterLevel.toString, nextLevel.toString, ch.characterLevel != nextLevel),
+      compareRow("Hit Points", oldHp.toString, s"$newHp (+$hpGain)", true),
+      compareRow("Hit Dice", oldHitDice, newHitDice, oldHitDice != newHitDice),
+      compareRow("Proficiency Bonus", s"+$oldProf", s"+$newProf", oldProf != newProf)
+    )
+
+    table(`class` := "compare-table")(
+      thead(tr(th(text("")), th(text("Current")), th(text("New")))),
+      tbody(rows*)
+    )
+  }
+
+  private def spellTable(
       old: Option[SpellSlotRow],
       next: Option[SpellSlotRow]
   ): Html[Msg] =
     (old, next) match {
       case (Some(o), Some(n)) =>
-        val cantripDiff = n.cantrips - o.cantrips
-        val preparedDiff = n.preparedSpells - o.preparedSpells
-        val slotChanges = n.slots.zip(o.slots).zipWithIndex.collect {
-          case ((nv, ov), i) if nv != ov => s"Lv${i + 1}: $ov -> $nv"
-        }
-        if cantripDiff == 0 && preparedDiff == 0 && slotChanges.isEmpty then div()
-        else {
-          val lines: List[Html[Msg]] =
-            (if cantripDiff > 0 then List(div(text(s"Cantrips: ${o.cantrips} -> ${n.cantrips} (+$cantripDiff)"))) else Nil) ++
-            (if preparedDiff > 0 then List(div(text(s"Prepared: ${o.preparedSpells} -> ${n.preparedSpells} (+$preparedDiff)"))) else Nil) ++
-            slotChanges.map(s => div(text(s)))
-          div(
-            div(`class` := "section-title")(text("Spellcasting Changes")),
-            div(style := "font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 1rem;")(
-              lines*
-            )
-          )
-        }
-      case (None, Some(n)) =>
-        div(
+        val rows: List[Html[Msg]] = List(
+          if o.cantrips > 0 || n.cantrips > 0 then
+            Some(compareRow("Cantrips Known", o.cantrips.toString, n.cantrips.toString, o.cantrips != n.cantrips))
+          else None,
+          if o.preparedSpells > 0 || n.preparedSpells > 0 then
+            Some(compareRow("Prepared Spells", o.preparedSpells.toString, n.preparedSpells.toString, o.preparedSpells != n.preparedSpells))
+          else None
+        ).flatten ++ slotRows(o.slots, n.slots)
+
+        if rows.isEmpty then div()
+        else div(
           div(`class` := "section-title")(text("Spellcasting")),
-          div(style := "font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 1rem;")(
-            text(s"Cantrips: ${n.cantrips}, Prepared: ${n.preparedSpells}")
+          table(`class` := "compare-table")(
+            thead(tr(th(text("")), th(text("Current")), th(text("New")))),
+            tbody(rows*)
+          )
+        )
+      case (None, Some(n)) =>
+        val rows: List[Html[Msg]] = List(
+          if n.cantrips > 0 then Some(compareRow("Cantrips Known", "-", n.cantrips.toString, true)) else None,
+          if n.preparedSpells > 0 then Some(compareRow("Prepared Spells", "-", n.preparedSpells.toString, true)) else None
+        ).flatten ++ n.slots.zipWithIndex.collect { case (cnt, i) if cnt > 0 =>
+          compareRow(s"Level ${i + 1} Slots", "-", cnt.toString, true)
+        }
+        if rows.isEmpty then div()
+        else div(
+          div(`class` := "section-title")(text("Spellcasting (New!)")),
+          table(`class` := "compare-table")(
+            thead(tr(th(text("")), th(text("Current")), th(text("New")))),
+            tbody(rows*)
           )
         )
       case _ => div()
     }
 
+  private def slotRows(oldSlots: List[Int], newSlots: List[Int]): List[Html[Msg]] =
+    oldSlots.zipAll(newSlots, 0, 0).zipWithIndex.collect {
+      case ((ov, nv), i) if ov > 0 || nv > 0 =>
+        compareRow(s"Level ${i + 1} Slots", ov.toString, nv.toString, ov != nv)
+    }
+
+  private def compareRow(label: String, oldVal: String, newVal: String, changed: Boolean): Html[Msg] =
+    tr(
+      td(text(label)),
+      td(`class` := "val-old")(text(oldVal)),
+      td(`class` := (if changed then "val-changed" else "val-new"))(text(newVal))
+    )
+
   private def errorsView(errors: List[String]): Html[Msg] =
     if errors.isEmpty then div()
     else div(`class` := "error-box")(
       errors.map(e => div(text(e)))*
-    )
-
-  private def statBox(label: String, value: String, sub: String): Html[Msg] =
-    div(`class` := "stat-box")(
-      div(`class` := "stat-box-label")(text(label)),
-      div(`class` := "stat-box-value")(text(value)),
-      (if sub.nonEmpty then div(`class` := "stat-box-sub")(text(sub)) else div())
     )
 }
 

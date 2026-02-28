@@ -77,7 +77,7 @@ object EquipmentScreen extends Screen {
     val nextEnabled = model.selectedWeapons.nonEmpty
 
     div(`class` := "screen-container")(
-      StepIndicator(7, cls.isSpellcaster),
+      StepIndicator(6, cls.isSpellcaster),
       StepNav("< Skills", EquipmentMsg.Back,
         "Next: Class Features >",
         EquipmentMsg.Next, nextEnabled),

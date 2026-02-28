@@ -5,7 +5,7 @@ import tyrian.*
 
 object StepIndicator {
 
-  private val baseSteps = List("Race", "Class", "Level", "Background", "Abilities", "Skills", "Equipment")
+  private val baseSteps = List("Race", "Class", "Background", "Abilities", "Skills", "Equipment")
   private val casterSteps = baseSteps :+ "Class Features" :+ "Spells" :+ "Languages" :+ "Review"
   private val nonCasterSteps = baseSteps :+ "Class Features" :+ "Languages" :+ "Review"
 

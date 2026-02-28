@@ -1,5 +1,7 @@
 package dndbuilder.dnd
 
+import dndbuilder.dnd.DndTypes.Modifier
+
 final case class Character(
     name: String,
     species: Species,
@@ -26,36 +28,36 @@ final case class Character(
   def finalScores: AbilityScores =
     AbilityScores.applyBonus(baseScores, backgroundBonus)
 
-  def modifier(ability: Ability): Int =
+  def modifier(ability: Ability): Modifier =
     finalScores.modifier(ability)
 
-  def proficiencyBonus: Int = characterLevel match {
-    case l if l <= 4  => 2
-    case l if l <= 8  => 3
-    case l if l <= 12 => 4
-    case l if l <= 16 => 5
-    case _            => 6
+  def proficiencyBonus: Modifier = characterLevel match {
+    case l if l <= 4  => Modifier(2)
+    case l if l <= 8  => Modifier(3)
+    case l if l <= 12 => Modifier(4)
+    case l if l <= 16 => Modifier(5)
+    case _            => Modifier(6)
   }
 
   def maxHitPoints: Int = {
     val conMod = modifier(Ability.Constitution)
     val primary = classLevels.head
-    val base = primary.dndClass.hitDie.sides + conMod
+    val base = primary.dndClass.hitDie.sides + conMod.toInt
     val subsequent = classLevels.zipWithIndex.map { case (cl, idx) =>
       val levelsToCount = if idx == 0 then cl.classLevel - 1 else cl.classLevel
-      levelsToCount * (cl.dndClass.hitDie.avgGain + conMod)
+      levelsToCount * (cl.dndClass.hitDie.avgGain + conMod.toInt)
     }.sum
     val speciesBonus = species.hpBonusPerLevel * characterLevel
     math.max(1, base + subsequent + speciesBonus)
   }
 
-  def initiative: Int = {
+  def initiative: Modifier = {
     val dexMod = modifier(Ability.Dexterity)
-    val alertBonus = if background.feat == Alert then proficiencyBonus else 0
+    val alertBonus = if background.feat == Alert then proficiencyBonus else Modifier.zero
     dexMod + alertBonus
   }
 
-  def savingThrowBonus(ability: Ability): Int = {
+  def savingThrowBonus(ability: Ability): Modifier = {
     val mod = modifier(ability)
     val (st1, st2) = primaryClass.savingThrows
     if ability == st1 || ability == st2 then mod + proficiencyBonus
@@ -70,7 +72,7 @@ final case class Character(
   def allSkillProficiencies: Set[Skill] =
     background.skillProficiencySet ++ chosenSkills
 
-  def skillBonus(skill: Skill): Int = {
+  def skillBonus(skill: Skill): Modifier = {
     val abilityMod = modifier(skill.ability)
     if allSkillProficiencies.contains(skill) then abilityMod + proficiencyBonus
     else abilityMod
@@ -80,7 +82,7 @@ final case class Character(
     allSkillProficiencies.contains(skill)
 
   def passivePerception: Int =
-    10 + skillBonus(Skill.Perception)
+    10 + skillBonus(Skill.Perception).toInt
 
   def armorClass: Int = {
     val dexMod = modifier(Ability.Dexterity)
@@ -88,18 +90,18 @@ final case class Character(
     equippedArmor match {
       case None =>
         val unarmored = primaryClass match {
-          case Barbarian => 10 + dexMod + modifier(Ability.Constitution)
-          case Monk      => 10 + dexMod + modifier(Ability.Wisdom)
-          case _        => 10 + dexMod
+          case Barbarian => 10 + dexMod.toInt + modifier(Ability.Constitution).toInt
+          case Monk      => 10 + dexMod.toInt + modifier(Ability.Wisdom).toInt
+          case _         => 10 + dexMod.toInt
         }
         unarmored + shieldBonus
       case Some(armor) =>
         import ArmorType.*
         val base = armor.armorType match {
           case Light =>
-            armor.baseAC + dexMod
+            armor.baseAC + dexMod.toInt
           case Medium =>
-            val capped = armor.maxDexBonus.fold(dexMod)(cap => math.min(dexMod, cap))
+            val capped = armor.maxDexBonus.fold(dexMod.toInt)(cap => math.min(dexMod.toInt, cap))
             armor.baseAC + capped
           case Heavy | Shield =>
             armor.baseAC
@@ -110,10 +112,10 @@ final case class Character(
 
   def spellSaveDC: Option[Int] =
     primaryClass.spellcastingAbility.map { ability =>
-      8 + proficiencyBonus + modifier(ability)
+      8 + proficiencyBonus.toInt + modifier(ability).toInt
     }
 
-  def spellAttackBonus: Option[Int] =
+  def spellAttackBonus: Option[Modifier] =
     primaryClass.spellcastingAbility.map { ability =>
       proficiencyBonus + modifier(ability)
     }
@@ -122,26 +124,26 @@ final case class Character(
 
   def originFeat: OriginFeat = background.feat
 
-  def weaponAbilityMod(weapon: Weapon): Int = {
+  def weaponAbilityMod(weapon: Weapon): Modifier = {
     val strMod = modifier(Ability.Strength)
     val dexMod = modifier(Ability.Dexterity)
-    if weapon.properties.contains(WeaponProperty.Finesse) then math.max(strMod, dexMod)
+    if weapon.properties.contains(WeaponProperty.Finesse) then Modifier(math.max(strMod.toInt, dexMod.toInt))
     else if weapon.range == WeaponRange.Ranged then dexMod
     else strMod
   }
 
-  def weaponAttackBonus(weapon: Weapon): Int =
+  def weaponAttackBonus(weapon: Weapon): Modifier =
     proficiencyBonus + weaponAbilityMod(weapon)
 
-  def weaponDamageBonus(weapon: Weapon): Int =
+  def weaponDamageBonus(weapon: Weapon): Modifier =
     weaponAbilityMod(weapon)
 
   def weaponDamageString(weapon: Weapon): String = {
-    val dmgMod = weaponDamageBonus(weapon)
-    val parts  = weapon.damage.split(" ", 2)
-    val dice   = parts.headOption.getOrElse("")
+    val dmgMod = weaponDamageBonus(weapon).toInt
+    val parts   = weapon.damage.split(" ", 2)
+    val dice    = parts.headOption.getOrElse("")
     val dmgType = if parts.length > 1 then parts(1) else ""
-    val modStr = if dmgMod >= 0 then s" + $dmgMod" else s" - ${math.abs(dmgMod)}"
+    val modStr  = if dmgMod >= 0 then s" + $dmgMod" else s" - ${math.abs(dmgMod)}"
     val typeStr = if dmgType.nonEmpty then s" $dmgType" else ""
     s"$dice$modStr$typeStr"
   }

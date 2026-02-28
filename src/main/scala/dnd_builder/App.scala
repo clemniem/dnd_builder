@@ -22,7 +22,6 @@ object App extends TyrianIOApp[RootMsg, RootModel] {
         AboutScreen,
         SpeciesScreen,
         ClassSelectScreen,
-        LevelSelectScreen,
         BackgroundScreen,
         AbilityScoresScreen,
         SkillsScreen,

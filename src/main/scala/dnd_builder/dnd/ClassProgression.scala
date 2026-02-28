@@ -15,13 +15,6 @@ object LevelChoice {
 
 object ClassProgression {
 
-  private val registry: Map[(DndClass, Int), LevelGain] = {
-    val level1 = DndClass.all.map { cls =>
-      (cls, 1) -> LevelGain(cls.level1Features, Nil)
-    }
-    (level1 ++ level2Entries).toMap
-  }
-
   private val level2Entries: List[((DndClass, Int), LevelGain)] = List(
     (Barbarian, 2) -> LevelGain(
       List(
@@ -80,6 +73,13 @@ object ClassProgression {
         ClassFeature("Scholar", "Choose one of your skill proficiencies. Your proficiency bonus is doubled for ability checks using that skill.", None)
       ), Nil)
   )
+
+  private lazy val registry: Map[(DndClass, Int), LevelGain] = {
+    val level1 = DndClass.all.map { cls =>
+      (cls, 1) -> LevelGain(cls.level1Features, Nil)
+    }
+    (level1 ++ level2Entries).toMap
+  }
 
   def atLevel(dndClass: DndClass, level: Int): LevelGain =
     registry.getOrElse((dndClass, level), LevelGain.empty)
