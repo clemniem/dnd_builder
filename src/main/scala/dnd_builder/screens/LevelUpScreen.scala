@@ -13,7 +13,19 @@ object LevelUpScreen extends Screen {
 
   val screenId: ScreenId = ScreenId.LevelUpId
 
-  private val targetLevel = 3
+  private def targetLevel(model: Model): Int =
+    model.storedCharacter.character.primaryClassLevel + 1
+
+  /** Ordered phases for this level-up (depends on class and target level). */
+  private def phasesForLevel(cls: DndClass, level: Int): List[LevelUpPhase] = {
+    val hasSub = level >= 3 && Subclass.forClass(cls).isDefined
+    val hasSpells = hasSpellChangesAtLevel(cls, level)
+    val hasFeatures = hasClassFeatureChoicesAtLevel(cls, level)
+    val base = LevelUpPhase.Preview :: (if hasSub then List(LevelUpPhase.Subclass) else Nil)
+    val withSpells = if hasSpells then base :+ LevelUpPhase.Spells else base
+    val withFeatures = if hasFeatures then withSpells :+ LevelUpPhase.ClassFeatures else withSpells
+    withFeatures :+ LevelUpPhase.Confirm
+  }
 
   def init(previous: Option[ScreenOutput]): (Model, Cmd[IO, Msg]) = {
     val sc = previous match {
@@ -28,7 +40,8 @@ object LevelUpScreen extends Screen {
     }
     val ch = sc.character
     val cls = ch.primaryClass
-    val nextProg = SpellProgression.forClass(cls, targetLevel)
+    val tgt = ch.primaryClassLevel + 1
+    val nextProg = SpellProgression.forClass(cls, tgt)
     val initialSpells = nextProg match {
       case Some(prog) =>
         val fromBook = if cls == Wizard then ch.spellbookSpells else Nil
@@ -53,11 +66,19 @@ object LevelUpScreen extends Screen {
   }
 
   def update(model: Model): Msg => (Model, Cmd[IO, Msg]) = {
+    case LevelUpMsg.Back =>
+      val cls = model.storedCharacter.character.primaryClass
+      val tgt = targetLevel(model)
+      prevPhaseFrom(model.phase, cls, tgt) match {
+        case Some(p) => (model.copy(phase = p), Cmd.None)
+        case None    => (model, Cmd.Emit(NavigateNext(ScreenId.DetailId, Some(ScreenOutput.ViewCharacter(model.storedCharacter)))))
+      }
+
     case LevelUpMsg.Next =>
       val ch = model.storedCharacter.character
       val cls = ch.primaryClass
-      val nextPhase = nextPhaseFrom(model.phase, cls)
-      nextPhase match {
+      val tgt = targetLevel(model)
+      nextPhaseFrom(model.phase, cls, tgt) match {
         case Some(LevelUpPhase.Confirm) =>
           (model.copy(phase = LevelUpPhase.Confirm), Cmd.None)
         case Some(p) =>
@@ -67,19 +88,16 @@ object LevelUpScreen extends Screen {
       }
 
     case LevelUpMsg.AcceptSubclass =>
-      val ch = model.storedCharacter.character
-      val cls = ch.primaryClass
+      val cls = model.storedCharacter.character.primaryClass
       val sub = Subclass.forClass(cls)
-      val withSub = model.copy(chosenSubclass = sub)
-      nextPhaseFrom(LevelUpPhase.Subclass, cls) match {
-        case Some(p) => (withSub.copy(phase = p), Cmd.None)
-        case None    => (withSub.copy(phase = LevelUpPhase.Confirm), Cmd.None)
-      }
+      val newSub = if model.chosenSubclass == sub then None else sub
+      (model.copy(chosenSubclass = newSub), Cmd.None)
 
     case LevelUpMsg.ToggleExtraSkill(skill) =>
       val ch = model.storedCharacter.character
       val cls = ch.primaryClass
-      val (count, pool) = extraSkillChoiceAtLevel3(cls)
+      val tgt = targetLevel(model)
+      val (count, pool) = extraSkillChoiceAtLevel(cls, tgt)
       if count == 0 then (model, Cmd.None)
       else {
         val current = model.extraSkills
@@ -99,7 +117,8 @@ object LevelUpScreen extends Screen {
     case LevelUpMsg.TogglePrepared(spell) =>
       val ch = model.storedCharacter.character
       val cls = ch.primaryClass
-      val maxPrepared = SpellProgression.forClass(cls, targetLevel).map(_.preparedSpells).getOrElse(0)
+      val tgt = targetLevel(model)
+      val maxPrepared = SpellProgression.forClass(cls, tgt).map(_.preparedSpells).getOrElse(0)
       val current = model.preparedSpells
       val newList =
         if current.exists(_.name == spell.name) then current.filterNot(_.name == spell.name)
@@ -108,7 +127,8 @@ object LevelUpScreen extends Screen {
       (model.copy(preparedSpells = newList), Cmd.None)
 
     case LevelUpMsg.ToggleSpellbook(spell) =>
-      val maxBook = SpellProgression.wizardSpellbookSize(targetLevel)
+      val tgt = targetLevel(model)
+      val maxBook = SpellProgression.wizardSpellbookSize(tgt)
       val current = model.spellbookSpells
       val newList =
         if current.exists(_.name == spell.name) then current.filterNot(_.name == spell.name)
@@ -119,38 +139,33 @@ object LevelUpScreen extends Screen {
     case LevelUpMsg.Confirm =>
       val ch = model.storedCharacter.character
       val cls = ch.primaryClass
+      val tgt = targetLevel(model)
       val subOpt = model.chosenSubclass.orElse(Subclass.forClass(cls))
-      subOpt match {
-        case Some(sub) =>
-          val subclassSpells = sub.alwaysPreparedByLevel.getOrElse(targetLevel, Nil)
-          val newClassLevels = ch.classLevels match {
-            case head :: tail => ClassLevel(head.dndClass, targetLevel) :: tail
-            case Nil          => List(ClassLevel(cls, targetLevel))
-          }
-          val newPrepared = (model.preparedSpells ++ subclassSpells).distinctBy(_.name)
-          val newFeatures = ch.featureSelections.copy(
-            landType = model.landType.orElse(ch.featureSelections.landType),
-            hunterPrey = model.hunterPrey.orElse(ch.featureSelections.hunterPrey)
-          )
-          val updated = ch.copy(
-            classLevels = newClassLevels,
-            subclass = Some(sub),
-            chosenSkills = ch.chosenSkills ++ model.extraSkills,
-            preparedSpells = newPrepared,
-            spellbookSpells = if cls == Wizard then model.spellbookSpells else ch.spellbookSpells,
-            featureSelections = newFeatures
-          )
-          val updatedStored = StoredCharacter(model.storedCharacter.id, updated)
-          (model.copy(saving = true),
-            LocalStorageUtils.loadList[StoredCharacter, Msg](StorageKeys.characters)(
-              existing => LevelUpMsg.Loaded(existing, updatedStored),
-              _ => LevelUpMsg.Loaded(Nil, updatedStored),
-              (msg, _) => LevelUpMsg.Error(msg)
-            ))
-
-        case None =>
-          (model.copy(errors = List("Subclass not found for class.")), Cmd.None)
+      val subclassSpells = subOpt.toList.flatMap(_.alwaysPreparedByLevel.getOrElse(tgt, Nil))
+      val newClassLevels = ch.classLevels match {
+        case head :: tail => ClassLevel(head.dndClass, tgt) :: tail
+        case Nil          => List(ClassLevel(cls, tgt))
       }
+      val newPrepared = (model.preparedSpells ++ subclassSpells).distinctBy(_.name)
+      val newFeatures = ch.featureSelections.copy(
+        landType = model.landType.orElse(ch.featureSelections.landType),
+        hunterPrey = model.hunterPrey.orElse(ch.featureSelections.hunterPrey)
+      )
+      val updated = ch.copy(
+        classLevels = newClassLevels,
+        subclass = if tgt >= 3 then subOpt.orElse(ch.subclass) else ch.subclass,
+        chosenSkills = ch.chosenSkills ++ model.extraSkills,
+        preparedSpells = newPrepared,
+        spellbookSpells = if cls == Wizard then model.spellbookSpells else ch.spellbookSpells,
+        featureSelections = newFeatures
+      )
+      val updatedStored = StoredCharacter(model.storedCharacter.id, updated)
+      (model.copy(saving = true),
+        LocalStorageUtils.loadList[StoredCharacter, Msg](StorageKeys.characters)(
+          existing => LevelUpMsg.Loaded(existing, updatedStored),
+          _ => LevelUpMsg.Loaded(Nil, updatedStored),
+          (msg, _) => LevelUpMsg.Error(msg)
+        ))
 
     case LevelUpMsg.Loaded(existing, updatedChar) =>
       val newList = existing.map { sc =>
@@ -176,42 +191,88 @@ object LevelUpScreen extends Screen {
       (model, Cmd.None)
   }
 
-  private def nextPhaseFrom(current: LevelUpPhase, cls: DndClass): Option[LevelUpPhase] =
-    current match {
-      case LevelUpPhase.Preview       => Some(LevelUpPhase.Subclass)
-      case LevelUpPhase.Subclass     => if hasSpellChangesAtLevel3(cls) then Some(LevelUpPhase.Spells) else if hasClassFeatureChoicesAtLevel3(cls) then Some(LevelUpPhase.ClassFeatures) else Some(LevelUpPhase.Confirm)
-      case LevelUpPhase.Spells       => if hasClassFeatureChoicesAtLevel3(cls) then Some(LevelUpPhase.ClassFeatures) else Some(LevelUpPhase.Confirm)
-      case LevelUpPhase.ClassFeatures => Some(LevelUpPhase.Confirm)
-      case LevelUpPhase.Confirm      => None
+  private def nextPhaseFrom(current: LevelUpPhase, cls: DndClass, level: Int): Option[LevelUpPhase] = {
+    val phases = phasesForLevel(cls, level)
+    val idx = phases.indexOf(current)
+    if idx >= 0 && idx < phases.size - 1 then Some(phases(idx + 1))
+    else None
+  }
+
+  private def prevPhaseFrom(current: LevelUpPhase, cls: DndClass, level: Int): Option[LevelUpPhase] = {
+    val phases = phasesForLevel(cls, level)
+    val idx = phases.indexOf(current)
+    if idx > 0 then Some(phases(idx - 1))
+    else None
+  }
+
+  private def hasSpellChangesAtLevel(cls: DndClass, level: Int): Boolean =
+    SpellProgression.forClass(cls, level).isDefined
+
+  private def hasClassFeatureChoicesAtLevel(cls: DndClass, level: Int): Boolean =
+    extraSkillChoiceAtLevel(cls, level)._1 > 0 || (level >= 3 && cls == Druid) || (level >= 3 && cls == Ranger)
+
+  private def extraSkillChoiceAtLevel(cls: DndClass, level: Int): (Int, Set[Skill]) =
+    if level < 3 then (0, Set.empty)
+    else
+      cls match {
+        case Barbarian => (1, Barbarian.skillPool)
+        case Bard      => (3, Skill.values.toSet)
+        case _         => (0, Set.empty)
+      }
+
+  private def phaseStepLabel(phase: LevelUpPhase): String =
+    phase match {
+      case LevelUpPhase.Preview       => "Preview"
+      case LevelUpPhase.Subclass     => "Subclass"
+      case LevelUpPhase.Spells       => "Spells"
+      case LevelUpPhase.ClassFeatures => "Choices"
+      case LevelUpPhase.Confirm      => "Confirm"
     }
 
-  private def hasSpellChangesAtLevel3(cls: DndClass): Boolean =
-    SpellProgression.forClass(cls, targetLevel).isDefined
-
-  private def hasClassFeatureChoicesAtLevel3(cls: DndClass): Boolean =
-    extraSkillChoiceAtLevel3(cls)._1 > 0 || cls == Druid || cls == Ranger
-
-  private def extraSkillChoiceAtLevel3(cls: DndClass): (Int, Set[Skill]) =
-    cls match {
-      case Barbarian => (1, Barbarian.skillPool)
-      case Bard      => (3, Skill.values.toSet)
-      case _         => (0, Set.empty)
+  private def levelUpStepIndicator(model: Model): Html[Msg] = {
+    val cls = model.storedCharacter.character.primaryClass
+    val tgt = targetLevel(model)
+    val phases = phasesForLevel(cls, tgt)
+    val currentIdx = phases.indexOf(model.phase)
+    val items = phases.zipWithIndex.flatMap { case (p, idx) =>
+      val clsName =
+        if idx < currentIdx then "step-item step-item--done"
+        else if idx == currentIdx then "step-item step-item--active"
+        else "step-item"
+      val connectorCls =
+        if idx < currentIdx then "step-connector step-connector--done"
+        else "step-connector"
+      val item = div(`class` := clsName)(
+        span(`class` := "step-number")(text((idx + 1).toString)),
+        span(text(phaseStepLabel(p)))
+      )
+      if idx < phases.size - 1 then List(item, div(`class` := connectorCls)())
+      else List(item)
     }
+    div(`class` := "step-indicator")(items*)
+  }
 
   def view(model: Model): Html[Msg] = {
     val ch = model.storedCharacter.character
+    val tgt = targetLevel(model)
     div(`class` := "screen-container")(
       div(`class` := "screen-header")(
         h1(`class` := "screen-title")(text(s"Level Up: ${ch.name}")),
-        button(`class` := "btn-ghost", onClick(LevelUpMsg.Cancel))(text("< Back"))
+        p(`class` := "screen-intro")(
+          text(s"${ch.primaryClass.name} ${ch.primaryClassLevel} → $tgt")
+        ),
+        button(`class` := "btn-ghost", onClick(LevelUpMsg.Cancel))(text("Cancel"))
       ),
-      model.phase match {
-        case LevelUpPhase.Preview       => previewView(model)
-        case LevelUpPhase.Subclass     => subclassView(model)
-        case LevelUpPhase.Spells       => spellsView(model)
-        case LevelUpPhase.ClassFeatures => classFeaturesView(model)
-        case LevelUpPhase.Confirm      => confirmView(model)
-      },
+      levelUpStepIndicator(model),
+      div(`class` := "screen-container-inner")(
+        model.phase match {
+          case LevelUpPhase.Preview       => previewView(model)
+          case LevelUpPhase.Subclass     => subclassView(model)
+          case LevelUpPhase.Spells       => spellsView(model)
+          case LevelUpPhase.ClassFeatures => classFeaturesView(model)
+          case LevelUpPhase.Confirm      => confirmView(model)
+        }
+      ),
       errorsView(model.errors)
     )
   }
@@ -219,27 +280,24 @@ object LevelUpScreen extends Screen {
   private def previewView(model: Model): Html[Msg] = {
     val ch = model.storedCharacter.character
     val cls = ch.primaryClass
-    val nextClassLevel = targetLevel
-    val gain = ClassProgression.atLevel(cls, nextClassLevel)
+    val tgt = targetLevel(model)
+    val gain = ClassProgression.atLevel(cls, tgt)
     val conMod = ch.modifier(Ability.Constitution)
     val hpGain = cls.hitDie.avgGain + conMod.toInt + ch.species.hpBonusPerLevel
     val oldProf = ch.proficiencyBonus.toInt
-    val newProf = if targetLevel <= 4 then 2 else 3
+    val newProf = if tgt <= 4 then 2 else 3
     val oldProg = ch.spellProgression
-    val newProg = SpellProgression.forClass(cls, nextClassLevel)
-    val sub = Subclass.forClass(cls)
-    val nextLabel = sub match {
-      case Some(s) => s"Next: ${s.name} >"
-      case None    => "Next >"
-    }
+    val newProg = SpellProgression.forClass(cls, tgt)
+    val subBanner =
+      if tgt >= 3 then Subclass.forClass(cls) else None
     div(
       div(`class` := "flex-row", style := "margin-bottom: 1rem; gap: 0.5rem;")(
         span(`class` := "badge")(text(s"${cls.name} ${ch.primaryClassLevel}")),
         span(style := "font-size: 1.2rem; font-weight: bold; color: var(--color-text-muted);")(text("->")),
-        span(`class` := "badge", style := "font-weight: bold;")(text(s"${cls.name} $nextClassLevel"))
+        span(`class` := "badge", style := "font-weight: bold;")(text(s"${cls.name} $tgt"))
       ),
       div(`class` := "section-title")(text("Stats Comparison")),
-      combatTable(ch, hpGain, oldProf, newProf, targetLevel, cls),
+      combatTable(ch, hpGain, oldProf, newProf, tgt, cls),
       spellTable(oldProg, newProg),
       (if gain.features.nonEmpty then
         div(
@@ -254,60 +312,80 @@ object LevelUpScreen extends Screen {
           )
         )
       else div()),
-      sub match {
+      subBanner match {
         case Some(s) =>
           div(style := "margin-top: 1rem; padding: 0.75rem; background: var(--color-bg-muted); border-radius: 4px;")(
             text(s"You will gain subclass: ${s.name}")
           )
         case None => div()
       },
-      StepNav("Cancel", LevelUpMsg.Cancel, nextLabel, LevelUpMsg.Next, true)
+      StepNav("Cancel", LevelUpMsg.Cancel, "Next >", LevelUpMsg.Next, true)
     )
   }
 
   private def subclassView(model: Model): Html[Msg] = {
     val ch = model.storedCharacter.character
     val cls = ch.primaryClass
+    val tgt = targetLevel(model)
     val subOpt = Subclass.forClass(cls)
     subOpt match {
       case Some(sub) =>
-        val l3Features = sub.features.getOrElse(3, Nil)
-        val alwaysPrepared = sub.alwaysPreparedByLevel.getOrElse(3, Nil)
+        val levelFeatures = sub.features.getOrElse(tgt, Nil)
+        val alwaysPrepared = sub.alwaysPreparedByLevel.getOrElse(tgt, Nil)
+        val isSelected = model.chosenSubclass.contains(sub)
         div(
-          h2(`class` := "screen-title")(text("Your Subclass")),
-          div(`class` := "card", style := "margin-bottom: 1rem; padding: 1rem;")(
-            div(`class` := "card-title")(text(sub.name)),
-            p(`class` := "card-desc")(text(sub.description)),
-            div(`class` := "section-title", style := "margin-top: 0.75rem;")(text("Level 3 Features")),
-            div(`class` := "feature-list")(
-              l3Features.map { f =>
-                div(`class` := "feature-item")(
-                  div(`class` := "feature-name")(text(f.name)),
-                  div(`class` := "feature-desc")(text(f.description))
-                )
-              }*
-            ),
-            (if alwaysPrepared.nonEmpty then
-              div(style := "margin-top: 0.5rem;")(
-                div(`class` := "feature-name")(text("Always prepared: " + alwaysPrepared.map(_.name).mkString(", ")))
-              )
-            else div())
+          h2(`class` := "screen-title")(text("Choose Your Subclass")),
+          p(`class` := "screen-intro")(text(s"At level $tgt, ${cls.name}s gain a subclass that defines their specialization.")),
+          div(`class` := "card-grid")(
+            div(
+              `class` := (if isSelected then "card card--selected" else "card"),
+              onClick(LevelUpMsg.AcceptSubclass)
+            )(
+              div(`class` := "card-title")(text(sub.name)),
+              div(`class` := "card-desc")(text(sub.description))
+            )
           ),
-          StepNav("< Back", LevelUpMsg.Cancel, "Accept", LevelUpMsg.AcceptSubclass, true)
+          (if isSelected then
+            div(style := "margin-top: 1.5rem;")(
+              div(`class` := "section-title")(text(s"Level $tgt Features")),
+              div(`class` := "feature-list")(
+                levelFeatures.map { f =>
+                  div(`class` := "feature-item")(
+                    div(`class` := "feature-name")(text(f.name)),
+                    div(`class` := "feature-desc")(text(f.description))
+                  )
+                }*
+              ),
+              (if alwaysPrepared.nonEmpty then
+                div(style := "margin-top: 0.75rem;")(
+                  div(`class` := "section-title")(text("Always Prepared Spells")),
+                  div(`class` := "feature-list")(
+                    alwaysPrepared.map { sp =>
+                      div(`class` := "feature-item")(
+                        div(`class` := "feature-name")(text(sp.name))
+                      )
+                    }*
+                  )
+                )
+              else div())
+            )
+          else div()),
+          StepNav("< Back", LevelUpMsg.Back, "Next >", LevelUpMsg.Next, isSelected)
         )
       case None =>
-        div(StepNav("< Back", LevelUpMsg.Cancel, "Next >", LevelUpMsg.Next, true))
+        div(StepNav("< Back", LevelUpMsg.Back, "Next >", LevelUpMsg.Next, true))
     }
   }
 
   private def spellsView(model: Model): Html[Msg] = {
     val ch = model.storedCharacter.character
     val cls = ch.primaryClass
-    val prog = SpellProgression.forClass(cls, targetLevel).get
+    val tgt = targetLevel(model)
+    val prog = SpellProgression.forClass(cls, tgt).get
     val maxPrepared = prog.preparedSpells
     val isWizard = cls == Wizard
-    val spellbookSize = SpellProgression.wizardSpellbookSize(targetLevel)
-    val maxSpellLvl = SpellProgression.maxSpellLevelForSlots(cls, targetLevel)
+    val spellbookSize = SpellProgression.wizardSpellbookSize(tgt)
+    val maxSpellLvl = SpellProgression.maxSpellLevelForSlots(cls, tgt)
     val availableForPrepared =
       if isWizard then model.spellbookSpells
       else (1 to maxSpellLvl).flatMap(l => Spell.forClass(cls, l)).toList
@@ -339,7 +417,7 @@ object LevelUpScreen extends Screen {
       ),
       StepNav(
         "< Back",
-        LevelUpMsg.Cancel,
+        LevelUpMsg.Back,
         "Next >",
         LevelUpMsg.Next,
         remainingPrepared == 0 && (!needSpellbookPhase || remainingBook == 0)
@@ -376,7 +454,8 @@ object LevelUpScreen extends Screen {
   private def classFeaturesView(model: Model): Html[Msg] = {
     val ch = model.storedCharacter.character
     val cls = ch.primaryClass
-    val (extraCount, extraPool) = extraSkillChoiceAtLevel3(cls)
+    val tgt = targetLevel(model)
+    val (extraCount, extraPool) = extraSkillChoiceAtLevel(cls, tgt)
     val canProceed = (extraCount == 0 || model.extraSkills.size == extraCount) &&
       (cls != Druid || model.landType.isDefined) &&
       (cls != Ranger || model.hunterPrey.isDefined)
@@ -452,13 +531,14 @@ object LevelUpScreen extends Screen {
       skillSection,
       landSection,
       hunterSection,
-      StepNav("< Back", LevelUpMsg.Cancel, "Next >", LevelUpMsg.Next, canProceed)
+      StepNav("< Back", LevelUpMsg.Back, "Next >", LevelUpMsg.Next, canProceed)
     )
   }
 
   private def confirmView(model: Model): Html[Msg] = {
     val cls = model.storedCharacter.character.primaryClass
-    val sub = model.chosenSubclass.orElse(Subclass.forClass(cls))
+    val tgt = targetLevel(model)
+    val sub = if tgt >= 3 then model.chosenSubclass.orElse(Subclass.forClass(cls)) else None
     val summaryItems: List[Html[Msg]] =
       sub.map(s => div(`class` := "feature-item")(div(`class` := "feature-name")(text(s"Subclass: ${s.name}")))).toList ++
         (if model.extraSkills.nonEmpty then List(div(`class` := "feature-item")(div(`class` := "feature-name")(text(s"Extra skills: ${model.extraSkills.map(_.label).mkString(", ")}")))) else Nil) ++
@@ -467,7 +547,7 @@ object LevelUpScreen extends Screen {
     div(
       div(`class` := "section-title")(text("Summary")),
       div(`class` := "feature-list")(summaryItems*),
-      StepNav("Cancel", LevelUpMsg.Cancel, if model.saving then "Saving..." else s"Level Up to $targetLevel", LevelUpMsg.Confirm, !model.saving)
+      StepNav("< Back", LevelUpMsg.Back, if model.saving then "Saving..." else s"Level Up to $tgt", LevelUpMsg.Confirm, !model.saving)
     )
   }
 
@@ -571,6 +651,7 @@ final case class LevelUpModel(
 )
 
 enum LevelUpMsg {
+  case Back
   case Next
   case AcceptSubclass
   case ToggleExtraSkill(skill: Skill)

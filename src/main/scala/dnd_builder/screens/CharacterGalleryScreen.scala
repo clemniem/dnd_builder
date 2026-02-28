@@ -6,6 +6,8 @@ import dndbuilder.common.LocalStorageUtils
 import tyrian.Html.*
 import tyrian.*
 
+import scala.scalajs.js
+
 object CharacterGalleryScreen extends Screen {
   type Model = GalleryModel
   type Msg   = GalleryMsg | NavigateNext
@@ -59,6 +61,22 @@ object CharacterGalleryScreen extends Screen {
 
     case GalleryMsg.Home =>
       (model, Cmd.Emit(NavigateNext(ScreenId.HomeId, None)))
+
+    case GalleryMsg.CopyCharacter(id) =>
+      model.characters.flatMap(_.find(_.id == id)) match {
+        case Some(sc) =>
+          val existingNames = model.characters.getOrElse(Nil).map(_.character.name).toSet
+          val newName = nextCopyName(sc.character.name, existingNames)
+          val newId = js.Dynamic.global.crypto.randomUUID().asInstanceOf[String]
+          val copy = StoredCharacter(newId, sc.character.copy(name = newName))
+          val newList = model.characters.map(_ :+ copy)
+          (model.copy(characters = newList),
+            LocalStorageUtils.saveList(StorageKeys.characters, newList.getOrElse(Nil))(
+              _ => GalleryMsg.Loaded(newList.getOrElse(Nil)),
+              (msg, _) => GalleryMsg.Error(msg)
+            ))
+        case None => (model, Cmd.None)
+      }
 
     case GalleryMsg.CreateNew =>
       (model, Cmd.Emit(NavigateNext(ScreenId.ClassSelectId, None)))
@@ -115,6 +133,28 @@ object CharacterGalleryScreen extends Screen {
         )
     }
 
+  /** macOS-style copy naming: "Foo" -> "Foo 2" -> "Foo 3", etc. */
+  private def nextCopyName(original: String, existing: Set[String]): String = {
+    val pattern = """^(.*?) (\d+)$""".r
+    val baseName = original match {
+      case pattern(base, _) => base
+      case other             => other
+    }
+    val nums = existing.flatMap { n =>
+      n match {
+        case `baseName` => Some(1)
+        case _ =>
+          val p = s"""^${java.util.regex.Pattern.quote(baseName)} (\\d+)$$""".r
+          n match {
+            case p(d) => scala.util.Try(d.toInt).toOption
+            case _    => None
+          }
+      }
+    }
+    val next = if nums.isEmpty then 2 else nums.max + 1
+    s"$baseName $next"
+  }
+
   private def characterCard(sc: StoredCharacter, pendingDeleteId: Option[String]): Html[Msg] = {
     val ch = sc.character
     div(`class` := "gallery-card")(
@@ -139,6 +179,7 @@ object CharacterGalleryScreen extends Screen {
         else
           div(`class` := "gallery-actions")(
             button(`class` := "btn-secondary btn-sm", onClick(GalleryMsg.ViewDetail(sc.id)))(text("View")),
+            button(`class` := "btn-ghost btn-sm", onClick(GalleryMsg.CopyCharacter(sc.id)))(text("Copy")),
             button(`class` := "btn-ghost btn-sm", onClick(GalleryMsg.AskDelete(sc.id)))(text("Delete"))
           )
       )
@@ -156,6 +197,7 @@ enum GalleryMsg {
   case AskDelete(id: String)
   case CancelDelete
   case ConfirmDelete(id: String)
+  case CopyCharacter(id: String)
   case ViewDetail(id: String)
   case PreviousPage
   case NextPage
