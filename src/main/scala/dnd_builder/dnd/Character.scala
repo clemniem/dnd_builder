@@ -3,7 +3,7 @@ package dndbuilder.dnd
 final case class Character(
     name: String,
     species: Species,
-    dndClass: DndClass,
+    classLevels: List[ClassLevel],
     background: Background,
     baseScores: AbilityScores,
     backgroundBonus: BackgroundBonus,
@@ -15,8 +15,13 @@ final case class Character(
     preparedSpells: List[Spell],
     spellbookSpells: List[Spell],
     featureSelections: ClassFeatureSelections,
-    languages: Set[Language],
-    level: Int) {
+    languages: Set[Language]) {
+
+  def primaryClass: DndClass = classLevels.head.dndClass
+
+  def primaryClassLevel: Int = classLevels.head.classLevel
+
+  def characterLevel: Int = classLevels.map(_.classLevel).sum
 
   def finalScores: AbilityScores =
     AbilityScores.applyBonus(baseScores, backgroundBonus)
@@ -24,7 +29,7 @@ final case class Character(
   def modifier(ability: Ability): Int =
     finalScores.modifier(ability)
 
-  def proficiencyBonus: Int = level match {
+  def proficiencyBonus: Int = characterLevel match {
     case l if l <= 4  => 2
     case l if l <= 8  => 3
     case l if l <= 12 => 4
@@ -33,11 +38,15 @@ final case class Character(
   }
 
   def maxHitPoints: Int = {
-    val conMod  = modifier(Ability.Constitution)
-    val base    = dndClass.hitDie.sides + conMod
-    val perLevel = if level > 1 then (level - 1) * (dndClass.hitDie.avgGain + conMod) else 0
-    val speciesBonus = species.hpBonusPerLevel * level
-    base + perLevel + speciesBonus
+    val conMod = modifier(Ability.Constitution)
+    val primary = classLevels.head
+    val base = primary.dndClass.hitDie.sides + conMod
+    val subsequent = classLevels.zipWithIndex.map { case (cl, idx) =>
+      val levelsToCount = if idx == 0 then cl.classLevel - 1 else cl.classLevel
+      levelsToCount * (cl.dndClass.hitDie.avgGain + conMod)
+    }.sum
+    val speciesBonus = species.hpBonusPerLevel * characterLevel
+    math.max(1, base + subsequent + speciesBonus)
   }
 
   def initiative: Int = {
@@ -48,13 +57,13 @@ final case class Character(
 
   def savingThrowBonus(ability: Ability): Int = {
     val mod = modifier(ability)
-    val (st1, st2) = dndClass.savingThrows
+    val (st1, st2) = primaryClass.savingThrows
     if ability == st1 || ability == st2 then mod + proficiencyBonus
     else mod
   }
 
   def isProficientInSave(ability: Ability): Boolean = {
-    val (st1, st2) = dndClass.savingThrows
+    val (st1, st2) = primaryClass.savingThrows
     ability == st1 || ability == st2
   }
 
@@ -78,7 +87,7 @@ final case class Character(
     val shieldBonus = if equippedShield then Armor.shieldACBonus else 0
     equippedArmor match {
       case None =>
-        val unarmored = dndClass match {
+        val unarmored = primaryClass match {
           case Barbarian => 10 + dexMod + modifier(Ability.Constitution)
           case Monk      => 10 + dexMod + modifier(Ability.Wisdom)
           case _        => 10 + dexMod
@@ -100,12 +109,12 @@ final case class Character(
   }
 
   def spellSaveDC: Option[Int] =
-    dndClass.spellcastingAbility.map { ability =>
+    primaryClass.spellcastingAbility.map { ability =>
       8 + proficiencyBonus + modifier(ability)
     }
 
   def spellAttackBonus: Option[Int] =
-    dndClass.spellcastingAbility.map { ability =>
+    primaryClass.spellcastingAbility.map { ability =>
       proficiencyBonus + modifier(ability)
     }
 
@@ -141,10 +150,10 @@ final case class Character(
     weapon.properties.toList.sortBy(_.ordinal).map(_.toString).mkString(", ")
 
   def spellProgression: Option[SpellSlotRow] =
-    SpellProgression.forClass(dndClass, level)
+    SpellProgression.forClass(primaryClass, primaryClassLevel)
 
   def isSpellcaster: Boolean =
-    dndClass.spellcastingAbility.isDefined
+    primaryClass.spellcastingAbility.isDefined
 
   def equipmentSummary: String = {
     val armorStr = equippedArmor.fold("Unarmored")(_.name)
@@ -152,4 +161,11 @@ final case class Character(
     val weaponStr = if equippedWeapons.isEmpty then "" else ", " + equippedWeapons.map(_.name).mkString(", ")
     armorStr + shieldStr + weaponStr
   }
+
+  def hitDiceString: String =
+    classLevels.map(cl => s"${cl.classLevel}d${cl.dndClass.hitDie.sides}").mkString(" + ")
+
+  def classLabel: String =
+    if classLevels.size == 1 then primaryClass.name
+    else classLevels.map(cl => s"${cl.dndClass.name} ${cl.classLevel}").mkString(" / ")
 }

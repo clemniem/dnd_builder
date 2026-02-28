@@ -26,7 +26,7 @@ object CharacterSheetPdf {
     val testChar = Character(
       "Thorn Ironfist",
       Dwarf,
-      Fighter,
+      List(ClassLevel(Fighter, 1)),
       Soldier,
       AbilityScores(15, 14, 13, 8, 10, 12),
       BackgroundBonus.TwoPlusOne(Ability.Strength, Ability.Constitution),
@@ -50,8 +50,7 @@ object CharacterSheetPdf {
           Weapon.byName("Greatsword").get
         )
       ),
-      Dwarf.languages,
-      1
+      Dwarf.languages
     )
     generate(testChar)
   }
@@ -116,10 +115,10 @@ object CharacterSheetPdf {
 
   private def fillHeader(form: js.Dynamic, ch: Character): Unit = {
     setField(form, "Name", ch.name)
-    setField(form, "Class", ch.dndClass.name)
+    setField(form, "Class", ch.classLabel)
     setField(form, "Species", ch.species.name)
     setField(form, "Background", ch.background.name)
-    setField(form, "Level", ch.level.toString)
+    setField(form, "Level", ch.characterLevel.toString)
     setField(form, "XP Points", "0")
     ch.species.subLabel.foreach { sub =>
       setField(form, "Subclass", sub)
@@ -129,8 +128,7 @@ object CharacterSheetPdf {
   private def fillCombatStats(form: js.Dynamic, ch: Character): Unit = {
     setField(form, "Armor Class", ch.armorClass.toString)
     setField(form, "Max HP", ch.maxHitPoints.toString)
-    val hitDiceStr = s"${ch.level}d${ch.dndClass.hitDie.sides}"
-    setField(form, "Max HD", hitDiceStr)
+    setField(form, "Max HD", ch.hitDiceString)
     // Spent HD: left empty for the player to fill during play (count spent since last long rest)
     setFieldSized(form, "PROF BONUS", modStr(ch.proficiencyBonus), 12)
     setField(form, "PASSIVE PERCEPTION", ch.passivePerception.toString)
@@ -234,7 +232,7 @@ object CharacterSheetPdf {
     }
 
   private def fillArmorProficiencies(form: js.Dynamic, ch: Character): Unit = {
-    val profs = ch.dndClass.armorProficiencies
+    val profs = ch.primaryClass.armorProficiencies
     if profs.contains(ArmorType.Light) then checkBox(form, "Check Box33")
     if profs.contains(ArmorType.Medium) then checkBox(form, "Check Box34")
     if profs.contains(ArmorType.Heavy) then checkBox(form, "Check Box35")
@@ -254,7 +252,7 @@ object CharacterSheetPdf {
     }
 
   private def fillSpellcasting(form: js.Dynamic, ch: Character): Unit = {
-    ch.dndClass.spellcastingAbility.foreach { ability =>
+    ch.primaryClass.spellcastingAbility.foreach { ability =>
       setField(form, "SPELLCASTING ABILITY", ability.label)
       setField(form, "SPELLCASTING MOD", modStr(ch.modifier(ability)))
       ch.spellSaveDC.foreach(dc => setField(form, "SPELL SAVE DC", dc.toString))
@@ -266,8 +264,11 @@ object CharacterSheetPdf {
     ch.preparedSpells.zipWithIndex.foreach { case (spell, idx) =>
       trySetField(form, s"SPELL LVL1 ${idx + 1}", spell.name)
     }
-    if ch.dndClass.level1SpellSlots > 0 then
-      trySetField(form, "SPELL SLOTS LVL1", ch.dndClass.level1SpellSlots.toString)
+    ch.spellProgression.foreach { row =>
+      row.slots.zipWithIndex.foreach { case (n, i) =>
+        if n > 0 then trySetField(form, s"SPELL SLOTS LVL${i + 1}", n.toString)
+      }
+    }
   }
 
   private def trySetField(form: js.Dynamic, name: String, value: String): Unit =
@@ -285,7 +286,7 @@ object CharacterSheetPdf {
   private def fillProficienciesAndFeatures(form: js.Dynamic, ch: Character): Unit = {
     val langStr = ch.languages.toList.sortBy(_.label).map(_.label).mkString(", ")
     trySetField(form, "LANGUAGES", langStr)
-    setFieldPadded(form, "WEAPON PROF", ch.dndClass.weaponSummary, 4)
+    setFieldPadded(form, "WEAPON PROF", ch.primaryClass.weaponSummary, 4)
     setFieldPadded(form, "TOOL PROF", ch.background.toolProficiency, 2)
     val featText = ch.originFeat.name + ":\n" + ch.originFeat.description
     setFieldPadded(form, "FEATS", featText, 28)
@@ -293,7 +294,7 @@ object CharacterSheetPdf {
     val traitsText = ch.species.traits.map(t => s" * $t").mkString("\n")
     setFieldPadded(form, "SPECIES TRAITS", traitsText, 25)
 
-    val features = ch.dndClass.level1Features
+    val features = ClassProgression.featuresUpToLevel(ch.primaryClass, ch.primaryClassLevel)
     val featureLines = features.map(f => featureLine(f, ch))
     val mid = (featureLines.size + 1) / 2
     val col1Text = featureLines.take(mid).mkString("\n")

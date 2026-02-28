@@ -147,7 +147,7 @@ object AbilityScoresScreen extends Screen {
     val bonusUsed  = model.backgroundBonus.totalPoints
 
     div(`class` := "screen-container")(
-      StepIndicator(4, cls.isSpellcaster),
+      StepIndicator(5, cls.isSpellcaster),
       StepNav("< Background", AbilityScoresMsg.Back, "Next: Skills >", AbilityScoresMsg.Next, bonusUsed == 3),
       h1(`class` := "screen-title")(text("Ability Scores")),
       p(`class` := "screen-intro")(text("Assign your ability scores and distribute background bonuses.")),

@@ -22,6 +22,7 @@ object App extends TyrianIOApp[RootMsg, RootModel] {
         AboutScreen,
         SpeciesScreen,
         ClassSelectScreen,
+        LevelSelectScreen,
         BackgroundScreen,
         AbilityScoresScreen,
         SkillsScreen,
@@ -31,7 +32,8 @@ object App extends TyrianIOApp[RootMsg, RootModel] {
         LanguagesScreen,
         ReviewScreen,
         CharacterGalleryScreen,
-        CharacterDetailScreen
+        CharacterDetailScreen,
+        LevelUpScreen
       ),
       initialScreenId = ScreenId.HomeId
     )

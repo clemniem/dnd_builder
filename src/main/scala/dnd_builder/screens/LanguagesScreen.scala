@@ -68,7 +68,7 @@ object LanguagesScreen extends Screen {
     val cls = model.draft.dndClass.getOrElse(Barbarian)
     val granted = sp.languages
     val needChoices = cls.extraLanguageChoices
-    val step = if cls.isSpellcaster then 9 else 8
+    val step = if cls.isSpellcaster then 10 else 9
     div(`class` := "screen-container")(
       StepIndicator(step, cls.isSpellcaster),
       StepNav(

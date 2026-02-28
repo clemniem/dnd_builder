@@ -211,11 +211,22 @@ object Codecs {
     Background.all.find(_.name == s).toRight(s"Unknown background: $s")
   }
 
+  given Encoder[ClassLevel] = Encoder.instance { cl =>
+    Json.obj("dndClass" -> cl.dndClass.asJson, "classLevel" -> cl.classLevel.asJson)
+  }
+
+  given Decoder[ClassLevel] = Decoder.instance { c =>
+    for {
+      cls <- c.downField("dndClass").as[DndClass]
+      lvl <- c.downField("classLevel").as[Int]
+    } yield ClassLevel(cls, lvl)
+  }
+
   given Encoder[Character] = Encoder.instance { ch =>
     Json.obj(
       "name"             -> ch.name.asJson,
       "species"          -> ch.species.asJson,
-      "dndClass"         -> ch.dndClass.asJson,
+      "classLevels"      -> ch.classLevels.asJson,
       "background"       -> ch.background.asJson,
       "baseScores"       -> ch.baseScores.asJson,
       "backgroundBonus"  -> ch.backgroundBonus.asJson,
@@ -227,8 +238,7 @@ object Codecs {
       "preparedSpells"   -> ch.preparedSpells.asJson,
       "spellbookSpells"  -> ch.spellbookSpells.asJson,
       "featureSelections" -> ch.featureSelections.asJson,
-      "languages"        -> ch.languages.toList.asJson,
-      "level"            -> ch.level.asJson
+      "languages"        -> ch.languages.toList.asJson
     )
   }
 
@@ -236,7 +246,7 @@ object Codecs {
     for {
       name   <- c.downField("name").as[String]
       sp     <- c.downField("species").as[Species]
-      cls    <- c.downField("dndClass").as[DndClass]
+      classLevels <- c.downField("classLevels").as[List[ClassLevel]]
       bg     <- c.downField("background").as[Background]
       scores <- c.downField("baseScores").as[AbilityScores]
       bonus  <- c.downField("backgroundBonus").as[BackgroundBonus]
@@ -249,9 +259,8 @@ object Codecs {
       spellbook <- c.downField("spellbookSpells").as[Option[List[Spell]]].map(_.getOrElse(Nil))
       featureSelections <- c.downField("featureSelections").as[Option[ClassFeatureSelections]].map(_.getOrElse(ClassFeatureSelections.empty))
       languages <- c.downField("languages").as[Option[List[Language]]].map(_.fold(sp.languages.toList)(identity))
-      level  <- c.downField("level").as[Int]
     }
-    yield Character(name, sp, cls, bg, scores, bonus, skills.toSet, armor, shield, weapons, cantrips, prepared, spellbook,
-      featureSelections, languages.toSet, level)
+    yield Character(name, sp, classLevels, bg, scores, bonus, skills.toSet, armor, shield, weapons, cantrips, prepared, spellbook,
+      featureSelections, languages.toSet)
   }
 }

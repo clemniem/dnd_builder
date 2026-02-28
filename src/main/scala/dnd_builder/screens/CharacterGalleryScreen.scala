@@ -121,7 +121,7 @@ object CharacterGalleryScreen extends Screen {
       div(`class` := "gallery-card-body")(
         div(`class` := "gallery-card-title")(text(ch.name)),
         div(`class` := "gallery-card-meta")(
-          text(s"Level ${ch.level} ${ch.species.name} ${ch.dndClass.name}")
+          text(s"Level ${ch.characterLevel} ${ch.species.name} ${ch.classLabel}")
         ),
         div(`class` := "flex-row", style := "margin-top: 0.3rem; gap: 0.3rem;")(
           span(`class` := "badge")(text(s"HP ${ch.maxHitPoints}")),

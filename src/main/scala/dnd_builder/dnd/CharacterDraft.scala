@@ -4,6 +4,7 @@ package dndbuilder.dnd
 case class CharacterDraft(
     species: Option[Species],
     dndClass: Option[DndClass],
+    level: Option[Int],
     background: Option[Background],
     baseScores: Option[AbilityScores],
     backgroundBonus: Option[BackgroundBonus],
@@ -20,7 +21,7 @@ case class CharacterDraft(
 
 object CharacterDraft {
   val empty: CharacterDraft = CharacterDraft(
-    None, None, None, None, None, Set.empty,
+    None, None, Some(1), None, None, None, Set.empty,
     None, false, Nil, Nil, Nil, Nil,
     ClassFeatureSelections.empty, Set.empty
   )

@@ -63,3 +63,5 @@ enum SpellList(val label: String) {
 enum ProficiencyLevel {
   case None, Proficient, Expertise
 }
+
+final case class ClassLevel(dndClass: DndClass, classLevel: Int)

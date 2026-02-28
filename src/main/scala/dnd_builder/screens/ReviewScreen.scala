@@ -36,11 +36,12 @@ object ReviewScreen extends Screen {
       val scores = d.baseScores.getOrElse(AbilityScores.default)
       val bonus = d.backgroundBonus.getOrElse(BackgroundBonus.ThreePlusOnes(Ability.Strength, Ability.Dexterity, Ability.Constitution))
       val languages = sp.languages ++ d.chosenExtraLanguages
+      val lvl = d.level.getOrElse(1)
       val result = CharacterValidator.validate(
         model.name, sp, cls, bg, scores, bonus, d.chosenSkills,
         d.equippedArmor, d.equippedShield, d.equippedWeapons,
         d.chosenCantrips, d.preparedSpells, d.spellbookSpells,
-        d.featureSelections, languages, 1
+        d.featureSelections, languages, lvl
       )
       result match {
         case Left(errors) =>
@@ -92,12 +93,13 @@ object ReviewScreen extends Screen {
     val scores = d.baseScores.getOrElse(AbilityScores.default)
     val bonus = d.backgroundBonus.getOrElse(BackgroundBonus.ThreePlusOnes(Ability.Strength, Ability.Dexterity, Ability.Constitution))
     val languages = sp.languages ++ d.chosenExtraLanguages
+    val lvl = d.level.getOrElse(1)
     Character(
       if model.name.trim.isEmpty then "Unnamed Hero" else model.name,
-      sp, cls, bg, scores, bonus, d.chosenSkills,
+      sp, List(ClassLevel(cls, lvl)), bg, scores, bonus, d.chosenSkills,
       d.equippedArmor, d.equippedShield, d.equippedWeapons,
       d.chosenCantrips, d.preparedSpells, d.spellbookSpells,
-      d.featureSelections, languages, 1
+      d.featureSelections, languages
     )
   }
 
@@ -106,7 +108,7 @@ object ReviewScreen extends Screen {
     val character = buildCharacter(model)
 
     div(`class` := "screen-container")(
-      StepIndicator(if cls.isSpellcaster then 10 else 9, cls.isSpellcaster),
+      StepIndicator(if cls.isSpellcaster then 11 else 10, cls.isSpellcaster),
       StepNav(
         "< Languages",
         ReviewMsg.Back, if model.saving then "Saving..." else "Save Character", ReviewMsg.Save, !model.saving),
@@ -130,32 +132,35 @@ object ReviewScreen extends Screen {
       errors.map(e => div(text(e)))*
     )
 
-  private def characterSummary(ch: Character): Html[Msg] =
+  private def characterSummary(ch: Character): Html[Msg] = {
+    val prog = ch.spellProgression
     div(
       div(`class` := "flex-row", style := "margin-bottom: 0.5rem; gap: 0.5rem;")(
-        span(`class` := "badge")(text(ch.dndClass.name)),
+        span(`class` := "badge")(text(s"Level ${ch.characterLevel}")),
+        span(`class` := "badge")(text(ch.classLabel)),
         span(`class` := "badge")(text(ch.species.name)),
         ch.species.subLabel.map(s => span(`class` := "badge")(text(s))).getOrElse(span()),
         span(`class` := "badge")(text(ch.background.name)),
         span(`class` := "badge badge--feat")(text(ch.originFeat.name))
       ),
       div(`class` := "stat-block")(
-        statBox("HP", ch.maxHitPoints.toString, s"d${ch.dndClass.hitDie.sides}"),
+        statBox("HP", ch.maxHitPoints.toString, s"d${ch.primaryClass.hitDie.sides}"),
         statBox("AC", ch.armorClass.toString, "unarmored"),
         statBox("Speed", s"${ch.speed}ft", ""),
         statBox("Initiative", AbilityScores.modifierString(10 + ch.initiative), ""),
         statBox("Prof. Bonus", s"+${ch.proficiencyBonus}", ""),
         statBox("Passive Perc.", ch.passivePerception.toString, "")
       ),
-      ch.spellSaveDC match {
-        case Some(dc) =>
+      (ch.spellSaveDC, prog) match {
+        case (Some(dc), Some(row)) =>
+          val slotsStr = row.slots.zipWithIndex.collect { case (n, i) if n > 0 => s"Lv${i + 1}: $n" }.mkString(" ")
           div(`class` := "stat-block")(
             statBox("Spell Save DC", dc.toString, ""),
             statBox("Spell Attack", AbilityScores.modifierString(ch.spellAttackBonus.getOrElse(0)), ""),
-            statBox("Cantrips", ch.dndClass.cantripsKnown.toString, ""),
-            statBox("Spell Slots", ch.dndClass.level1SpellSlots.toString, "Level 1")
+            (if row.cantrips > 0 then statBox("Cantrips", row.cantrips.toString, "") else div()),
+            statBox("Spell Slots", slotsStr, "")
           )
-        case None => div()
+        case _ => div()
       },
       div(`class` := "section-title")(text("Ability Scores")),
       table(`class` := "ability-table")(
@@ -185,7 +190,7 @@ object ReviewScreen extends Screen {
       ),
       div(`class` := "section-title")(text("Class Features")),
       div(`class` := "feature-list")(
-        ch.dndClass.level1Features.map { f =>
+        ClassProgression.featuresUpToLevel(ch.primaryClass, ch.primaryClassLevel).map { f =>
           div(`class` := "feature-item")(
             div(`class` := "feature-name")(text(f.name)),
             div(`class` := "feature-desc")(text(f.description))
@@ -215,11 +220,12 @@ object ReviewScreen extends Screen {
       ),
       div(`class` := "section-title")(text("Proficiencies")),
       div(style := "font-size: 0.85rem; color: var(--color-text-muted);")(
-        div(text(s"Armor: ${if ch.dndClass.armorProficiencies.isEmpty then "None" else ch.dndClass.armorProficiencies.map(_.label).mkString(", ")}")),
-        div(text(s"Weapons: ${ch.dndClass.weaponSummary}")),
+        div(text(s"Armor: ${if ch.primaryClass.armorProficiencies.isEmpty then "None" else ch.primaryClass.armorProficiencies.map(_.label).mkString(", ")}")),
+        div(text(s"Weapons: ${ch.primaryClass.weaponSummary}")),
         div(text(s"Tools: ${ch.background.toolProficiency}"))
       )
     )
+  }
 
   private def spellsSummary(ch: Character): Html[Msg] =
     if !ch.isSpellcaster then div()

@@ -99,17 +99,25 @@ object CharacterValidator {
 
   def validateSpells(
       dndClass: DndClass,
+      level: Int,
       chosenCantrips: List[Spell],
       preparedSpells: List[Spell],
       spellbookSpells: List[Spell]
   ): List[ValidationError] =
     if !dndClass.isSpellcaster then Nil
     else {
+      val prog = SpellProgression.forClass(dndClass, level)
+      val expectedCantrips = prog.map(_.cantrips).getOrElse(0)
+      val expectedPrepared = prog.map(_.preparedSpells).getOrElse(0)
+      val maxSpellLevel = SpellProgression.maxSpellLevelForSlots(dndClass, level)
+      val isWizard = dndClass == Wizard
+      val expectedSpellbook = if isWizard then SpellProgression.wizardSpellbookSize(level) else 0
+
       val cantripErrors =
-        if dndClass.cantripsKnown > 0 then {
+        if expectedCantrips > 0 then {
           val countErr =
-            if chosenCantrips.size != dndClass.cantripsKnown then
-              List(ValidationError.WrongCantripCount(chosenCantrips.size, dndClass.cantripsKnown))
+            if chosenCantrips.size != expectedCantrips then
+              List(ValidationError.WrongCantripCount(chosenCantrips.size, expectedCantrips))
             else Nil
           val classErr = chosenCantrips.flatMap { s =>
             if !s.availableToClass(dndClass) || s.level != 0 then
@@ -124,13 +132,13 @@ object CharacterValidator {
         else Nil
 
       val spellbookErrors =
-        if dndClass.spellbookSize > 0 then {
+        if expectedSpellbook > 0 then {
           val countErr =
-            if spellbookSpells.size != dndClass.spellbookSize then
-              List(ValidationError.WrongSpellbookCount(spellbookSpells.size, dndClass.spellbookSize))
+            if spellbookSpells.size != expectedSpellbook then
+              List(ValidationError.WrongSpellbookCount(spellbookSpells.size, expectedSpellbook))
             else Nil
           val classErr = spellbookSpells.flatMap { s =>
-            if !s.availableToClass(dndClass) || s.level != 1 then
+            if !s.availableToClass(dndClass) || s.level < 1 || s.level > maxSpellLevel then
               List(ValidationError.PreparedNotOnClassList(s.name))
             else Nil
           }
@@ -139,13 +147,13 @@ object CharacterValidator {
         else Nil
 
       val preparedErrors =
-        if dndClass.numPreparedSpells > 0 then {
+        if expectedPrepared > 0 then {
           val countErr =
-            if preparedSpells.size != dndClass.numPreparedSpells then
-              List(ValidationError.WrongPreparedCount(preparedSpells.size, dndClass.numPreparedSpells))
+            if preparedSpells.size != expectedPrepared then
+              List(ValidationError.WrongPreparedCount(preparedSpells.size, expectedPrepared))
             else Nil
           val sourceErr =
-            if dndClass.spellbookSize > 0 then
+            if isWizard then
               preparedSpells.flatMap { s =>
                 if !spellbookSpells.exists(_.name == s.name) then
                   List(ValidationError.PreparedNotInSpellbook(s.name))
@@ -153,7 +161,7 @@ object CharacterValidator {
               }
             else
               preparedSpells.flatMap { s =>
-                if !s.availableToClass(dndClass) || s.level != 1 then
+                if !s.availableToClass(dndClass) || s.level < 1 || s.level > maxSpellLevel then
                   List(ValidationError.PreparedNotOnClassList(s.name))
                 else Nil
               }
@@ -191,11 +199,12 @@ object CharacterValidator {
       validateBackgroundBonus(bonus, background) ++
       validateFinalScores(finalScores) ++
       validateSkillSelection(chosenSkills, dndClass, background) ++
-      validateSpells(dndClass, chosenCantrips, preparedSpells, spellbookSpells)
+      validateSpells(dndClass, level, chosenCantrips, preparedSpells, spellbookSpells)
 
+    val classLevels = List(ClassLevel(dndClass, level))
     if errors.nonEmpty then Left(errors)
-    else Right(Character(name, species, dndClass, background, baseScores, bonus, chosenSkills,
+    else Right(Character(name, species, classLevels, background, baseScores, bonus, chosenSkills,
       equippedArmor, equippedShield, equippedWeapons, chosenCantrips, preparedSpells, spellbookSpells,
-      featureSelections, languages, level))
+      featureSelections, languages))
   }
 }
