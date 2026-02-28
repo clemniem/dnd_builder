@@ -10,6 +10,16 @@ object CharacterSheetPdf:
   private val pdfUrl =
     "https://raw.githubusercontent.com/birddie721/5e2024Builder/main/Character-Sheet.pdf"
 
+  /** Logs all PDF form field names as a single JSON array (easy to copy from console). Run in browser console to find exact names (e.g. for Hit Dice). */
+  @JSExportTopLevel("listPdfFields")
+  def listPdfFields(): Unit =
+    PdfLib.loadFromUrl(pdfUrl) { doc =>
+      val form = PdfLib.getForm(doc)
+      val names = PdfLib.getFieldNames(form).sorted
+      val json = "[" + names.map(n => "\"" + n.replace("\\", "\\\\").replace("\"", "\\\"") + "\"").mkString(", ") + "]"
+      org.scalajs.dom.console.log(json)
+    } { err => org.scalajs.dom.console.error(err) }
+
   /** Test character for testPdf(): must exercise every filled section (header, combat incl. hit dice, abilities, saves, skills, armor, weapons, spellcasting, currency, feats/traits/class features). When adding new form fields, add filling logic and ensure this character covers them. */
   @JSExportTopLevel("testPdf")
   def generateTest(): Unit =
@@ -92,8 +102,8 @@ object CharacterSheetPdf:
     setField(form, "Armor Class", ch.armorClass.toString)
     setField(form, "Max HP", ch.maxHitPoints.toString)
     val hitDiceStr = s"${ch.level}d${ch.dndClass.hitDie.sides}"
-    trySetField(form, "HIT DICE", hitDiceStr)
-    trySetField(form, "Hit Dice", hitDiceStr)
+    setField(form, "Max HD", hitDiceStr)
+    // Spent HD: left empty for the player to fill during play (count spent since last long rest)
     setFieldSized(form, "PROF BONUS", modStr(ch.proficiencyBonus), 12)
     setField(form, "PASSIVE PERCEPTION", ch.passivePerception.toString)
     setFieldSized(form, "init", modStr(ch.initiative), 12)

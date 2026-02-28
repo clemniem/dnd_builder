@@ -2,8 +2,9 @@
 // import { jsPDF } from "jspdf";
 // window.jspdf = { jsPDF };
 
-import { TyrianApp, testPdf } from "./target/scalajs-dev/main.js";
+import { TyrianApp, testPdf, listPdfFields } from "./target/scalajs-dev/main.js";
 
 window.testPdf = testPdf;
+window.listPdfFields = listPdfFields;
 
 TyrianApp.launch("myapp");

@@ -27,6 +27,10 @@ object PdfLib:
   def getForm(doc: js.Dynamic): js.Dynamic =
     doc.getForm()
 
+  def getFieldNames(form: js.Dynamic): scala.collection.Seq[String] =
+    val fields = form.getFields().asInstanceOf[js.Array[js.Dynamic]]
+    (0 until fields.length).map(i => fields(i).getName().asInstanceOf[String])
+
   def getTextField(form: js.Dynamic, name: String): js.Dynamic =
     form.getTextField(name)
 
