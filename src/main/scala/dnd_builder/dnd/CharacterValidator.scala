@@ -1,6 +1,6 @@
 package dndbuilder.dnd
 
-enum ValidationError(val message: String):
+enum ValidationError(val message: String) {
   case EmptyName extends ValidationError("Character name cannot be empty.")
   case ScoreOutOfRange(ability: Ability, score: Int)
     extends ValidationError(s"${ability.label} score $score is out of valid range (1-30).")
@@ -32,8 +32,9 @@ enum ValidationError(val message: String):
     extends ValidationError(s"Expected $expected spellbook spells, but got $chosen.")
   case DuplicateSpell(spellName: String)
     extends ValidationError(s"$spellName is selected more than once.")
+}
 
-object CharacterValidator:
+object CharacterValidator {
 
   def validateName(name: String): List[ValidationError] =
     if name.trim.isEmpty then List(ValidationError.EmptyName) else Nil
@@ -44,21 +45,23 @@ object CharacterValidator:
       else Nil
     }
 
-  def validatePointBuy(scores: AbilityScores): List[ValidationError] =
+  def validatePointBuy(scores: AbilityScores): List[ValidationError] = {
     val rangeErrors = scores.toList.flatMap { case (ability, value) =>
       if value < 8 || value > 15 then List(ValidationError.PointBuyScoreOutOfRange(ability, value))
       else Nil
     }
     if rangeErrors.nonEmpty then rangeErrors
     else
-      scores.totalPointBuyCost match
+      scores.totalPointBuyCost match {
         case Left(_) => Nil
         case Right(total) =>
           if total > AbilityScores.pointBuyTotal then
             List(ValidationError.PointBuyOverBudget(total))
           else Nil
+      }
+  }
 
-  def validateBackgroundBonus(bonus: BackgroundBonus, background: Background): List[ValidationError] =
+  def validateBackgroundBonus(bonus: BackgroundBonus, background: Background): List[ValidationError] = {
     val allowed = background.abilityOptionsList.toSet
     val abilityErrors = bonus.increases.flatMap { case (ability, _) =>
       if !allowed.contains(ability) then List(ValidationError.BonusAbilityNotAllowed(ability))
@@ -68,12 +71,13 @@ object CharacterValidator:
       if bonus.totalPoints != 3 then List(ValidationError.BonusTotalWrong(bonus.totalPoints))
       else Nil
     abilityErrors ++ totalError
+  }
 
   def validateSkillSelection(
       chosen: Set[Skill],
       dndClass: DndClass,
       background: Background
-  ): List[ValidationError] =
+  ): List[ValidationError] = {
     val bgSkills = background.skillProficiencySet
     val pool     = dndClass.skillPool -- bgSkills
     val expected = dndClass.numSkillChoices
@@ -91,6 +95,7 @@ object CharacterValidator:
       else Nil
 
     bgOverlap ++ notInPool ++ countError
+  }
 
   def validateSpells(
       dndClass: DndClass,
@@ -99,9 +104,9 @@ object CharacterValidator:
       spellbookSpells: List[Spell]
   ): List[ValidationError] =
     if !dndClass.isSpellcaster then Nil
-    else
+    else {
       val cantripErrors =
-        if dndClass.cantripsKnown > 0 then
+        if dndClass.cantripsKnown > 0 then {
           val countErr =
             if chosenCantrips.size != dndClass.cantripsKnown then
               List(ValidationError.WrongCantripCount(chosenCantrips.size, dndClass.cantripsKnown))
@@ -115,10 +120,11 @@ object CharacterValidator:
             if spells.size > 1 then List(ValidationError.DuplicateSpell(nm)) else Nil
           }
           countErr ++ classErr ++ dupErr
+        }
         else Nil
 
       val spellbookErrors =
-        if dndClass.spellbookSize > 0 then
+        if dndClass.spellbookSize > 0 then {
           val countErr =
             if spellbookSpells.size != dndClass.spellbookSize then
               List(ValidationError.WrongSpellbookCount(spellbookSpells.size, dndClass.spellbookSize))
@@ -129,10 +135,11 @@ object CharacterValidator:
             else Nil
           }
           countErr ++ classErr
+        }
         else Nil
 
       val preparedErrors =
-        if dndClass.numPreparedSpells > 0 then
+        if dndClass.numPreparedSpells > 0 then {
           val countErr =
             if preparedSpells.size != dndClass.numPreparedSpells then
               List(ValidationError.WrongPreparedCount(preparedSpells.size, dndClass.numPreparedSpells))
@@ -154,9 +161,11 @@ object CharacterValidator:
             if spells.size > 1 then List(ValidationError.DuplicateSpell(nm)) else Nil
           }
           countErr ++ sourceErr ++ dupErr
+        }
         else Nil
 
       cantripErrors ++ spellbookErrors ++ preparedErrors
+    }
 
   def validate(
       name: String,
@@ -173,8 +182,9 @@ object CharacterValidator:
       preparedSpells: List[Spell],
       spellbookSpells: List[Spell],
       featureSelections: ClassFeatureSelections,
+      languages: Set[Language],
       level: Int
-  ): Either[List[ValidationError], Character] =
+  ): Either[List[ValidationError], Character] = {
     val finalScores = AbilityScores.applyBonus(baseScores, bonus)
     val errors =
       validateName(name) ++
@@ -186,4 +196,6 @@ object CharacterValidator:
     if errors.nonEmpty then Left(errors)
     else Right(Character(name, species, dndClass, background, baseScores, bonus, chosenSkills,
       equippedArmor, equippedShield, equippedWeapons, chosenCantrips, preparedSpells, spellbookSpells,
-      featureSelections, level))
+      featureSelections, languages, level))
+  }
+}

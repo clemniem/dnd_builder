@@ -5,7 +5,7 @@ import dndbuilder.dnd.*
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExportTopLevel
 
-object CharacterSheetPdf:
+object CharacterSheetPdf {
 
   private val pdfUrl =
     "https://raw.githubusercontent.com/birddie721/5e2024Builder/main/Character-Sheet.pdf"
@@ -22,7 +22,7 @@ object CharacterSheetPdf:
 
   /** Test character for testPdf(): must exercise every filled section (header, combat incl. hit dice, abilities, saves, skills, armor, weapons, spellcasting, currency, feats/traits/class features). When adding new form fields, add filling logic and ensure this character covers them. */
   @JSExportTopLevel("testPdf")
-  def generateTest(): Unit =
+  def generateTest(): Unit = {
     val testChar = Character(
       "Thorn Ironfist",
       Dwarf,
@@ -50,15 +50,17 @@ object CharacterSheetPdf:
           Weapon.byName("Greatsword").get
         )
       ),
+      Dwarf.languages,
       1
     )
     generate(testChar)
+  }
 
-  def generate(ch: Character): Unit =
+  def generate(ch: Character): Unit = {
     org.scalajs.dom.console.log("[Export PDF] generate() called")
     PdfLib.loadFromUrl(pdfUrl) { doc =>
       org.scalajs.dom.console.log("[Export PDF] PDF loaded, filling form")
-      try
+      try {
         val form = PdfLib.getForm(doc)
         fillHeader(form, ch)
         fillCombatStats(form, ch)
@@ -74,31 +76,37 @@ object CharacterSheetPdf:
         val filename = if safeName.isEmpty then "character-sheet.pdf" else s"$safeName.pdf"
         PdfLib.saveAndOpen(doc, filename)
         org.scalajs.dom.console.log("[Export PDF] saveAndOpen called")
-      catch
+      }
+      catch {
         case t: Throwable =>
           org.scalajs.dom.console.error("PDF fill/save error:", t)
+      }
     } { error =>
       org.scalajs.dom.console.error(s"PDF generation failed: $error")
     }
+  }
 
   private def setField(form: js.Dynamic, name: String, value: String): Unit =
     PdfLib.setText(PdfLib.getTextField(form, name), value)
 
-  private def setFieldSized(form: js.Dynamic, name: String, value: String, pt: Int): Unit =
+  private def setFieldSized(form: js.Dynamic, name: String, value: String, pt: Int): Unit = {
     val field = PdfLib.getTextField(form, name)
     PdfLib.removeMaxLength(field)
     PdfLib.setFontSize(field, pt)
     PdfLib.setText(field, value)
+  }
 
-  private def padToLines(text: String, targetLines: Int): String =
+  private def padToLines(text: String, targetLines: Int): String = {
     val currentLines = text.count(_ == '\n') + 1
     val padding = math.max(0, targetLines - currentLines)
     text + "\n" * padding
+  }
 
-  private def setFieldPadded(form: js.Dynamic, name: String, value: String, targetLines: Int): Unit =
+  private def setFieldPadded(form: js.Dynamic, name: String, value: String, targetLines: Int): Unit = {
     val field = PdfLib.getTextField(form, name)
     PdfLib.removeMaxLength(field)
     PdfLib.setText(field, padToLines(value, targetLines))
+  }
 
   private def checkBox(form: js.Dynamic, name: String): Unit =
     PdfLib.check(PdfLib.getCheckBox(form, name))
@@ -106,7 +114,7 @@ object CharacterSheetPdf:
   private def modStr(v: Int): String =
     if v >= 0 then s"+$v" else v.toString
 
-  private def fillHeader(form: js.Dynamic, ch: Character): Unit =
+  private def fillHeader(form: js.Dynamic, ch: Character): Unit = {
     setField(form, "Name", ch.name)
     setField(form, "Class", ch.dndClass.name)
     setField(form, "Species", ch.species.name)
@@ -116,8 +124,9 @@ object CharacterSheetPdf:
     ch.species.subLabel.foreach { sub =>
       setField(form, "Subclass", sub)
     }
+  }
 
-  private def fillCombatStats(form: js.Dynamic, ch: Character): Unit =
+  private def fillCombatStats(form: js.Dynamic, ch: Character): Unit = {
     setField(form, "Armor Class", ch.armorClass.toString)
     setField(form, "Max HP", ch.maxHitPoints.toString)
     val hitDiceStr = s"${ch.level}d${ch.dndClass.hitDie.sides}"
@@ -128,8 +137,9 @@ object CharacterSheetPdf:
     setFieldSized(form, "init", modStr(ch.initiative), 12)
     setField(form, "SPEED", s"${ch.speed}ft")
     setField(form, "SIZE", ch.species.size.label)
+  }
 
-  private def fillAbilityScores(form: js.Dynamic, ch: Character): Unit =
+  private def fillAbilityScores(form: js.Dynamic, ch: Character): Unit = {
     val scores = ch.finalScores
     val abilities = List(
       ("STR", Ability.Strength),
@@ -145,6 +155,7 @@ object CharacterSheetPdf:
       setField(form, s"$abbr SCORE", score.toString)
       setFieldSized(form, s"$abbr MOD", modStr(mod), 14)
     }
+  }
 
   private val saveCheckboxes: Map[Ability, String] = Map(
     Ability.Strength     -> "Check Box18",
@@ -222,25 +233,27 @@ object CharacterSheetPdf:
         skillCheckboxes.get(skill).foreach(c => checkBox(form, c))
     }
 
-  private def fillArmorProficiencies(form: js.Dynamic, ch: Character): Unit =
+  private def fillArmorProficiencies(form: js.Dynamic, ch: Character): Unit = {
     val profs = ch.dndClass.armorProficiencies
     if profs.contains(ArmorType.Light) then checkBox(form, "Check Box33")
     if profs.contains(ArmorType.Medium) then checkBox(form, "Check Box34")
     if profs.contains(ArmorType.Heavy) then checkBox(form, "Check Box35")
     if profs.contains(ArmorType.Shield) then checkBox(form, "Check Box36")
     if ch.equippedShield then checkBox(form, "shield chk")
+  }
 
   private def fillWeapons(form: js.Dynamic, ch: Character): Unit =
     ch.equippedWeapons.zipWithIndex.foreach { case (weapon, idx) =>
       val n = idx + 1
-      if n <= 6 then
+      if n <= 6 then {
         setField(form, s"NAME - WEAPON $n", weapon.name)
         setField(form, s"BONUS/DC - WEAPON $n", modStr(ch.weaponAttackBonus(weapon)))
         setField(form, s"DAMAGE/TYPE - WEAPON $n", ch.weaponDamageString(weapon))
         setField(form, s"NOTES - WEAPON $n", ch.weaponPropertiesSummary(weapon))
+      }
     }
 
-  private def fillSpellcasting(form: js.Dynamic, ch: Character): Unit =
+  private def fillSpellcasting(form: js.Dynamic, ch: Character): Unit = {
     ch.dndClass.spellcastingAbility.foreach { ability =>
       setField(form, "SPELLCASTING ABILITY", ability.label)
       setField(form, "SPELLCASTING MOD", modStr(ch.modifier(ability)))
@@ -255,26 +268,30 @@ object CharacterSheetPdf:
     }
     if ch.dndClass.level1SpellSlots > 0 then
       trySetField(form, "SPELL SLOTS LVL1", ch.dndClass.level1SpellSlots.toString)
+  }
 
   private def trySetField(form: js.Dynamic, name: String, value: String): Unit =
     try setField(form, name, value)
     catch case _: Throwable => ()
 
-  private def fillCurrency(form: js.Dynamic, ch: Character): Unit =
+  private def fillCurrency(form: js.Dynamic, ch: Character): Unit = {
     setField(form, "GP", ch.background.startingGold.toString)
     setField(form, "CP", "0")
     setField(form, "SP", "0")
     setField(form, "EP", "0")
     setField(form, "PP", "0")
+  }
 
-  private def fillProficienciesAndFeatures(form: js.Dynamic, ch: Character): Unit =
+  private def fillProficienciesAndFeatures(form: js.Dynamic, ch: Character): Unit = {
+    val langStr = ch.languages.toList.sortBy(_.label).map(_.label).mkString(", ")
+    trySetField(form, "LANGUAGES", langStr)
     setFieldPadded(form, "WEAPON PROF", ch.dndClass.weaponSummary, 4)
-    setFieldPadded(form, "TOOL PROF", ch.background.toolProficiency, 4)
+    setFieldPadded(form, "TOOL PROF", ch.background.toolProficiency, 2)
     val featText = ch.originFeat.name + ":\n" + ch.originFeat.description
-    setFieldPadded(form, "FEATS", featText, 19)
-    setFieldPadded(form, "EQUIPMENT", ch.equipmentSummary, 20)
+    setFieldPadded(form, "FEATS", featText, 28)
+    setFieldPadded(form, "EQUIPMENT", ch.equipmentSummary, 40)
     val traitsText = ch.species.traits.map(t => s" * $t").mkString("\n")
-    setFieldPadded(form, "SPECIES TRAITS", traitsText, 16)
+    setFieldPadded(form, "SPECIES TRAITS", traitsText, 25)
 
     val features = ch.dndClass.level1Features
     val featureLines = features.map(f => featureLine(f, ch))
@@ -282,22 +299,25 @@ object CharacterSheetPdf:
     val col1Text = featureLines.take(mid).mkString("\n")
     val col2Text = featureLines.drop(mid)
 
-    setFieldPadded(form, "CLASS FEATURES 1", col1Text, 20)
+    setFieldPadded(form, "CLASS FEATURES 1", col1Text, 30)
 
     if col2Text.nonEmpty then
-      setFieldPadded(form, "CLASS FEATURES 2", col2Text.mkString("\n"), 21)
+      setFieldPadded(form, "CLASS FEATURES 2", col2Text.mkString("\n"), 35)
+  }
 
-  private def featureLine(f: ClassFeature, ch: Character): String =
+  private def featureLine(f: ClassFeature, ch: Character): String = {
     val base = f.name + " - "
     val desc = resolvedFeatureDescription(f, ch)
-    val tracking = f.uses match
+    val tracking = f.uses match {
       case Some(n) => " " + ("o " * n).trim
       case None    => ""
+    }
     s" * $base$desc$tracking"
+  }
 
-  private def resolvedFeatureDescription(f: ClassFeature, ch: Character): String =
+  private def resolvedFeatureDescription(f: ClassFeature, ch: Character): String = {
     val fs = ch.featureSelections
-    f.name match
+    f.name match {
       case "Fighting Style" =>
         fs.fightingStyle.fold(f.description)(s => s"${s.label} (${s.description})")
       case "Divine Order" =>
@@ -316,3 +336,6 @@ object CharacterSheetPdf:
         else f.description
       case _ =>
         f.description
+    }
+  }
+}

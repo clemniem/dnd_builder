@@ -10,39 +10,39 @@ import tyrian.*
 
 import scala.scalajs.js
 
-object ReviewScreen extends Screen:
+object ReviewScreen extends Screen {
   type Model = ReviewModel
   type Msg   = ReviewMsg | NavigateNext
 
   val screenId: ScreenId = ScreenId.ReviewId
 
-  def init(previous: Option[ScreenOutput]): (Model, Cmd[IO, Msg]) =
-    val model = previous match
-      case Some(ScreenOutput.SpellsChosen(s, c, b, sc, bn, sk, ar, sh, wp, ct, ps, sb, fs)) =>
-        ReviewModel(c, s, b, sc, bn, sk, ar, sh, wp, ct, ps, sb, fs, "", Nil, false)
-      case Some(ScreenOutput.ClassFeaturesChosen(s, c, b, sc, bn, sk, ar, sh, wp, fs)) =>
-        ReviewModel(c, s, b, sc, bn, sk, ar, sh, wp, Nil, Nil, Nil, fs, "", Nil, false)
-      case Some(ScreenOutput.EquipmentChosen(s, c, b, sc, bn, sk, ar, sh, wp)) =>
-        ReviewModel(c, s, b, sc, bn, sk, ar, sh, wp, Nil, Nil, Nil, ClassFeatureSelections.empty, "", Nil, false)
-      case _ =>
-        ReviewModel(Barbarian, Human, Acolyte, AbilityScores.default,
-          BackgroundBonus.ThreePlusOnes(Ability.Strength, Ability.Dexterity, Ability.Constitution),
-          Set.empty[Skill], None, false, Nil, Nil, Nil, Nil, ClassFeatureSelections.empty, "", Nil, false)
-    (model, Cmd.None)
+  def init(previous: Option[ScreenOutput]): (Model, Cmd[IO, Msg]) = {
+    val draft = previous match {
+      case Some(ScreenOutput.Draft(d)) => d
+      case _ => CharacterDraft.empty
+    }
+    (ReviewModel(draft, "", Nil, false), Cmd.None)
+  }
 
-  def update(model: Model): Msg => (Model, Cmd[IO, Msg]) =
+  def update(model: Model): Msg => (Model, Cmd[IO, Msg]) = {
     case ReviewMsg.SetName(n) =>
       (model.copy(name = n), Cmd.None)
 
     case ReviewMsg.Save =>
+      val d = model.draft
+      val sp = d.species.getOrElse(Human: Species)
+      val cls = d.dndClass.getOrElse(Barbarian: DndClass)
+      val bg = d.background.getOrElse(Acolyte: Background)
+      val scores = d.baseScores.getOrElse(AbilityScores.default)
+      val bonus = d.backgroundBonus.getOrElse(BackgroundBonus.ThreePlusOnes(Ability.Strength, Ability.Dexterity, Ability.Constitution))
+      val languages = sp.languages ++ d.chosenExtraLanguages
       val result = CharacterValidator.validate(
-        model.name, model.species, model.dndClass, model.background,
-        model.baseScores, model.backgroundBonus, model.chosenSkills,
-        model.equippedArmor, model.equippedShield, model.equippedWeapons,
-        model.chosenCantrips, model.preparedSpells, model.spellbookSpells,
-        model.featureSelections, 1
+        model.name, sp, cls, bg, scores, bonus, d.chosenSkills,
+        d.equippedArmor, d.equippedShield, d.equippedWeapons,
+        d.chosenCantrips, d.preparedSpells, d.spellbookSpells,
+        d.featureSelections, languages, 1
       )
-      result match
+      result match {
         case Left(errors) =>
           (model.copy(errors = errors.map(_.message)), Cmd.None)
         case Right(character) =>
@@ -56,6 +56,7 @@ object ReviewScreen extends Screen:
               _ => ReviewMsg.Loaded(Nil, stored),
               (msg, _) => ReviewMsg.Error(msg)
             ))
+      }
 
     case ReviewMsg.Loaded(existing, newChar) =>
       val updated = existing :+ newChar
@@ -77,45 +78,37 @@ object ReviewScreen extends Screen:
       (model, Cmd.None)
 
     case ReviewMsg.Back =>
-      if model.dndClass.isSpellcaster then
-        val output = ScreenOutput.SpellsChosen(
-          model.species, model.dndClass, model.background,
-          model.baseScores, model.backgroundBonus, model.chosenSkills,
-          model.equippedArmor, model.equippedShield, model.equippedWeapons,
-          model.chosenCantrips, model.preparedSpells, model.spellbookSpells,
-          model.featureSelections
-        )
-        (model, Cmd.Emit(NavigateNext(ScreenId.SpellsId, Some(output))))
-      else
-        val output = ScreenOutput.ClassFeaturesChosen(
-          model.species, model.dndClass, model.background,
-          model.baseScores, model.backgroundBonus, model.chosenSkills,
-          model.equippedArmor, model.equippedShield, model.equippedWeapons,
-          model.featureSelections
-        )
-        (model, Cmd.Emit(NavigateNext(ScreenId.ClassFeaturesId, Some(output))))
+      (model, Cmd.Emit(NavigateNext(ScreenId.LanguagesId, Some(ScreenOutput.Draft(model.draft)))))
 
     case _: NavigateNext =>
       (model, Cmd.None)
+  }
 
-  private def buildCharacter(model: Model): Character =
+  private def buildCharacter(model: Model): Character = {
+    val d = model.draft
+    val sp = d.species.getOrElse(Human: Species)
+    val cls = d.dndClass.getOrElse(Barbarian: DndClass)
+    val bg = d.background.getOrElse(Acolyte: Background)
+    val scores = d.baseScores.getOrElse(AbilityScores.default)
+    val bonus = d.backgroundBonus.getOrElse(BackgroundBonus.ThreePlusOnes(Ability.Strength, Ability.Dexterity, Ability.Constitution))
+    val languages = sp.languages ++ d.chosenExtraLanguages
     Character(
       if model.name.trim.isEmpty then "Unnamed Hero" else model.name,
-      model.species, model.dndClass, model.background,
-      model.baseScores, model.backgroundBonus, model.chosenSkills,
-      model.equippedArmor, model.equippedShield, model.equippedWeapons,
-      model.chosenCantrips, model.preparedSpells, model.spellbookSpells,
-      model.featureSelections,
-      1
+      sp, cls, bg, scores, bonus, d.chosenSkills,
+      d.equippedArmor, d.equippedShield, d.equippedWeapons,
+      d.chosenCantrips, d.preparedSpells, d.spellbookSpells,
+      d.featureSelections, languages, 1
     )
+  }
 
-  def view(model: Model): Html[Msg] =
+  def view(model: Model): Html[Msg] = {
+    val cls = model.draft.dndClass.getOrElse(Barbarian)
     val character = buildCharacter(model)
 
     div(`class` := "screen-container")(
-      StepIndicator(if model.dndClass.isSpellcaster then 9 else 8, model.dndClass.isSpellcaster),
+      StepIndicator(if cls.isSpellcaster then 10 else 9, cls.isSpellcaster),
       StepNav(
-        if model.dndClass.isSpellcaster then "< Spells" else "< Equipment",
+        "< Languages",
         ReviewMsg.Back, if model.saving then "Saving..." else "Save Character", ReviewMsg.Save, !model.saving),
       h1(`class` := "screen-title")(text("Review & Save")),
       div(`class` := "field-block")(
@@ -129,6 +122,7 @@ object ReviewScreen extends Screen:
       errorsView(model.errors),
       characterSummary(character)
     )
+  }
 
   private def errorsView(errors: List[String]): Html[Msg] =
     if errors.isEmpty then div()
@@ -153,7 +147,7 @@ object ReviewScreen extends Screen:
         statBox("Prof. Bonus", s"+${ch.proficiencyBonus}", ""),
         statBox("Passive Perc.", ch.passivePerception.toString, "")
       ),
-      ch.spellSaveDC match
+      ch.spellSaveDC match {
         case Some(dc) =>
           div(`class` := "stat-block")(
             statBox("Spell Save DC", dc.toString, ""),
@@ -161,7 +155,8 @@ object ReviewScreen extends Screen:
             statBox("Cantrips", ch.dndClass.cantripsKnown.toString, ""),
             statBox("Spell Slots", ch.dndClass.level1SpellSlots.toString, "Level 1")
           )
-        case None => div(),
+        case None => div()
+      },
       div(`class` := "section-title")(text("Ability Scores")),
       table(`class` := "ability-table")(
         thead(tr(th(text("Ability")), th(text("Score")), th(text("Mod")), th(text("Save")))),
@@ -211,6 +206,12 @@ object ReviewScreen extends Screen:
         div(text(s"Armor: ${ch.equippedArmor.fold("Unarmored")(_.name)}")),
         div(text(s"Shield: ${if ch.equippedShield then "+2 AC" else "No"}")),
         div(text(s"Weapons: ${if ch.equippedWeapons.isEmpty then "None" else ch.equippedWeapons.map(_.name).mkString(", ")}"))
+      ),
+      div(`class` := "section-title")(text("Languages")),
+      div(`class` := "prof-list")(
+        ch.languages.toList.sortBy(_.label).map { lang =>
+          div(`class` := "prof-item prof-item--proficient")(text(lang.label))
+        }*
       ),
       div(`class` := "section-title")(text("Proficiencies")),
       div(style := "font-size: 0.85rem; color: var(--color-text-muted);")(
@@ -268,26 +269,15 @@ object ReviewScreen extends Screen:
       div(`class` := "stat-box-value")(text(value)),
       (if sub.nonEmpty then div(`class` := "stat-box-sub")(text(sub)) else div())
     )
+}
 
 final case class ReviewModel(
-    dndClass: DndClass,
-    species: Species,
-    background: Background,
-    baseScores: AbilityScores,
-    backgroundBonus: BackgroundBonus,
-    chosenSkills: Set[Skill],
-    equippedArmor: Option[Armor],
-    equippedShield: Boolean,
-    equippedWeapons: List[Weapon],
-    chosenCantrips: List[Spell],
-    preparedSpells: List[Spell],
-    spellbookSpells: List[Spell],
-    featureSelections: ClassFeatureSelections,
+    draft: CharacterDraft,
     name: String,
     errors: List[String],
     saving: Boolean)
 
-enum ReviewMsg:
+enum ReviewMsg {
   case SetName(n: String)
   case Save
   case ExportPdf
@@ -295,3 +285,4 @@ enum ReviewMsg:
   case Saved
   case Error(msg: String)
   case Back
+}

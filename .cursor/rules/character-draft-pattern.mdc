@@ -1,0 +1,38 @@
+---
+description: CharacterDraft pattern, trait defaults, and extensibility conventions for the D&D character creation flow
+globs:
+  - src/main/scala/dnd_builder/dnd/**
+  - src/main/scala/dnd_builder/screens/**
+  - src/main/scala/dnd_builder/Screen.scala
+alwaysApply: false
+---
+
+# CharacterDraft & Extensibility Conventions
+
+## CharacterDraft Pattern
+All character-creation screens pass a single `CharacterDraft` through the flow via `ScreenOutput.Draft(draft)`. Each screen carries `draft: CharacterDraft` in its model plus any screen-local UI state.
+
+**When adding a new field to the creation flow:**
+1. Add the field to `CharacterDraft` (with a sensible default in `CharacterDraft.empty`).
+2. Add the corresponding field to `Character`.
+3. Update `ReviewScreen.buildCharacter` to map from draft to character.
+4. Update the screen that collects the new data.
+5. Update `Codecs.scala` with backward-compatible decoder if needed.
+6. Do **NOT** create a new `ScreenOutput` variant — always use `ScreenOutput.Draft(draft)`.
+
+## Trait Defaults (DndClass, Species)
+`DndClass` and `Species` traits define default implementations for common values. Concrete objects only override when their value differs from the default.
+
+**DndClass defaults:** `spellbookSize = 0`, `extraLanguageChoices = 0`, `numSkillChoices = 2`, `weaponMasteryCount = 0`, `cantripsKnown = 0`, `level1SpellSlots = 0`, `numPreparedSpells = 0`, `spellcastingAbility = None`.
+
+**Species defaults:** `hpBonusPerLevel = 0`, `speed = 30`, `size = Size.Medium`, `subLabel = None`.
+
+When adding a new species or class, only specify values that differ from these defaults.
+
+## Adding a New Creation Screen
+1. Create a screen object extending `Screen` with brace syntax (`object FooScreen extends Screen {`).
+2. Its model must include `draft: CharacterDraft`.
+3. `init` receives `ScreenOutput.Draft(d)` and extracts relevant fields.
+4. `Next` copies updated fields into the draft and emits `ScreenOutput.Draft(updated)`.
+5. `Back` navigates to the previous screen passing the current draft unchanged.
+6. Register in `App.scala`'s `ScreenRegistry` and add to `StepIndicator` step lists.

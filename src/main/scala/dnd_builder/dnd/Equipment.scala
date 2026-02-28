@@ -1,16 +1,20 @@
 package dndbuilder.dnd
 
-enum WeaponCategory:
+enum WeaponCategory {
   case Simple, Martial
+}
 
-enum WeaponRange:
+enum WeaponRange {
   case Melee, Ranged
+}
 
-enum WeaponProperty:
+enum WeaponProperty {
   case Ammunition, Finesse, Heavy, Light, Loading, Reach, Thrown, TwoHanded, Versatile
+}
 
-enum MasteryProperty:
+enum MasteryProperty {
   case Cleave, Graze, Nick, Push, Sap, Slow, Topple, Vex
+}
 
 final case class Weapon(
     name: String,
@@ -22,7 +26,7 @@ final case class Weapon(
     stars: Int
 )
 
-object Weapon:
+object Weapon {
   import WeaponCategory.*
   import WeaponRange.*
   import WeaponProperty.*
@@ -76,23 +80,26 @@ object Weapon:
 
   def byName(name: String): Option[Weapon] =
     all.find(_.name.equalsIgnoreCase(name))
+}
 
 sealed trait WeaponProficiency
-object WeaponProficiency:
+object WeaponProficiency {
   case object AllSimple  extends WeaponProficiency
   case object AllMartial extends WeaponProficiency
   final case class MartialIf(requiredProperties: Set[WeaponProperty]) extends WeaponProficiency
 
-  def isProficient(weapon: Weapon, profs: Set[WeaponProficiency]): Boolean =
+  def isProficient(weapon: Weapon, profs: Set[WeaponProficiency]): Boolean = {
     import WeaponCategory.*
-    weapon.category match
+    weapon.category match {
       case Simple =>
         profs.contains(AllSimple)
       case Martial =>
         profs.contains(AllMartial) || profs.collect { case MartialIf(props) => props }.exists { required =>
           required.exists(weapon.properties.contains)
         }
-end WeaponProficiency
+    }
+  }
+} // end WeaponProficiency
 
 final case class Armor(
     name: String,
@@ -105,7 +112,7 @@ final case class Armor(
     stars: Int
 )
 
-object Armor:
+object Armor {
   import ArmorType.*
   val all: List[Armor] = List(
     Armor("Padded Armor", Light, 11, addDex = true, None, None, stealthDisadvantage = true, 1),
@@ -127,3 +134,4 @@ object Armor:
 
   def shieldACBonus: Int = 2
   def shieldStars: Int = 1
+}

@@ -6,7 +6,7 @@ import dndbuilder.dnd.*
 import tyrian.Html.*
 import tyrian.*
 
-object SpeciesScreen extends Screen:
+object SpeciesScreen extends Screen {
   type Model = SpeciesModel
   type Msg   = SpeciesMsg | NavigateNext
 
@@ -15,7 +15,7 @@ object SpeciesScreen extends Screen:
   def init(previous: Option[ScreenOutput]): (Model, Cmd[IO, Msg]) =
     (SpeciesModel(None, None), Cmd.None)
 
-  def update(model: Model): Msg => (Model, Cmd[IO, Msg]) =
+  def update(model: Model): Msg => (Model, Cmd[IO, Msg]) = {
     case SpeciesMsg.SelectTemplate(t) =>
       (model.copy(
         selectedTemplate = Some(t),
@@ -26,17 +26,20 @@ object SpeciesScreen extends Screen:
       (model.copy(selectedSpecies = Some(sp)), Cmd.None)
 
     case SpeciesMsg.Next =>
-      model.selectedSpecies match
+      model.selectedSpecies match {
         case Some(sp) =>
-          (model, Cmd.Emit(NavigateNext(ScreenId.ClassSelectId, Some(ScreenOutput.SpeciesChosen(sp)))))
+          val draft = CharacterDraft.empty.copy(species = Some(sp))
+          (model, Cmd.Emit(NavigateNext(ScreenId.ClassSelectId, Some(ScreenOutput.Draft(draft)))))
         case None =>
           (model, Cmd.None)
+      }
 
     case SpeciesMsg.Back =>
       (model, Cmd.Emit(NavigateNext(ScreenId.HomeId, None)))
 
     case _: NavigateNext =>
       (model, Cmd.None)
+  }
 
   def view(model: Model): Html[Msg] =
     div(`class` := "screen-container")(
@@ -73,9 +76,9 @@ object SpeciesScreen extends Screen:
     )
 
   private def subChoiceSection(model: Model): Html[Msg] =
-    model.selectedTemplate match
+    model.selectedTemplate match {
       case Some(t) if t.needsSubchoice =>
-        val options: List[(String, Species)] = t match
+        val options: List[(String, Species)] = t match {
           case Species.DragonbornTemplate =>
             DragonAncestry.values.toList.map(a => (a.label, DragonbornOf(a)))
           case Species.ElfTemplate =>
@@ -87,6 +90,7 @@ object SpeciesScreen extends Screen:
           case Species.TieflingTemplate =>
             FiendishLegacy.values.toList.map(l => (l.label, Tiefling(l)))
           case _ => Nil
+        }
 
         div(`class` := "field-block", style := "margin-top: 1rem;")(
           label(`class` := "label-block")(text(s"${t.name} Lineage / Ancestry")),
@@ -102,9 +106,10 @@ object SpeciesScreen extends Screen:
         )
       case _ =>
         div()
+    }
 
   private def selectedTraitsSection(model: Model): Html[Msg] =
-    model.selectedSpecies match
+    model.selectedSpecies match {
       case Some(sp) =>
         div(style := "margin-top: 1rem;")(
           div(`class` := "section-title")(text(s"${sp.name} Traits${sp.subLabel.map(s => s" ($s)").getOrElse("")}")),
@@ -117,13 +122,16 @@ object SpeciesScreen extends Screen:
           )
         )
       case None => div()
+    }
+}
 
 final case class SpeciesModel(
     selectedTemplate: Option[Species.SpeciesTemplate],
     selectedSpecies: Option[Species])
 
-enum SpeciesMsg:
+enum SpeciesMsg {
   case SelectTemplate(t: Species.SpeciesTemplate)
   case SelectSpecies(sp: Species)
   case Next
   case Back
+}

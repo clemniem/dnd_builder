@@ -4,7 +4,7 @@ import io.circe.*
 import io.circe.generic.semiauto.*
 import io.circe.syntax.*
 
-object Codecs:
+object Codecs {
 
   private def mkEncoder[A](toStr: A => String): Encoder[A] =
     Encoder.encodeString.contramap(toStr)
@@ -88,6 +88,9 @@ object Codecs:
   given Encoder[DragonAncestry] = mkEncoder(_.toString)
   given Decoder[DragonAncestry] = mkDecoder(DragonAncestry.values, _.toString)
 
+  given Encoder[Language] = mkEncoder(_.label)
+  given Decoder[Language] = mkDecoder(Language.values, _.label)
+
   given Encoder[FightingStyle] = mkEncoder(_.label)
   given Decoder[FightingStyle] = mkDecoder(FightingStyle.values, _.label)
   given Encoder[DivineOrder] = mkEncoder(_.label)
@@ -112,13 +115,14 @@ object Codecs:
   }
 
   given Decoder[AbilityScores] = Decoder.instance { c =>
-    for
+    for {
       str <- c.downField("strength").as[Int]
       dex <- c.downField("dexterity").as[Int]
       con <- c.downField("constitution").as[Int]
       int <- c.downField("intelligence").as[Int]
       wis <- c.downField("wisdom").as[Int]
       cha <- c.downField("charisma").as[Int]
+    }
     yield AbilityScores(str, dex, con, int, wis, cha)
   }
 
@@ -132,15 +136,17 @@ object Codecs:
   given Decoder[BackgroundBonus] = Decoder.instance { c =>
     c.downField("type").as[String].flatMap {
       case "TwoPlusOne" =>
-        for
+        for {
           p2 <- c.downField("plus2").as[Ability]
           p1 <- c.downField("plus1").as[Ability]
+        }
         yield BackgroundBonus.TwoPlusOne(p2, p1)
       case "ThreePlusOnes" =>
-        for
+        for {
           a1 <- c.downField("a1").as[Ability]
           a2 <- c.downField("a2").as[Ability]
           a3 <- c.downField("a3").as[Ability]
+        }
         yield BackgroundBonus.ThreePlusOnes(a1, a2, a3)
       case other => Left(DecodingFailure(s"Unknown BackgroundBonus type: $other", c.history))
     }
@@ -148,13 +154,14 @@ object Codecs:
 
   given Encoder[Species] = Encoder.instance { sp =>
     val base = Json.obj("species" -> sp.name.asJson)
-    sp match
+    sp match {
       case DragonbornOf(a) => base.deepMerge(Json.obj("dragonAncestry" -> a.asJson))
       case Elf(l)          => base.deepMerge(Json.obj("elvenLineage" -> l.asJson))
       case Gnome(l)        => base.deepMerge(Json.obj("gnomishLineage" -> l.asJson))
       case Goliath(a)      => base.deepMerge(Json.obj("giantAncestry" -> a.asJson))
       case Tiefling(l)     => base.deepMerge(Json.obj("fiendishLegacy" -> l.asJson))
       case _               => base
+    }
   }
 
   given Decoder[Species] = Decoder.instance { c =>
@@ -220,12 +227,13 @@ object Codecs:
       "preparedSpells"   -> ch.preparedSpells.asJson,
       "spellbookSpells"  -> ch.spellbookSpells.asJson,
       "featureSelections" -> ch.featureSelections.asJson,
+      "languages"        -> ch.languages.toList.asJson,
       "level"            -> ch.level.asJson
     )
   }
 
   given Decoder[Character] = Decoder.instance { c =>
-    for
+    for {
       name   <- c.downField("name").as[String]
       sp     <- c.downField("species").as[Species]
       cls    <- c.downField("dndClass").as[DndClass]
@@ -240,7 +248,10 @@ object Codecs:
       prepared <- c.downField("preparedSpells").as[Option[List[Spell]]].map(_.getOrElse(Nil))
       spellbook <- c.downField("spellbookSpells").as[Option[List[Spell]]].map(_.getOrElse(Nil))
       featureSelections <- c.downField("featureSelections").as[Option[ClassFeatureSelections]].map(_.getOrElse(ClassFeatureSelections.empty))
+      languages <- c.downField("languages").as[Option[List[Language]]].map(_.fold(sp.languages.toList)(identity))
       level  <- c.downField("level").as[Int]
+    }
     yield Character(name, sp, cls, bg, scores, bonus, skills.toSet, armor, shield, weapons, cantrips, prepared, spellbook,
-      featureSelections, level)
+      featureSelections, languages.toSet, level)
   }
+}

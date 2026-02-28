@@ -18,6 +18,8 @@ lazy val Ldnd_builder =
         "org.scalameta"   %%% "munit"         % "1.2.2" % Test
       ),
       testFrameworks += new TestFramework("munit.Framework"),
+      // Enforce brace style. (One-time indent→braces: add "-rewrite", run sbt compile or fastLinkJS, then remove it.)
+      scalacOptions += "-no-indent",
       scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.ESModule) },
       Compile / fastLinkJS / scalaJSLinkerOutputDirectory := baseDirectory.value / "target" / "scalajs-dev",
       Compile / fullLinkJS / scalaJSLinkerOutputDirectory := baseDirectory.value / "target" / "scalajs-opt",

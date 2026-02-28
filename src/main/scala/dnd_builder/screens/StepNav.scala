@@ -3,7 +3,7 @@ package dndbuilder.screens
 import tyrian.Html.*
 import tyrian.*
 
-object StepNav:
+object StepNav {
 
   def apply[Msg](
       backLabel: String,
@@ -19,3 +19,4 @@ object StepNav:
         onClick(nextMsg)
       )(text(nextLabel))
     )
+}

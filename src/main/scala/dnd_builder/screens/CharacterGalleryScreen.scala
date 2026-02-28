@@ -6,7 +6,7 @@ import dndbuilder.common.LocalStorageUtils
 import tyrian.Html.*
 import tyrian.*
 
-object CharacterGalleryScreen extends Screen:
+object CharacterGalleryScreen extends Screen {
   type Model = GalleryModel
   type Msg   = GalleryMsg | NavigateNext
 
@@ -24,7 +24,7 @@ object CharacterGalleryScreen extends Screen:
       )
     )
 
-  def update(model: Model): Msg => (Model, Cmd[IO, Msg]) =
+  def update(model: Model): Msg => (Model, Cmd[IO, Msg]) = {
     case GalleryMsg.Loaded(chars) =>
       (model.copy(characters = Some(chars)), Cmd.None)
 
@@ -43,11 +43,12 @@ object CharacterGalleryScreen extends Screen:
       (model.copy(characters = newList, currentPage = newPage, pendingDeleteId = None), cmd)
 
     case GalleryMsg.ViewDetail(id) =>
-      model.characters.flatMap(_.find(_.id == id)) match
+      model.characters.flatMap(_.find(_.id == id)) match {
         case Some(sc) =>
           (model, Cmd.Emit(NavigateNext(ScreenId.DetailId, Some(ScreenOutput.ViewCharacter(sc)))))
         case None =>
           (model, Cmd.None)
+      }
 
     case GalleryMsg.PreviousPage =>
       (model.copy(currentPage = (model.currentPage - 1).max(1)), Cmd.None)
@@ -67,6 +68,7 @@ object CharacterGalleryScreen extends Screen:
 
     case _: NavigateNext =>
       (model, Cmd.None)
+  }
 
   def view(model: Model): Html[Msg] =
     div(`class` := "screen-container")(
@@ -81,7 +83,7 @@ object CharacterGalleryScreen extends Screen:
     )
 
   private def viewContent(model: Model): Html[Msg] =
-    model.characters match
+    model.characters match {
       case None =>
         div(text("Loading..."))
       case Some(chars) if chars.isEmpty =>
@@ -111,8 +113,9 @@ object CharacterGalleryScreen extends Screen:
             else div()
           )
         )
+    }
 
-  private def characterCard(sc: StoredCharacter, pendingDeleteId: Option[String]): Html[Msg] =
+  private def characterCard(sc: StoredCharacter, pendingDeleteId: Option[String]): Html[Msg] = {
     val ch = sc.character
     div(`class` := "gallery-card")(
       div(`class` := "gallery-card-body")(
@@ -140,13 +143,15 @@ object CharacterGalleryScreen extends Screen:
           )
       )
     )
+  }
+}
 
 final case class GalleryModel(
     characters: Option[List[StoredCharacter]],
     currentPage: Int,
     pendingDeleteId: Option[String])
 
-enum GalleryMsg:
+enum GalleryMsg {
   case Loaded(chars: List[StoredCharacter])
   case AskDelete(id: String)
   case CancelDelete
@@ -157,3 +162,4 @@ enum GalleryMsg:
   case Home
   case CreateNew
   case Error(msg: String)
+}

@@ -6,51 +6,47 @@ import dndbuilder.dnd.*
 import tyrian.Html.*
 import tyrian.*
 
-object SpellsScreen extends Screen:
+object SpellsScreen extends Screen {
   type Model = SpellsModel
   type Msg   = SpellsMsg | NavigateNext
 
   val screenId: ScreenId = ScreenId.SpellsId
 
-  def init(previous: Option[ScreenOutput]): (Model, Cmd[IO, Msg]) =
-    val base = previous match
-      case Some(ScreenOutput.ClassFeaturesChosen(s, c, b, sc, bn, sk, ar, sh, wp, fs)) =>
-        SpellsModel(c, s, b, sc, bn, sk, ar, sh, wp, Nil, Nil, Nil, fs, Phase.Cantrips)
-      case Some(ScreenOutput.EquipmentChosen(s, c, b, sc, bn, sk, ar, sh, wp)) =>
-        SpellsModel(c, s, b, sc, bn, sk, ar, sh, wp, Nil, Nil, Nil, ClassFeatureSelections.empty, Phase.Cantrips)
-      case Some(ScreenOutput.SpellsChosen(s, c, b, sc, bn, sk, ar, sh, wp, ct, ps, sb, fs)) =>
-        val phase = if c.cantripsKnown > 0 then Phase.Cantrips else Phase.Prepared
-        SpellsModel(c, s, b, sc, bn, sk, ar, sh, wp, ct, ps, sb, fs, phase)
-      case _ =>
-        SpellsModel(Wizard, Human, Acolyte, AbilityScores.default,
-          BackgroundBonus.ThreePlusOnes(Ability.Strength, Ability.Dexterity, Ability.Constitution),
-          Set.empty, None, false, Nil, Nil, Nil, Nil, ClassFeatureSelections.empty, Phase.Cantrips)
-    val model =
-      if base.dndClass.cantripsKnown == 0 then base.copy(phase = Phase.Prepared)
-      else base
-    (model, Cmd.None)
+  def init(previous: Option[ScreenOutput]): (Model, Cmd[IO, Msg]) = {
+    val draft = previous match {
+      case Some(ScreenOutput.Draft(d)) => d
+      case _ => CharacterDraft.empty
+    }
+    val cls = draft.dndClass.getOrElse(Wizard)
+    val phase = if cls.cantripsKnown > 0 then Phase.Cantrips else Phase.Prepared
+    (SpellsModel(draft, draft.chosenCantrips, draft.preparedSpells, draft.spellbookSpells, phase), Cmd.None)
+  }
 
-  def update(model: Model): Msg => (Model, Cmd[IO, Msg]) =
+  def update(model: Model): Msg => (Model, Cmd[IO, Msg]) = {
     case SpellsMsg.ToggleCantrip(spell) =>
+      val cls = model.draft.dndClass.getOrElse(Wizard)
       if model.chosenCantrips.exists(_.name == spell.name) then
         (model.copy(chosenCantrips = model.chosenCantrips.filterNot(_.name == spell.name)), Cmd.None)
-      else if model.chosenCantrips.size < model.dndClass.cantripsKnown then
+      else if model.chosenCantrips.size < cls.cantripsKnown then
         (model.copy(chosenCantrips = model.chosenCantrips :+ spell), Cmd.None)
       else (model, Cmd.None)
 
     case SpellsMsg.ToggleSpellbook(spell) =>
-      if model.spellbookSpells.exists(_.name == spell.name) then
+      val cls = model.draft.dndClass.getOrElse(Wizard)
+      if model.spellbookSpells.exists(_.name == spell.name) then {
         val newBook = model.spellbookSpells.filterNot(_.name == spell.name)
         val newPrepared = model.preparedSpells.filter(s => newBook.exists(_.name == s.name))
         (model.copy(spellbookSpells = newBook, preparedSpells = newPrepared), Cmd.None)
-      else if model.spellbookSpells.size < model.dndClass.spellbookSize then
+      }
+      else if model.spellbookSpells.size < cls.spellbookSize then
         (model.copy(spellbookSpells = model.spellbookSpells :+ spell), Cmd.None)
       else (model, Cmd.None)
 
     case SpellsMsg.TogglePrepared(spell) =>
+      val cls = model.draft.dndClass.getOrElse(Wizard)
       if model.preparedSpells.exists(_.name == spell.name) then
         (model.copy(preparedSpells = model.preparedSpells.filterNot(_.name == spell.name)), Cmd.None)
-      else if model.preparedSpells.size < model.dndClass.numPreparedSpells then
+      else if model.preparedSpells.size < cls.numPreparedSpells then
         (model.copy(preparedSpells = model.preparedSpells :+ spell), Cmd.None)
       else (model, Cmd.None)
 
@@ -58,76 +54,83 @@ object SpellsScreen extends Screen:
       (model.copy(phase = phase), Cmd.None)
 
     case SpellsMsg.Next =>
-      val cantripsReady = model.chosenCantrips.size == model.dndClass.cantripsKnown
-      val preparedReady = model.preparedSpells.size == model.dndClass.numPreparedSpells
-      val spellbookReady = model.dndClass.spellbookSize == 0 || model.spellbookSpells.size == model.dndClass.spellbookSize
+      val cls = model.draft.dndClass.getOrElse(Wizard)
+      val cantripsReady = model.chosenCantrips.size == cls.cantripsKnown
+      val preparedReady = model.preparedSpells.size == cls.numPreparedSpells
+      val spellbookReady = cls.spellbookSize == 0 || model.spellbookSpells.size == cls.spellbookSize
 
-      model.phase match
+      model.phase match {
         case Phase.Cantrips if cantripsReady =>
-          if model.dndClass.spellbookSize > 0 then
+          if cls.spellbookSize > 0 then
             (model.copy(phase = Phase.Spellbook), Cmd.None)
-          else if model.dndClass.numPreparedSpells > 0 then
+          else if cls.numPreparedSpells > 0 then
             (model.copy(phase = Phase.Prepared), Cmd.None)
           else
             emitNext(model)
         case Phase.Spellbook if spellbookReady =>
-          if model.dndClass.numPreparedSpells > 0 then
+          if cls.numPreparedSpells > 0 then
             (model.copy(phase = Phase.Prepared), Cmd.None)
           else emitNext(model)
         case Phase.Prepared if preparedReady =>
           emitNext(model)
         case _ => (model, Cmd.None)
+      }
 
     case SpellsMsg.Back =>
-      model.phase match
-        case Phase.Prepared if model.dndClass.spellbookSize > 0 =>
+      val cls = model.draft.dndClass.getOrElse(Wizard)
+      model.phase match {
+        case Phase.Prepared if cls.spellbookSize > 0 =>
           (model.copy(phase = Phase.Spellbook), Cmd.None)
-        case Phase.Prepared if model.dndClass.cantripsKnown > 0 =>
+        case Phase.Prepared if cls.cantripsKnown > 0 =>
           (model.copy(phase = Phase.Cantrips), Cmd.None)
-        case Phase.Spellbook if model.dndClass.cantripsKnown > 0 =>
+        case Phase.Spellbook if cls.cantripsKnown > 0 =>
           (model.copy(phase = Phase.Cantrips), Cmd.None)
         case _ =>
-          val output = ScreenOutput.ClassFeaturesChosen(
-            model.species, model.dndClass, model.background,
-            model.baseScores, model.backgroundBonus, model.chosenSkills,
-            model.equippedArmor, model.equippedShield, model.equippedWeapons,
-            model.featureSelections
+          val updated = model.draft.copy(
+            chosenCantrips = model.chosenCantrips,
+            preparedSpells = model.preparedSpells,
+            spellbookSpells = model.spellbookSpells
           )
-          (model, Cmd.Emit(NavigateNext(ScreenId.ClassFeaturesId, Some(output))))
+          (model, Cmd.Emit(NavigateNext(ScreenId.ClassFeaturesId, Some(ScreenOutput.Draft(updated)))))
+      }
 
     case _: NavigateNext => (model, Cmd.None)
+  }
 
-  private def emitNext(model: SpellsModel): (SpellsModel, Cmd[IO, SpellsMsg | NavigateNext]) =
-    val output = ScreenOutput.SpellsChosen(
-      model.species, model.dndClass, model.background,
-      model.baseScores, model.backgroundBonus, model.chosenSkills,
-      model.equippedArmor, model.equippedShield, model.equippedWeapons,
-      model.chosenCantrips, model.preparedSpells, model.spellbookSpells,
-      model.featureSelections
+  private def emitNext(model: SpellsModel): (SpellsModel, Cmd[IO, SpellsMsg | NavigateNext]) = {
+    val updated = model.draft.copy(
+      chosenCantrips = model.chosenCantrips,
+      preparedSpells = model.preparedSpells,
+      spellbookSpells = model.spellbookSpells
     )
-    (model, Cmd.Emit(NavigateNext(ScreenId.ReviewId, Some(output))))
+    (model, Cmd.Emit(NavigateNext(ScreenId.LanguagesId, Some(ScreenOutput.Draft(updated)))))
+  }
 
-  def view(model: Model): Html[Msg] =
+  def view(model: Model): Html[Msg] = {
+    val cls = model.draft.dndClass.getOrElse(Wizard)
     div(`class` := "screen-container")(
-      StepIndicator(8, model.dndClass.isSpellcaster),
-      model.phase match
+      StepIndicator(8, cls.isSpellcaster),
+      model.phase match {
         case Phase.Cantrips  => cantripsView(model)
         case Phase.Spellbook => spellbookView(model)
         case Phase.Prepared  => preparedView(model)
+      }
     )
+  }
 
-  private def cantripsView(model: SpellsModel): Html[Msg] =
-    val available = Spell.cantripsForClass(model.dndClass)
-    val remaining = model.dndClass.cantripsKnown - model.chosenCantrips.size
-    val nextLabel = if model.dndClass.spellbookSize > 0 then "Next: Spellbook >"
-      else if model.dndClass.numPreparedSpells > 0 then "Next: Spells >"
+  private def cantripsView(model: SpellsModel): Html[Msg] = {
+    val cls = model.draft.dndClass.getOrElse(Wizard)
+    val available = Spell.cantripsForClass(cls)
+    val remaining = cls.cantripsKnown - model.chosenCantrips.size
+    val nextLabel = if cls.spellbookSize > 0 then "Next: Spellbook >"
+      else if cls.numPreparedSpells > 0 then "Next: Spells >"
       else "Next: Review >"
 
     div(
       StepNav("< Class Features", SpellsMsg.Back, nextLabel, SpellsMsg.Next, remaining == 0),
       h1(`class` := "screen-title")(text("Choose Cantrips")),
       p(`class` := "screen-intro")(
-        text(s"Select ${model.dndClass.cantripsKnown} cantrips from the ${model.dndClass.name} spell list.")
+        text(s"Select ${cls.cantripsKnown} cantrips from the ${cls.name} spell list.")
       ),
       div(`class` := "points-pool", style := "margin-bottom: 1rem;")(
         text("Remaining: "),
@@ -135,16 +138,18 @@ object SpellsScreen extends Screen:
       ),
       spellListGrouped(available, model.chosenCantrips, SpellsMsg.ToggleCantrip.apply)
     )
+  }
 
-  private def spellbookView(model: SpellsModel): Html[Msg] =
-    val available = Spell.level1ForClass(model.dndClass)
-    val remaining = model.dndClass.spellbookSize - model.spellbookSpells.size
+  private def spellbookView(model: SpellsModel): Html[Msg] = {
+    val cls = model.draft.dndClass.getOrElse(Wizard)
+    val available = Spell.level1ForClass(cls)
+    val remaining = cls.spellbookSize - model.spellbookSpells.size
 
     div(
       StepNav("< Cantrips", SpellsMsg.Back, "Next: Prepared Spells >", SpellsMsg.Next, remaining == 0),
       h1(`class` := "screen-title")(text("Build Your Spellbook")),
       p(`class` := "screen-intro")(
-        text(s"Choose ${model.dndClass.spellbookSize} level 1 spells to inscribe in your spellbook.")
+        text(s"Choose ${cls.spellbookSize} level 1 spells to inscribe in your spellbook.")
       ),
       div(`class` := "points-pool", style := "margin-bottom: 1rem;")(
         text("Remaining: "),
@@ -152,28 +157,30 @@ object SpellsScreen extends Screen:
       ),
       spellListGrouped(available, model.spellbookSpells, SpellsMsg.ToggleSpellbook.apply)
     )
+  }
 
-  private def preparedView(model: SpellsModel): Html[Msg] =
+  private def preparedView(model: SpellsModel): Html[Msg] = {
+    val cls = model.draft.dndClass.getOrElse(Wizard)
     val available =
-      if model.dndClass.spellbookSize > 0 then model.spellbookSpells
-      else Spell.level1ForClass(model.dndClass)
-    val remaining = model.dndClass.numPreparedSpells - model.preparedSpells.size
+      if cls.spellbookSize > 0 then model.spellbookSpells
+      else Spell.level1ForClass(cls)
+    val remaining = cls.numPreparedSpells - model.preparedSpells.size
     val backLabel =
-      if model.dndClass.spellbookSize > 0 then "< Spellbook"
-      else if model.dndClass.cantripsKnown > 0 then "< Cantrips"
+      if cls.spellbookSize > 0 then "< Spellbook"
+      else if cls.cantripsKnown > 0 then "< Cantrips"
       else "< Class Features"
 
     val title =
-      if model.dndClass.spellbookSize > 0 then "Prepare Spells from Spellbook"
+      if cls.spellbookSize > 0 then "Prepare Spells from Spellbook"
       else "Choose Prepared Spells"
     val intro =
-      if model.dndClass.spellbookSize > 0 then
-        s"Choose ${model.dndClass.numPreparedSpells} spells from your spellbook to prepare."
+      if cls.spellbookSize > 0 then
+        s"Choose ${cls.numPreparedSpells} spells from your spellbook to prepare."
       else
-        s"Select ${model.dndClass.numPreparedSpells} level 1 spells from the ${model.dndClass.name} spell list."
+        s"Select ${cls.numPreparedSpells} level 1 spells from the ${cls.name} spell list."
 
     div(
-      StepNav(backLabel, SpellsMsg.Back, "Next: Review >", SpellsMsg.Next, remaining == 0),
+      StepNav(backLabel, SpellsMsg.Back, "Next: Languages >", SpellsMsg.Next, remaining == 0),
       h1(`class` := "screen-title")(text(title)),
       p(`class` := "screen-intro")(text(intro)),
       div(`class` := "points-pool", style := "margin-bottom: 1rem;")(
@@ -182,12 +189,13 @@ object SpellsScreen extends Screen:
       ),
       spellListGrouped(available, model.preparedSpells, SpellsMsg.TogglePrepared.apply)
     )
+  }
 
   private def spellListGrouped(
       available: List[Spell],
       selected: List[Spell],
       toggleMsg: Spell => SpellsMsg
-  ): Html[Msg] =
+  ): Html[Msg] = {
     val bySchool = available.groupBy(_.school).toList.sortBy(_._1.label)
     div(
       bySchool.map { case (school, spells) =>
@@ -196,9 +204,9 @@ object SpellsScreen extends Screen:
           div(
             spells.sortBy(_.name).map { spell =>
               val isChosen = selected.exists(_.name == spell.name)
-              val cls = if isChosen then "skill-item skill-item--selected" else "skill-item"
+              val clsName = if isChosen then "skill-item skill-item--selected" else "skill-item"
               val ritualTag = if spell.ritual then " (R)" else ""
-              div(`class` := cls, onClick(toggleMsg(spell)))(
+              div(`class` := clsName, onClick(toggleMsg(spell)))(
                 div(`class` := "skill-checkbox")(text(if isChosen then "*" else "")),
                 span(`class` := "skill-label")(text(s"${spell.name}$ritualTag")),
                 span(`class` := "skill-ability-tag")(text(spell.school.label.take(4)))
@@ -208,30 +216,25 @@ object SpellsScreen extends Screen:
         )
       }*
     )
+  }
+}
 
-enum Phase:
+enum Phase {
   case Cantrips, Spellbook, Prepared
+}
 
 final case class SpellsModel(
-    dndClass: DndClass,
-    species: Species,
-    background: Background,
-    baseScores: AbilityScores,
-    backgroundBonus: BackgroundBonus,
-    chosenSkills: Set[Skill],
-    equippedArmor: Option[Armor],
-    equippedShield: Boolean,
-    equippedWeapons: List[Weapon],
+    draft: CharacterDraft,
     chosenCantrips: List[Spell],
     preparedSpells: List[Spell],
     spellbookSpells: List[Spell],
-    featureSelections: ClassFeatureSelections,
     phase: Phase)
 
-enum SpellsMsg:
+enum SpellsMsg {
   case ToggleCantrip(spell: Spell)
   case ToggleSpellbook(spell: Spell)
   case TogglePrepared(spell: Spell)
   case SetPhase(phase: Phase)
   case Next
   case Back
+}

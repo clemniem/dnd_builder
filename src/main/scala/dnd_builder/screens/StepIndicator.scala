@@ -3,13 +3,13 @@ package dndbuilder.screens
 import tyrian.Html.*
 import tyrian.*
 
-object StepIndicator:
+object StepIndicator {
 
   private val baseSteps = List("Race", "Class", "Background", "Abilities", "Skills", "Equipment")
-  private val casterSteps = baseSteps :+ "Spells" :+ "Review"
-  private val nonCasterSteps = baseSteps :+ "Review"
+  private val casterSteps = baseSteps :+ "Class Features" :+ "Spells" :+ "Languages" :+ "Review"
+  private val nonCasterSteps = baseSteps :+ "Class Features" :+ "Languages" :+ "Review"
 
-  def apply[Msg](currentStep: Int, isSpellcaster: Boolean): Html[Msg] =
+  def apply[Msg](currentStep: Int, isSpellcaster: Boolean): Html[Msg] = {
     val steps = if isSpellcaster then casterSteps else nonCasterSteps
     val items = steps.zipWithIndex.flatMap { case (label, idx) =>
       val stepNum = idx + 1
@@ -29,3 +29,5 @@ object StepIndicator:
       else List(item)
     }
     div(`class` := "step-indicator")(items*)
+  }
+}

@@ -6,59 +6,67 @@ import dndbuilder.dnd.*
 import tyrian.Html.*
 import tyrian.*
 
-object SkillsScreen extends Screen:
+object SkillsScreen extends Screen {
   type Model = SkillsModel
   type Msg   = SkillsMsg | NavigateNext
 
   val screenId: ScreenId = ScreenId.SkillsId
 
-  def init(previous: Option[ScreenOutput]): (Model, Cmd[IO, Msg]) =
-    val (cls, sp, bg, scores, bonus) = previous match
-      case Some(ScreenOutput.AbilitiesChosen(s, c, b, sc, bn)) => (c, s, b, sc, bn)
-      case _ => (Barbarian, Human, Acolyte, AbilityScores.default, BackgroundBonus.ThreePlusOnes(Ability.Strength, Ability.Dexterity, Ability.Constitution))
-    (SkillsModel(cls, sp, bg, scores, bonus, Set.empty), Cmd.None)
+  def init(previous: Option[ScreenOutput]): (Model, Cmd[IO, Msg]) = {
+    val draft = previous match {
+      case Some(ScreenOutput.Draft(d)) => d
+      case _ => CharacterDraft.empty
+    }
+    (SkillsModel(draft, draft.chosenSkills), Cmd.None)
+  }
 
-  def update(model: Model): Msg => (Model, Cmd[IO, Msg]) =
+  def update(model: Model): Msg => (Model, Cmd[IO, Msg]) = {
     case SkillsMsg.ToggleSkill(skill) =>
-      val bgSkills = model.background.skillProficiencySet
+      val cls = model.draft.dndClass.getOrElse(Barbarian)
+      val bg  = model.draft.background.getOrElse(Acolyte)
+      val bgSkills = bg.skillProficiencySet
       if bgSkills.contains(skill) then (model, Cmd.None)
-      else
-        val pool = model.dndClass.skillPool -- bgSkills
+      else {
+        val pool = cls.skillPool -- bgSkills
         if !pool.contains(skill) then (model, Cmd.None)
-        else
+        else {
           val newChosen =
             if model.chosenSkills.contains(skill) then model.chosenSkills - skill
-            else if model.chosenSkills.size < model.dndClass.numSkillChoices then model.chosenSkills + skill
+            else if model.chosenSkills.size < cls.numSkillChoices then model.chosenSkills + skill
             else model.chosenSkills
           (model.copy(chosenSkills = newChosen), Cmd.None)
+        }
+      }
 
     case SkillsMsg.Next =>
-      if model.chosenSkills.size == model.dndClass.numSkillChoices then
-        val output = ScreenOutput.SkillsChosen(
-          model.species, model.dndClass, model.background,
-          model.baseScores, model.backgroundBonus, model.chosenSkills
-        )
-        (model, Cmd.Emit(NavigateNext(ScreenId.EquipmentId, Some(output))))
+      val cls = model.draft.dndClass.getOrElse(Barbarian)
+      if model.chosenSkills.size == cls.numSkillChoices then {
+        val updated = model.draft.copy(chosenSkills = model.chosenSkills)
+        (model, Cmd.Emit(NavigateNext(ScreenId.EquipmentId, Some(ScreenOutput.Draft(updated)))))
+      }
       else (model, Cmd.None)
 
     case SkillsMsg.Back =>
-      val output = ScreenOutput.BackgroundChosen(model.species, model.dndClass, model.background)
-      (model, Cmd.Emit(NavigateNext(ScreenId.AbilitiesId, Some(output))))
+      val updated = model.draft.copy(chosenSkills = model.chosenSkills)
+      (model, Cmd.Emit(NavigateNext(ScreenId.AbilitiesId, Some(ScreenOutput.Draft(updated)))))
 
     case _: NavigateNext =>
       (model, Cmd.None)
+  }
 
-  def view(model: Model): Html[Msg] =
-    val bgSkills = model.background.skillProficiencySet
-    val pool     = model.dndClass.skillPool -- bgSkills
-    val remaining = model.dndClass.numSkillChoices - model.chosenSkills.size
+  def view(model: Model): Html[Msg] = {
+    val cls = model.draft.dndClass.getOrElse(Barbarian)
+    val bg  = model.draft.background.getOrElse(Acolyte)
+    val bgSkills = bg.skillProficiencySet
+    val pool     = cls.skillPool -- bgSkills
+    val remaining = cls.numSkillChoices - model.chosenSkills.size
 
     div(`class` := "screen-container")(
-      StepIndicator(5, model.dndClass.isSpellcaster),
+      StepIndicator(5, cls.isSpellcaster),
       StepNav("< Abilities", SkillsMsg.Back, "Next: Equipment >", SkillsMsg.Next, remaining == 0),
       h1(`class` := "screen-title")(text("Choose Skills")),
       p(`class` := "screen-intro")(
-        text(s"Select ${model.dndClass.numSkillChoices} skills from your class. Background skills are already granted.")
+        text(s"Select ${cls.numSkillChoices} skills from your class. Background skills are already granted.")
       ),
       div(`class` := "points-pool", style := "margin-bottom: 1rem;")(
         text("Remaining: "),
@@ -85,8 +93,8 @@ object SkillsScreen extends Screen:
               div(
                 classSkills.map { skill =>
                   val isChosen = model.chosenSkills.contains(skill)
-                  val cls = if isChosen then "skill-item skill-item--selected" else "skill-item"
-                  div(`class` := cls, onClick(SkillsMsg.ToggleSkill(skill)))(
+                  val clsName = if isChosen then "skill-item skill-item--selected" else "skill-item"
+                  div(`class` := clsName, onClick(SkillsMsg.ToggleSkill(skill)))(
                     div(`class` := "skill-checkbox")(text(if isChosen then "*" else "")),
                     span(`class` := "skill-label")(text(skill.label)),
                     span(`class` := "skill-ability-tag")(text(ability.abbreviation))
@@ -97,16 +105,15 @@ object SkillsScreen extends Screen:
         }*
       )
     )
+  }
+}
 
 final case class SkillsModel(
-    dndClass: DndClass,
-    species: Species,
-    background: Background,
-    baseScores: AbilityScores,
-    backgroundBonus: BackgroundBonus,
+    draft: CharacterDraft,
     chosenSkills: Set[Skill])
 
-enum SkillsMsg:
+enum SkillsMsg {
   case ToggleSkill(skill: Skill)
   case Next
   case Back
+}

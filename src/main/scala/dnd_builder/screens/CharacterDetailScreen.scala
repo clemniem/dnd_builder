@@ -7,25 +7,27 @@ import dndbuilder.dnd.*
 import tyrian.Html.*
 import tyrian.*
 
-object CharacterDetailScreen extends Screen:
+object CharacterDetailScreen extends Screen {
   type Model = DetailModel
   type Msg   = DetailMsg | NavigateNext
 
   val screenId: ScreenId = ScreenId.DetailId
 
-  def init(previous: Option[ScreenOutput]): (Model, Cmd[IO, Msg]) =
-    val sc = previous match
+  def init(previous: Option[ScreenOutput]): (Model, Cmd[IO, Msg]) = {
+    val sc = previous match {
       case Some(ScreenOutput.ViewCharacter(c)) => c
       case _ =>
         StoredCharacter("?", Character(
           "Unknown", Human, Barbarian, Acolyte,
           AbilityScores.default,
           BackgroundBonus.ThreePlusOnes(Ability.Intelligence, Ability.Wisdom, Ability.Charisma),
-          Set.empty, None, false, Nil, Nil, Nil, Nil, ClassFeatureSelections.empty, 1
+          Set.empty, None, false, Nil, Nil, Nil, Nil, ClassFeatureSelections.empty, Human.languages, 1
         ))
+    }
     (DetailModel(sc), Cmd.None)
+  }
 
-  def update(model: Model): Msg => (Model, Cmd[IO, Msg]) =
+  def update(model: Model): Msg => (Model, Cmd[IO, Msg]) = {
     case DetailMsg.Back =>
       (model, Cmd.Emit(NavigateNext(ScreenId.GalleryId, None)))
     case DetailMsg.ExportPdf =>
@@ -34,8 +36,9 @@ object CharacterDetailScreen extends Screen:
       (model, Cmd.None)
     case _: NavigateNext =>
       (model, Cmd.None)
+  }
 
-  def view(model: Model): Html[Msg] =
+  def view(model: Model): Html[Msg] = {
     val ch = model.storedCharacter.character
     div(`class` := "screen-container")(
       div(`class` := "screen-header")(
@@ -61,7 +64,7 @@ object CharacterDetailScreen extends Screen:
         statBox("Prof. Bonus", s"+${ch.proficiencyBonus}", ""),
         statBox("Passive Perc.", ch.passivePerception.toString, "")
       ),
-      ch.spellSaveDC match
+      ch.spellSaveDC match {
         case Some(dc) =>
           div(`class` := "stat-block")(
             statBox("Spell Save DC", dc.toString, ""),
@@ -69,7 +72,8 @@ object CharacterDetailScreen extends Screen:
             statBox("Cantrips", ch.dndClass.cantripsKnown.toString, ""),
             statBox("Spell Slots", ch.dndClass.level1SpellSlots.toString, "Level 1")
           )
-        case None => div(),
+        case None => div()
+      },
       div(`class` := "section-title")(text("Ability Scores")),
       table(`class` := "ability-table")(
         thead(tr(th(text("Ability")), th(text("Score")), th(text("Mod")), th(text("Save")))),
@@ -124,6 +128,12 @@ object CharacterDetailScreen extends Screen:
         div(text(s"Shield: ${if ch.equippedShield then "+2 AC" else "No"}")),
         div(text(s"Weapons: ${if ch.equippedWeapons.isEmpty then "None" else ch.equippedWeapons.map(_.name).mkString(", ")}"))
       ),
+      div(`class` := "section-title")(text("Languages")),
+      div(`class` := "prof-list", style := "margin-bottom: 1rem;")(
+        ch.languages.toList.sortBy(_.label).map { lang =>
+          div(`class` := "prof-item prof-item--proficient")(text(lang.label))
+        }*
+      ),
       div(`class` := "section-title")(text("Proficiencies")),
       div(style := "font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 1rem;")(
         div(text(s"Armor: ${if ch.dndClass.armorProficiencies.isEmpty then "None" else ch.dndClass.armorProficiencies.map(_.label).mkString(", ")}")),
@@ -131,6 +141,7 @@ object CharacterDetailScreen extends Screen:
         div(text(s"Tools: ${ch.background.toolProficiency}"))
       )
     )
+  }
 
   private def spellsSummary(ch: Character): Html[Msg] =
     if !ch.isSpellcaster then div()
@@ -180,9 +191,11 @@ object CharacterDetailScreen extends Screen:
       div(`class` := "stat-box-value")(text(value)),
       (if sub.nonEmpty then div(`class` := "stat-box-sub")(text(sub)) else div())
     )
+}
 
 final case class DetailModel(storedCharacter: StoredCharacter)
 
-enum DetailMsg:
+enum DetailMsg {
   case Back
   case ExportPdf
+}

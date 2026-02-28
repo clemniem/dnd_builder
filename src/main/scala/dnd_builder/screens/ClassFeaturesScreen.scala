@@ -7,19 +7,11 @@ import tyrian.Html.*
 import tyrian.*
 
 final case class ClassFeaturesModel(
-    species: Species,
-    dndClass: DndClass,
-    background: Background,
-    baseScores: AbilityScores,
-    backgroundBonus: BackgroundBonus,
-    chosenSkills: Set[Skill],
-    equippedArmor: Option[Armor],
-    equippedShield: Boolean,
-    equippedWeapons: List[Weapon],
+    draft: CharacterDraft,
     featureSelections: ClassFeatureSelections
 )
 
-enum ClassFeaturesMsg:
+enum ClassFeaturesMsg {
   case Next
   case Back
   case NoOp
@@ -29,25 +21,28 @@ enum ClassFeaturesMsg:
   case SetEldritchInvocation(inv: Option[EldritchInvocation])
   case ToggleExpertiseSkill(skill: Skill)
   case ToggleWeaponMastery(weapon: Weapon)
+}
 
-object ClassFeaturesScreen extends Screen:
+object ClassFeaturesScreen extends Screen {
   type Model = ClassFeaturesModel
   type Msg   = ClassFeaturesMsg | NavigateNext
 
   val screenId: ScreenId = ScreenId.ClassFeaturesId
 
   private def hasClassFeatureChoices(cls: DndClass): Boolean =
-    cls match
+    cls match {
       case Fighter => true
       case Cleric => true
       case Druid => true
       case Warlock => true
       case Rogue => true
       case _ => cls.weaponMasteryCount > 0
+    }
 
-  private def canProceed(model: Model): Boolean =
+  private def canProceed(model: Model): Boolean = {
+    val cls = model.draft.dndClass.getOrElse(Barbarian)
     val fs = model.featureSelections
-    model.dndClass match
+    cls match {
       case Fighter =>
         fs.fightingStyle.isDefined && fs.weaponMasteries.size == 3
       case Cleric =>
@@ -59,43 +54,34 @@ object ClassFeaturesScreen extends Screen:
       case Rogue =>
         fs.expertiseSkills.size == 2 && fs.weaponMasteries.size == 2
       case _ =>
-        fs.weaponMasteries.size == model.dndClass.weaponMasteryCount
+        fs.weaponMasteries.size == cls.weaponMasteryCount
+    }
+  }
 
-  def init(previous: Option[ScreenOutput]): (Model, Cmd[IO, Msg]) =
-    previous match
-      case Some(ScreenOutput.EquipmentChosen(s, c, b, sc, bn, sk, ar, sh, wp)) =>
-        val model = ClassFeaturesModel(s, c, b, sc, bn, sk, ar, sh, wp, ClassFeatureSelections.empty)
-        if !hasClassFeatureChoices(c) then
-          val output = ScreenOutput.ClassFeaturesChosen(s, c, b, sc, bn, sk, ar, sh, wp, ClassFeatureSelections.empty)
-          val nextScreen = if c.isSpellcaster then ScreenId.SpellsId else ScreenId.ReviewId
-          (model, Cmd.Emit(NavigateNext(nextScreen, Some(output))))
-        else
-          (model, Cmd.None)
-      case _ =>
-        val fallback = ClassFeaturesModel(
-          Human, Barbarian, Acolyte, AbilityScores.default,
-          BackgroundBonus.ThreePlusOnes(Ability.Strength, Ability.Dexterity, Ability.Constitution),
-          Set.empty, None, false, Nil, ClassFeatureSelections.empty
-        )
-        (fallback, Cmd.None)
+  def init(previous: Option[ScreenOutput]): (Model, Cmd[IO, Msg]) = {
+    val draft = previous match {
+      case Some(ScreenOutput.Draft(d)) => d
+      case _ => CharacterDraft.empty
+    }
+    val cls = draft.dndClass.getOrElse(Barbarian)
+    val model = ClassFeaturesModel(draft, draft.featureSelections)
+    if !hasClassFeatureChoices(cls) then {
+      val nextScreen = if cls.isSpellcaster then ScreenId.SpellsId else ScreenId.LanguagesId
+      (model, Cmd.Emit(NavigateNext(nextScreen, Some(ScreenOutput.Draft(draft)))))
+    }
+    else
+      (model, Cmd.None)
+  }
 
-  def update(model: Model): Msg => (Model, Cmd[IO, Msg]) =
+  def update(model: Model): Msg => (Model, Cmd[IO, Msg]) = {
     case ClassFeaturesMsg.Next =>
-      val output = ScreenOutput.ClassFeaturesChosen(
-        model.species, model.dndClass, model.background,
-        model.baseScores, model.backgroundBonus, model.chosenSkills,
-        model.equippedArmor, model.equippedShield, model.equippedWeapons,
-        model.featureSelections
-      )
-      val nextScreen = if model.dndClass.isSpellcaster then ScreenId.SpellsId else ScreenId.ReviewId
-      (model, Cmd.Emit(NavigateNext(nextScreen, Some(output))))
+      val updated = model.draft.copy(featureSelections = model.featureSelections)
+      val cls = model.draft.dndClass.getOrElse(Barbarian)
+      val nextScreen = if cls.isSpellcaster then ScreenId.SpellsId else ScreenId.LanguagesId
+      (model, Cmd.Emit(NavigateNext(nextScreen, Some(ScreenOutput.Draft(updated)))))
     case ClassFeaturesMsg.Back =>
-      val output = ScreenOutput.EquipmentChosen(
-        model.species, model.dndClass, model.background,
-        model.baseScores, model.backgroundBonus, model.chosenSkills,
-        model.equippedArmor, model.equippedShield, model.equippedWeapons
-      )
-      (model, Cmd.Emit(NavigateNext(ScreenId.EquipmentId, Some(output))))
+      val updated = model.draft.copy(featureSelections = model.featureSelections)
+      (model, Cmd.Emit(NavigateNext(ScreenId.EquipmentId, Some(ScreenOutput.Draft(updated)))))
     case ClassFeaturesMsg.SetFightingStyle(style) =>
       (model.copy(featureSelections = model.featureSelections.copy(fightingStyle = style)), Cmd.None)
     case ClassFeaturesMsg.SetDivineOrder(order) =>
@@ -112,8 +98,9 @@ object ClassFeaturesScreen extends Screen:
         else fs.expertiseSkills
       (model.copy(featureSelections = fs.copy(expertiseSkills = newExpertise)), Cmd.None)
     case ClassFeaturesMsg.ToggleWeaponMastery(weapon) =>
+      val cls = model.draft.dndClass.getOrElse(Barbarian)
       val fs = model.featureSelections
-      val maxCount = model.dndClass.weaponMasteryCount
+      val maxCount = cls.weaponMasteryCount
       val newList =
         if fs.weaponMasteries.contains(weapon) then fs.weaponMasteries.filter(_ != weapon)
         else if fs.weaponMasteries.size < maxCount then fs.weaponMasteries :+ weapon
@@ -123,13 +110,15 @@ object ClassFeaturesScreen extends Screen:
       (model, Cmd.None)
     case _: NavigateNext =>
       (model, Cmd.None)
+  }
 
-  def view(model: Model): Html[Msg] =
+  def view(model: Model): Html[Msg] = {
+    val cls = model.draft.dndClass.getOrElse(Barbarian)
     val nextEnabled = canProceed(model)
     div(`class` := "screen-container")(
-      StepIndicator(7, model.dndClass.isSpellcaster),
+      StepIndicator(7, cls.isSpellcaster),
       StepNav("< Equipment", ClassFeaturesMsg.Back,
-        if model.dndClass.isSpellcaster then "Next: Spells >" else "Next: Review >",
+        if cls.isSpellcaster then "Next: Spells >" else "Next: Languages >",
         ClassFeaturesMsg.Next, nextEnabled),
       h1(`class` := "screen-title")(text("Class Features")),
       p(`class` := "screen-intro")(text("Choose your class feature options.")),
@@ -140,9 +129,11 @@ object ClassFeaturesScreen extends Screen:
       expertiseSection(model),
       weaponMasterySection(model)
     )
+  }
 
-  private def fightingStyleSection(model: Model): Html[Msg] =
-    if model.dndClass != Fighter then div()
+  private def fightingStyleSection(model: Model): Html[Msg] = {
+    val cls = model.draft.dndClass.getOrElse(Barbarian)
+    if cls != Fighter then div()
     else
       div(style := "margin-bottom: 1.5rem;")(
         h2(`class` := "about-heading")(text("Fighting Style (choose 1)")),
@@ -159,9 +150,11 @@ object ClassFeaturesScreen extends Screen:
           }*
         )
       )
+  }
 
-  private def divineOrderSection(model: Model): Html[Msg] =
-    if model.dndClass != Cleric then div()
+  private def divineOrderSection(model: Model): Html[Msg] = {
+    val cls = model.draft.dndClass.getOrElse(Barbarian)
+    if cls != Cleric then div()
     else
       div(style := "margin-bottom: 1.5rem;")(
         h2(`class` := "about-heading")(text("Divine Order (choose 1)")),
@@ -178,9 +171,11 @@ object ClassFeaturesScreen extends Screen:
           }*
         )
       )
+  }
 
-  private def primalOrderSection(model: Model): Html[Msg] =
-    if model.dndClass != Druid then div()
+  private def primalOrderSection(model: Model): Html[Msg] = {
+    val cls = model.draft.dndClass.getOrElse(Barbarian)
+    if cls != Druid then div()
     else
       div(style := "margin-bottom: 1.5rem;")(
         h2(`class` := "about-heading")(text("Primal Order (choose 1)")),
@@ -197,9 +192,11 @@ object ClassFeaturesScreen extends Screen:
           }*
         )
       )
+  }
 
-  private def eldritchInvocationSection(model: Model): Html[Msg] =
-    if model.dndClass != Warlock then div()
+  private def eldritchInvocationSection(model: Model): Html[Msg] = {
+    val cls = model.draft.dndClass.getOrElse(Barbarian)
+    if cls != Warlock then div()
     else
       div(style := "margin-bottom: 1.5rem;")(
         h2(`class` := "about-heading")(text("Eldritch Invocation (choose 1)")),
@@ -216,11 +213,13 @@ object ClassFeaturesScreen extends Screen:
           }*
         )
       )
+  }
 
-  private def expertiseSection(model: Model): Html[Msg] =
-    if model.dndClass != Rogue then div()
-    else
-      val pool = model.dndClass.skillPool
+  private def expertiseSection(model: Model): Html[Msg] = {
+    val cls = model.draft.dndClass.getOrElse(Barbarian)
+    if cls != Rogue then div()
+    else {
+      val pool = cls.skillPool
       val chosen = model.featureSelections.expertiseSkills
       div(style := "margin-bottom: 1.5rem;")(
         h2(`class` := "about-heading")(text("Expertise (choose 2 skills)")),
@@ -231,8 +230,8 @@ object ClassFeaturesScreen extends Screen:
         div(
           pool.toList.sortBy(_.label).map { skill =>
             val isChosen = chosen.contains(skill)
-            val cls = if isChosen then "skill-item skill-item--selected" else "skill-item"
-            div(`class` := cls, onClick(ClassFeaturesMsg.ToggleExpertiseSkill(skill)))(
+            val clsName = if isChosen then "skill-item skill-item--selected" else "skill-item"
+            div(`class` := clsName, onClick(ClassFeaturesMsg.ToggleExpertiseSkill(skill)))(
               div(`class` := "skill-checkbox")(text(if isChosen then "*" else "")),
               span(`class` := "skill-label")(text(skill.label)),
               span(`class` := "skill-ability-tag")(text(skill.ability.abbreviation))
@@ -240,12 +239,15 @@ object ClassFeaturesScreen extends Screen:
           }*
         )
       )
+    }
+  }
 
-  private def weaponMasterySection(model: Model): Html[Msg] =
-    val count = model.dndClass.weaponMasteryCount
+  private def weaponMasterySection(model: Model): Html[Msg] = {
+    val cls = model.draft.dndClass.getOrElse(Barbarian)
+    val count = cls.weaponMasteryCount
     if count <= 0 then div()
-    else
-      val proficient = Weapon.all.filter(w => WeaponProficiency.isProficient(w, model.dndClass.weaponProficiencies))
+    else {
+      val proficient = Weapon.all.filter(w => WeaponProficiency.isProficient(w, cls.weaponProficiencies))
       val chosen = model.featureSelections.weaponMasteries
       div(style := "margin-bottom: 1.5rem;")(
         h2(`class` := "about-heading")(text(s"Weapon Mastery (choose $count)")),
@@ -256,8 +258,8 @@ object ClassFeaturesScreen extends Screen:
         div(
           proficient.map { weapon =>
             val isChosen = chosen.contains(weapon)
-            val cls = if isChosen then "skill-item skill-item--selected" else "skill-item"
-            div(`class` := cls, onClick(ClassFeaturesMsg.ToggleWeaponMastery(weapon)))(
+            val clsName = if isChosen then "skill-item skill-item--selected" else "skill-item"
+            div(`class` := clsName, onClick(ClassFeaturesMsg.ToggleWeaponMastery(weapon)))(
               div(`class` := "skill-checkbox")(text(if isChosen then "*" else "")),
               span(`class` := "skill-label")(text(s"${weapon.name} (${weapon.mastery})")),
               span(`class` := "skill-ability-tag")(text(weapon.damage))
@@ -265,3 +267,6 @@ object ClassFeaturesScreen extends Screen:
           }*
         )
       )
+    }
+  }
+}

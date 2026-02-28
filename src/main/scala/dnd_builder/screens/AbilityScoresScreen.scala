@@ -6,45 +6,54 @@ import dndbuilder.dnd.*
 import tyrian.Html.*
 import tyrian.*
 
-object AbilityScoresScreen extends Screen:
+object AbilityScoresScreen extends Screen {
   type Model = AbilityScoresModel
   type Msg   = AbilityScoresMsg | NavigateNext
 
   val screenId: ScreenId = ScreenId.AbilitiesId
 
-  def init(previous: Option[ScreenOutput]): (Model, Cmd[IO, Msg]) =
-    val (cls, sp, bg) = previous match
-      case Some(ScreenOutput.BackgroundChosen(s, c, b)) => (c, s, b)
-      case _ => (Barbarian, Human, Acolyte)
+  def init(previous: Option[ScreenOutput]): (Model, Cmd[IO, Msg]) = {
+    val draft = previous match {
+      case Some(ScreenOutput.Draft(d)) => d
+      case _ => CharacterDraft.empty
+    }
 
-    val initialScores = cls.recommendedScores
+    val cls = draft.dndClass.getOrElse(Barbarian)
+    val bg  = draft.background.getOrElse(Acolyte)
+    val initialScores = draft.baseScores.getOrElse(cls.recommendedScores)
     val opts = bg.abilityOptionsList
-    val initialBonus = BackgroundBonus.TwoPlusOne(opts.head, opts(1))
+    val initialBonus = draft.backgroundBonus.getOrElse(BackgroundBonus.TwoPlusOne(opts.head, opts(1)))
 
-    (AbilityScoresModel(cls, sp, bg, initialScores, initialBonus, ScoreMethod.StandardArray, Nil), Cmd.None)
+    (AbilityScoresModel(draft, initialScores, initialBonus, ScoreMethod.StandardArray, Nil), Cmd.None)
+  }
 
   private val stdArraySum: Int = AbilityScores.standardArray.sum
 
-  def update(model: Model): Msg => (Model, Cmd[IO, Msg]) =
+  def update(model: Model): Msg => (Model, Cmd[IO, Msg]) = {
     case AbilityScoresMsg.SetMethod(m) =>
-      val newScores = m match
-        case ScoreMethod.StandardArray => model.dndClass.recommendedScores
+      val cls = model.draft.dndClass.getOrElse(Barbarian)
+      val newScores = m match {
+        case ScoreMethod.StandardArray => cls.recommendedScores
         case ScoreMethod.PointBuy      => AbilityScores.default
+      }
       (model.copy(baseScores = newScores, method = m), Cmd.None)
 
     case AbilityScoresMsg.Increment(ability) =>
       val current = model.baseScores.get(ability)
-      if current < 15 then
+      if current < 15 then {
         val newScores = model.baseScores.adjust(ability, 1)
-        val valid = model.method match
+        val valid = model.method match {
           case ScoreMethod.PointBuy =>
-            newScores.totalPointBuyCost match
+            newScores.totalPointBuyCost match {
               case Right(cost) => cost <= AbilityScores.pointBuyTotal
               case Left(_) => false
+            }
           case ScoreMethod.StandardArray =>
             newScores.toList.map(_._2).sum <= stdArraySum
+        }
         if valid then (model.copy(baseScores = newScores), Cmd.None)
         else (model, Cmd.None)
+      }
       else (model, Cmd.None)
 
     case AbilityScoresMsg.Decrement(ability) =>
@@ -57,58 +66,68 @@ object AbilityScoresScreen extends Screen:
       (model.copy(backgroundBonus = bonus), Cmd.None)
 
     case AbilityScoresMsg.IncrementBonus(ability) =>
+      val bg = model.draft.background.getOrElse(Acolyte)
       val currentIncreases = model.backgroundBonus.increases
       val currentForAbility = currentIncreases.find(_._1 == ability).map(_._2).getOrElse(0)
       val totalUsed = model.backgroundBonus.totalPoints
       if totalUsed >= 3 || currentForAbility >= 2 then (model, Cmd.None)
-      else
-        val allowed = model.background.abilityOptionsList.toSet
+      else {
+        val allowed = bg.abilityOptionsList.toSet
         if !allowed.contains(ability) then (model, Cmd.None)
-        else
-          val newBonus = rebuildBonus(model.backgroundBonus, ability, 1, model.background)
+        else {
+          val newBonus = rebuildBonus(model.backgroundBonus, ability, 1, bg)
           (model.copy(backgroundBonus = newBonus), Cmd.None)
+        }
+      }
 
     case AbilityScoresMsg.DecrementBonus(ability) =>
+      val bg = model.draft.background.getOrElse(Acolyte)
       val currentIncreases = model.backgroundBonus.increases
       val currentForAbility = currentIncreases.find(_._1 == ability).map(_._2).getOrElse(0)
       if currentForAbility <= 0 then (model, Cmd.None)
-      else
-        val newBonus = rebuildBonus(model.backgroundBonus, ability, -1, model.background)
+      else {
+        val newBonus = rebuildBonus(model.backgroundBonus, ability, -1, bg)
         (model.copy(backgroundBonus = newBonus), Cmd.None)
+      }
 
     case AbilityScoresMsg.AssignStdArray(ability, score) =>
       (model.copy(baseScores = model.baseScores.set(ability, score)), Cmd.None)
 
     case AbilityScoresMsg.Next =>
-      val output = ScreenOutput.AbilitiesChosen(
-        model.species, model.dndClass, model.background,
-        model.baseScores, model.backgroundBonus
+      val updated = model.draft.copy(
+        baseScores = Some(model.baseScores),
+        backgroundBonus = Some(model.backgroundBonus)
       )
-      (model, Cmd.Emit(NavigateNext(ScreenId.SkillsId, Some(output))))
+      (model, Cmd.Emit(NavigateNext(ScreenId.SkillsId, Some(ScreenOutput.Draft(updated)))))
 
     case AbilityScoresMsg.Back =>
-      val output = ScreenOutput.ClassChosen(model.species, model.dndClass)
-      (model, Cmd.Emit(NavigateNext(ScreenId.BackgroundId, Some(output))))
+      val updated = model.draft.copy(
+        baseScores = Some(model.baseScores),
+        backgroundBonus = Some(model.backgroundBonus)
+      )
+      (model, Cmd.Emit(NavigateNext(ScreenId.BackgroundId, Some(ScreenOutput.Draft(updated)))))
 
     case _: NavigateNext =>
       (model, Cmd.None)
+  }
 
-  private def rebuildBonus(current: BackgroundBonus, ability: Ability, delta: Int, bg: Background): BackgroundBonus =
+  private def rebuildBonus(current: BackgroundBonus, ability: Ability, delta: Int, bg: Background): BackgroundBonus = {
     val opts = bg.abilityOptionsList
     val currentMap: Map[Ability, Int] = current.increases.toMap
     val newMap = currentMap.updated(ability, currentMap.getOrElse(ability, 0) + delta)
     val filled = opts.map(a => (a, newMap.getOrElse(a, 0)))
     val total = filled.map(_._2).sum
     if total == 3 then
-      filled.filter(_._2 > 0) match
+      filled.filter(_._2 > 0) match {
         case (a1, 2) :: (a2, 1) :: Nil => BackgroundBonus.TwoPlusOne(a1, a2)
         case (a1, 1) :: (a2, 2) :: Nil => BackgroundBonus.TwoPlusOne(a2, a1)
         case (a1, 1) :: (a2, 1) :: (a3, 1) :: Nil => BackgroundBonus.ThreePlusOnes(a1, a2, a3)
         case _ => current
-    else current.increases.toMap.updated(ability, newMap.getOrElse(ability, 0)) match
+      }
+    else current.increases.toMap.updated(ability, newMap.getOrElse(ability, 0)) match {
       case m =>
         val all = opts.map(a => (a, m.getOrElse(a, 0)))
-        all.filter(_._2 > 0) match
+        all.filter(_._2 > 0) match {
           case (a1, 2) :: (a2, v2) :: _ if v2 >= 1 => BackgroundBonus.TwoPlusOne(a1, a2)
           case (a1, v1) :: (a2, 2) :: _ if v1 >= 1 => BackgroundBonus.TwoPlusOne(a2, a1)
           case items if items.map(_._2).sum == 3 && items.forall(_._2 <= 1) && items.size >= 3 =>
@@ -116,20 +135,25 @@ object AbilityScoresScreen extends Screen:
             if filtered.size == 3 then BackgroundBonus.ThreePlusOnes(filtered(0)._1, filtered(1)._1, filtered(2)._1)
             else current
           case _ => current
+        }
+    }
+  }
 
-  def view(model: Model): Html[Msg] =
+  def view(model: Model): Html[Msg] = {
+    val cls = model.draft.dndClass.getOrElse(Barbarian)
+    val bg  = model.draft.background.getOrElse(Acolyte)
     val finalScores = AbilityScores.applyBonus(model.baseScores, model.backgroundBonus)
     val pointsUsed = model.baseScores.totalPointBuyCost.getOrElse(0)
     val bonusUsed  = model.backgroundBonus.totalPoints
 
     div(`class` := "screen-container")(
-      StepIndicator(4, model.dndClass.isSpellcaster),
+      StepIndicator(4, cls.isSpellcaster),
       StepNav("< Background", AbilityScoresMsg.Back, "Next: Skills >", AbilityScoresMsg.Next, bonusUsed == 3),
       h1(`class` := "screen-title")(text("Ability Scores")),
       p(`class` := "screen-intro")(text("Assign your ability scores and distribute background bonuses.")),
       div(`class` := "flex-row", style := "margin-bottom: 1rem;")(
         methodToggle(model.method),
-        (model.method match
+        (model.method match {
           case ScoreMethod.PointBuy =>
             div(`class` := (if pointsUsed > AbilityScores.pointBuyTotal then "points-pool points-pool--over" else "points-pool"))(
               text("Points: "),
@@ -138,18 +162,19 @@ object AbilityScoresScreen extends Screen:
           case ScoreMethod.StandardArray =>
             val currentSum = model.baseScores.toList.map(_._2).sum
             val spare = stdArraySum - currentSum
-            val cls = if spare > 0 then "points-pool points-pool--over" else "points-pool"
-            div(`class` := cls)(
+            val clsName = if spare > 0 then "points-pool points-pool--over" else "points-pool"
+            div(`class` := clsName)(
               text("Unassigned: "),
               span(`class` := "points-pool-value")(text(s"$spare"))
             )
+        }
         )
       ),
       scoresTable(model, finalScores),
       div(`class` := "flex-row", style := "margin-top: 1.25rem; margin-bottom: 0.5rem; align-items: baseline; gap: 0.75rem;")(
         h3(style := "margin: 0;")(text("Background Bonus")),
         span(style := "font-size: 0.85rem; color: var(--color-text-muted);")(
-          text(s"${model.background.abilityOptionsList.map(_.abbreviation).mkString(", ")} — max +2 each")
+          text(s"${bg.abilityOptionsList.map(_.abbreviation).mkString(", ")} — max +2 each")
         ),
         div(`class` := "points-pool")(
           text("Used: "),
@@ -158,6 +183,7 @@ object AbilityScoresScreen extends Screen:
       ),
       bonusControls(model)
     )
+  }
 
   private def methodToggle(current: ScoreMethod): Html[Msg] =
     div(`class` := "toggle-group")(
@@ -208,8 +234,9 @@ object AbilityScoresScreen extends Screen:
       )
     )
 
-  private def bonusControls(model: Model): Html[Msg] =
-    val opts = model.background.abilityOptionsList
+  private def bonusControls(model: Model): Html[Msg] = {
+    val bg = model.draft.background.getOrElse(Acolyte)
+    val opts = bg.abilityOptionsList
     val currentMap = model.backgroundBonus.increases.toMap
     div(
       opts.map { ability =>
@@ -224,20 +251,21 @@ object AbilityScoresScreen extends Screen:
         )
       }*
     )
+  }
+}
 
 final case class AbilityScoresModel(
-    dndClass: DndClass,
-    species: Species,
-    background: Background,
+    draft: CharacterDraft,
     baseScores: AbilityScores,
     backgroundBonus: BackgroundBonus,
     method: ScoreMethod,
     errors: List[String])
 
-enum ScoreMethod:
+enum ScoreMethod {
   case StandardArray, PointBuy
+}
 
-enum AbilityScoresMsg:
+enum AbilityScoresMsg {
   case SetMethod(m: ScoreMethod)
   case Increment(ability: Ability)
   case Decrement(ability: Ability)
@@ -247,3 +275,4 @@ enum AbilityScoresMsg:
   case AssignStdArray(ability: Ability, score: Int)
   case Next
   case Back
+}

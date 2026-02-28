@@ -20,6 +20,7 @@ object ScreenId {
   case object EquipmentId   extends ScreenId { val name = "equipment"; val title = "Equipment" }
   case object ClassFeaturesId extends ScreenId { val name = "class-features"; val title = "Class Features" }
   case object SpellsId      extends ScreenId { val name = "spells"; val title = "Spells" }
+  case object LanguagesId   extends ScreenId { val name = "languages"; val title = "Languages" }
   case object ReviewId      extends ScreenId { val name = "review"; val title = "Review" }
   case object GalleryId     extends ScreenId { val name = "gallery"; val title = "My Characters" }
   case object DetailId      extends ScreenId { val name = "detail"; val title = "Character Detail" }
@@ -27,34 +28,7 @@ object ScreenId {
 
 sealed trait ScreenOutput
 object ScreenOutput {
-  case class SpeciesChosen(species: Species) extends ScreenOutput
-  case class ClassChosen(species: Species, dndClass: DndClass) extends ScreenOutput
-  case class BackgroundChosen(species: Species, dndClass: DndClass, background: Background) extends ScreenOutput
-  case class AbilitiesChosen(
-      species: Species, dndClass: DndClass, background: Background,
-      baseScores: AbilityScores, backgroundBonus: BackgroundBonus) extends ScreenOutput
-  case class SkillsChosen(
-      species: Species, dndClass: DndClass, background: Background,
-      baseScores: AbilityScores, backgroundBonus: BackgroundBonus,
-      chosenSkills: Set[Skill]) extends ScreenOutput
-  case class EquipmentChosen(
-      species: Species, dndClass: DndClass, background: Background,
-      baseScores: AbilityScores, backgroundBonus: BackgroundBonus,
-      chosenSkills: Set[Skill],
-      equippedArmor: Option[Armor], equippedShield: Boolean, equippedWeapons: List[Weapon]) extends ScreenOutput
-  case class ClassFeaturesChosen(
-      species: Species, dndClass: DndClass, background: Background,
-      baseScores: AbilityScores, backgroundBonus: BackgroundBonus,
-      chosenSkills: Set[Skill],
-      equippedArmor: Option[Armor], equippedShield: Boolean, equippedWeapons: List[Weapon],
-      featureSelections: ClassFeatureSelections) extends ScreenOutput
-  case class SpellsChosen(
-      species: Species, dndClass: DndClass, background: Background,
-      baseScores: AbilityScores, backgroundBonus: BackgroundBonus,
-      chosenSkills: Set[Skill],
-      equippedArmor: Option[Armor], equippedShield: Boolean, equippedWeapons: List[Weapon],
-      chosenCantrips: List[Spell], preparedSpells: List[Spell], spellbookSpells: List[Spell],
-      featureSelections: ClassFeatureSelections) extends ScreenOutput
+  case class Draft(draft: CharacterDraft) extends ScreenOutput
   case class ViewCharacter(storedCharacter: StoredCharacter) extends ScreenOutput
 }
 

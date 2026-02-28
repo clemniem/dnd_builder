@@ -6,40 +6,44 @@ import dndbuilder.dnd.*
 import tyrian.Html.*
 import tyrian.*
 
-object BackgroundScreen extends Screen:
+object BackgroundScreen extends Screen {
   type Model = BackgroundModel
   type Msg   = BackgroundMsg | NavigateNext
 
   val screenId: ScreenId = ScreenId.BackgroundId
 
-  def init(previous: Option[ScreenOutput]): (Model, Cmd[IO, Msg]) =
-    val (species, cls) = previous match
-      case Some(ScreenOutput.ClassChosen(sp, c)) => (sp, c)
-      case _ => (Human, Barbarian)
-    (BackgroundModel(species, cls, None), Cmd.None)
+  def init(previous: Option[ScreenOutput]): (Model, Cmd[IO, Msg]) = {
+    val draft = previous match {
+      case Some(ScreenOutput.Draft(d)) => d
+      case _ => CharacterDraft.empty
+    }
+    (BackgroundModel(draft, draft.background), Cmd.None)
+  }
 
-  def update(model: Model): Msg => (Model, Cmd[IO, Msg]) =
+  def update(model: Model): Msg => (Model, Cmd[IO, Msg]) = {
     case BackgroundMsg.SelectBackground(bg) =>
       (model.copy(selectedBackground = Some(bg)), Cmd.None)
 
     case BackgroundMsg.Next =>
-      model.selectedBackground match
+      model.selectedBackground match {
         case Some(bg) =>
-          val output = ScreenOutput.BackgroundChosen(model.species, model.dndClass, bg)
-          (model, Cmd.Emit(NavigateNext(ScreenId.AbilitiesId, Some(output))))
+          val updated = model.draft.copy(background = Some(bg))
+          (model, Cmd.Emit(NavigateNext(ScreenId.AbilitiesId, Some(ScreenOutput.Draft(updated)))))
         case None =>
           (model, Cmd.None)
+      }
 
     case BackgroundMsg.Back =>
-      val output = ScreenOutput.SpeciesChosen(model.species)
-      (model, Cmd.Emit(NavigateNext(ScreenId.ClassSelectId, Some(output))))
+      (model, Cmd.Emit(NavigateNext(ScreenId.ClassSelectId, Some(ScreenOutput.Draft(model.draft)))))
 
     case _: NavigateNext =>
       (model, Cmd.None)
+  }
 
-  def view(model: Model): Html[Msg] =
+  def view(model: Model): Html[Msg] = {
+    val cls = model.draft.dndClass.getOrElse(Barbarian)
     div(`class` := "screen-container")(
-      StepIndicator(3, model.dndClass.isSpellcaster),
+      StepIndicator(3, cls.isSpellcaster),
       StepNav("< Class", BackgroundMsg.Back, "Next: Abilities >", BackgroundMsg.Next, model.selectedBackground.isDefined),
       h1(`class` := "screen-title")(text("Choose Your Background")),
       p(`class` := "screen-intro")(text("Your background determines ability bonuses, skill proficiencies, and your origin feat.")),
@@ -68,9 +72,10 @@ object BackgroundScreen extends Screen:
       ),
       selectedBackgroundDetail(model)
     )
+  }
 
   private def selectedBackgroundDetail(model: Model): Html[Msg] =
-    model.selectedBackground match
+    model.selectedBackground match {
       case Some(bg) =>
         div(style := "margin-top: 1rem;")(
           div(`class` := "section-title")(text(s"${bg.name} Details")),
@@ -96,13 +101,15 @@ object BackgroundScreen extends Screen:
           )
         )
       case None => div()
+    }
+}
 
 final case class BackgroundModel(
-    species: Species,
-    dndClass: DndClass,
+    draft: CharacterDraft,
     selectedBackground: Option[Background])
 
-enum BackgroundMsg:
+enum BackgroundMsg {
   case SelectBackground(bg: Background)
   case Next
   case Back
+}

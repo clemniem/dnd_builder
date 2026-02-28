@@ -6,31 +6,36 @@ import dndbuilder.dnd.*
 import tyrian.Html.*
 import tyrian.*
 
-object ClassSelectScreen extends Screen:
+object ClassSelectScreen extends Screen {
   type Model = ClassSelectModel
   type Msg   = ClassSelectMsg | NavigateNext
 
   val screenId: ScreenId = ScreenId.ClassSelectId
 
-  def init(previous: Option[ScreenOutput]): (Model, Cmd[IO, Msg]) =
-    val species = previous match
-      case Some(ScreenOutput.SpeciesChosen(sp)) => sp
-      case _ => Human
-    (ClassSelectModel(species, None), Cmd.None)
+  def init(previous: Option[ScreenOutput]): (Model, Cmd[IO, Msg]) = {
+    val draft = previous match {
+      case Some(ScreenOutput.Draft(d)) => d
+      case _ => CharacterDraft.empty
+    }
+    (ClassSelectModel(draft, draft.dndClass), Cmd.None)
+  }
 
-  def update(model: Model): Msg => (Model, Cmd[IO, Msg]) =
+  def update(model: Model): Msg => (Model, Cmd[IO, Msg]) = {
     case ClassSelectMsg.SelectClass(cls) =>
       (model.copy(selected = Some(cls)), Cmd.None)
     case ClassSelectMsg.Next =>
-      model.selected match
+      model.selected match {
         case Some(cls) =>
-          (model, Cmd.Emit(NavigateNext(ScreenId.BackgroundId, Some(ScreenOutput.ClassChosen(model.species, cls)))))
+          val updated = model.draft.copy(dndClass = Some(cls))
+          (model, Cmd.Emit(NavigateNext(ScreenId.BackgroundId, Some(ScreenOutput.Draft(updated)))))
         case None =>
           (model, Cmd.None)
+      }
     case ClassSelectMsg.Back =>
       (model, Cmd.Emit(NavigateNext(ScreenId.SpeciesId, None)))
     case _: NavigateNext =>
       (model, Cmd.None)
+  }
 
   def view(model: Model): Html[Msg] =
     div(`class` := "screen-container")(
@@ -43,7 +48,7 @@ object ClassSelectScreen extends Screen:
       )
     )
 
-  private def classCard(cls: DndClass, isSelected: Boolean): Html[Msg] =
+  private def classCard(cls: DndClass, isSelected: Boolean): Html[Msg] = {
     val cardClass = if isSelected then "card card--selected" else "card"
     div(
       `class` := cardClass,
@@ -57,10 +62,13 @@ object ClassSelectScreen extends Screen:
       ),
       div(`class` := "card-desc")(text(cls.description))
     )
+  }
+}
 
-final case class ClassSelectModel(species: Species, selected: Option[DndClass])
+final case class ClassSelectModel(draft: CharacterDraft, selected: Option[DndClass])
 
-enum ClassSelectMsg:
+enum ClassSelectMsg {
   case SelectClass(cls: DndClass)
   case Next
   case Back
+}

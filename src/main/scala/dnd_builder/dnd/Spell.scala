@@ -1,6 +1,6 @@
 package dndbuilder.dnd
 
-enum SpellSchool(val label: String):
+enum SpellSchool(val label: String) {
   case Abjuration    extends SpellSchool("Abjuration")
   case Conjuration   extends SpellSchool("Conjuration")
   case Divination    extends SpellSchool("Divination")
@@ -9,13 +9,14 @@ enum SpellSchool(val label: String):
   case Illusion      extends SpellSchool("Illusion")
   case Necromancy    extends SpellSchool("Necromancy")
   case Transmutation extends SpellSchool("Transmutation")
+}
 
 final case class Spell(
     name: String,
     level: Int,
     school: SpellSchool,
     classes: Set[String],
-    ritual: Boolean):
+    ritual: Boolean) {
 
   def isCantrip: Boolean = level == 0
 
@@ -24,8 +25,9 @@ final case class Spell(
 
   def availableToClass(dndClass: DndClass): Boolean =
     classes.contains(dndClass.name)
+}
 
-object Spell:
+object Spell {
 
   import SpellSchool.*
 
@@ -378,3 +380,4 @@ object Spell:
 
   def level1ForClass(dndClass: DndClass): List[Spell] =
     forClass(dndClass, 1)
+}

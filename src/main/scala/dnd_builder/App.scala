@@ -28,6 +28,7 @@ object App extends TyrianIOApp[RootMsg, RootModel] {
         EquipmentScreen,
         ClassFeaturesScreen,
         SpellsScreen,
+        LanguagesScreen,
         ReviewScreen,
         CharacterGalleryScreen,
         CharacterDetailScreen

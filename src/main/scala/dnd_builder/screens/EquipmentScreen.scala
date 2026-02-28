@@ -6,26 +6,26 @@ import dndbuilder.dnd.*
 import tyrian.Html.*
 import tyrian.*
 
-object EquipmentScreen extends Screen:
+object EquipmentScreen extends Screen {
   type Model = EquipmentModel
   type Msg   = EquipmentMsg | NavigateNext
 
   val screenId: ScreenId = ScreenId.EquipmentId
 
-  def init(previous: Option[ScreenOutput]): (Model, Cmd[IO, Msg]) =
-    val (cls, sp, bg, scores, bonus, skills) = previous match
-      case Some(ScreenOutput.SkillsChosen(s, c, b, sc, bn, sk)) => (c, s, b, sc, bn, sk)
-      case _ =>
-        (Barbarian, Human, Acolyte, AbilityScores.default,
-          BackgroundBonus.ThreePlusOnes(Ability.Strength, Ability.Dexterity, Ability.Constitution), Set.empty[Skill])
-    (EquipmentModel(cls, sp, bg, scores, bonus, skills, None, false, Nil, 4), Cmd.None)
+  def init(previous: Option[ScreenOutput]): (Model, Cmd[IO, Msg]) = {
+    val draft = previous match {
+      case Some(ScreenOutput.Draft(d)) => d
+      case _ => CharacterDraft.empty
+    }
+    (EquipmentModel(draft, draft.equippedArmor, draft.equippedShield, draft.equippedWeapons, 4), Cmd.None)
+  }
 
   private def totalStars(model: EquipmentModel): Int =
     model.selectedArmor.fold(0)(_.stars) +
       (if model.selectedShield then Armor.shieldStars else 0) +
       model.selectedWeapons.map(_.stars).sum
 
-  def update(model: Model): Msg => (Model, Cmd[IO, Msg]) =
+  def update(model: Model): Msg => (Model, Cmd[IO, Msg]) = {
     case EquipmentMsg.SetMaxStars(n) =>
       (model.copy(maxStars = math.max(1, math.min(10, n))), Cmd.None)
     case EquipmentMsg.SelectArmor(armor) =>
@@ -48,33 +48,36 @@ object EquipmentScreen extends Screen:
     case EquipmentMsg.RemoveWeapon(weapon) =>
       (model.copy(selectedWeapons = model.selectedWeapons.filter(_ != weapon)), Cmd.None)
     case EquipmentMsg.Next =>
-      val output = ScreenOutput.EquipmentChosen(
-        model.species, model.dndClass, model.background,
-        model.baseScores, model.backgroundBonus, model.chosenSkills,
-        model.selectedArmor, model.selectedShield, model.selectedWeapons
+      val updated = model.draft.copy(
+        equippedArmor = model.selectedArmor,
+        equippedShield = model.selectedShield,
+        equippedWeapons = model.selectedWeapons
       )
-      (model, Cmd.Emit(NavigateNext(ScreenId.ClassFeaturesId, Some(output))))
+      (model, Cmd.Emit(NavigateNext(ScreenId.ClassFeaturesId, Some(ScreenOutput.Draft(updated)))))
     case EquipmentMsg.Back =>
-      val output = ScreenOutput.SkillsChosen(
-        model.species, model.dndClass, model.background,
-        model.baseScores, model.backgroundBonus, model.chosenSkills
+      val updated = model.draft.copy(
+        equippedArmor = model.selectedArmor,
+        equippedShield = model.selectedShield,
+        equippedWeapons = model.selectedWeapons
       )
-      (model, Cmd.Emit(NavigateNext(ScreenId.SkillsId, Some(output))))
+      (model, Cmd.Emit(NavigateNext(ScreenId.SkillsId, Some(ScreenOutput.Draft(updated)))))
     case EquipmentMsg.NoOp =>
       (model, Cmd.None)
     case _: NavigateNext =>
       (model, Cmd.None)
+  }
 
   private def starsDisplay(n: Int): String = "★" * n + "☆" * (5 - n)
 
-  def view(model: Model): Html[Msg] =
-    val proficientArmors = Armor.all.filter(a => model.dndClass.armorProficiencies.contains(a.armorType))
-    val proficientWeapons = Weapon.all.filter(w => WeaponProficiency.isProficient(w, model.dndClass.weaponProficiencies))
+  def view(model: Model): Html[Msg] = {
+    val cls = model.draft.dndClass.getOrElse(Barbarian)
+    val proficientArmors = Armor.all.filter(a => cls.armorProficiencies.contains(a.armorType))
+    val proficientWeapons = Weapon.all.filter(w => WeaponProficiency.isProficient(w, cls.weaponProficiencies))
     val usedStars = totalStars(model)
     val nextEnabled = model.selectedWeapons.nonEmpty
 
     div(`class` := "screen-container")(
-      StepIndicator(6, model.dndClass.isSpellcaster),
+      StepIndicator(6, cls.isSpellcaster),
       StepNav("< Skills", EquipmentMsg.Back,
         "Next: Class Features >",
         EquipmentMsg.Next, nextEnabled),
@@ -125,7 +128,7 @@ object EquipmentScreen extends Screen:
           )
         })*
       ),
-      (if model.dndClass.armorProficiencies.contains(ArmorType.Shield) then
+      (if cls.armorProficiencies.contains(ArmorType.Shield) then
         div(style := "margin-top: 1rem;")(
           button(
             `class` := (if model.selectedShield then "toggle-option toggle-option--active" else "toggle-option"),
@@ -134,8 +137,9 @@ object EquipmentScreen extends Screen:
         )
       else div())
     )
+  }
 
-  private def weaponGroups(weapons: List[Weapon], model: EquipmentModel): Html[Msg] =
+  private def weaponGroups(weapons: List[Weapon], model: EquipmentModel): Html[Msg] = {
     import WeaponCategory.*
     import WeaponRange.*
     val simpleMelee   = weapons.filter(w => w.category == Simple && w.range == Melee)
@@ -148,10 +152,11 @@ object EquipmentScreen extends Screen:
       groupSection("Martial Melee", martialMelee, model),
       groupSection("Martial Ranged", martialRanged, model)
     )
+  }
 
   private def groupSection(title: String, weapons: List[Weapon], model: EquipmentModel): Html[Msg] =
     if weapons.isEmpty then div()
-    else
+    else {
       val usedStars = totalStars(model)
       div(`class` := "skill-group")(
         div(`class` := "section-title")(text(title)),
@@ -174,20 +179,17 @@ object EquipmentScreen extends Screen:
           }*
         )
       )
+    }
+}
 
 final case class EquipmentModel(
-    dndClass: DndClass,
-    species: Species,
-    background: Background,
-    baseScores: AbilityScores,
-    backgroundBonus: BackgroundBonus,
-    chosenSkills: Set[Skill],
+    draft: CharacterDraft,
     selectedArmor: Option[Armor],
     selectedShield: Boolean,
     selectedWeapons: List[Weapon],
     maxStars: Int)
 
-enum EquipmentMsg:
+enum EquipmentMsg {
   case SetMaxStars(n: Int)
   case SelectArmor(armor: Option[Armor])
   case ToggleShield
@@ -196,3 +198,4 @@ enum EquipmentMsg:
   case Next
   case Back
   case NoOp
+}

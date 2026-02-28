@@ -11,7 +11,7 @@ final case class PactMagicRow(
     numSlots: Int,
     slotLevel: Int)
 
-object SpellProgression:
+object SpellProgression {
 
   // Full caster progression (Bard, Cleric, Druid, Sorcerer, Wizard)
   // Each entry: (cantrips, prepared, level1, level2, ..., level9)
@@ -128,9 +128,9 @@ object SpellProgression:
     20 -> PactMagicRow(4, 15, 4, 5)
   )
 
-  def forClass(dndClass: DndClass, characterLevel: Int): Option[SpellSlotRow] =
+  def forClass(dndClass: DndClass, characterLevel: Int): Option[SpellSlotRow] = {
     val lvl = math.max(1, math.min(20, characterLevel))
-    dndClass match
+    dndClass match {
       case Bard =>
         fullCasterBase.get(lvl).map { case (_, _, slots) =>
           SpellSlotRow(bardCantrips(lvl), bardPrepared(lvl), slots)
@@ -165,17 +165,22 @@ object SpellProgression:
           SpellSlotRow(pm.cantrips, pm.preparedSpells, slots)
         }
       case _ => None
+    }
+  }
 
   def pactMagicForLevel(characterLevel: Int): Option[PactMagicRow] =
     warlockTable.get(math.max(1, math.min(20, characterLevel)))
 
-  def wizardSpellbookSize(characterLevel: Int): Int =
+  def wizardSpellbookSize(characterLevel: Int): Int = {
     val lvl = math.max(1, math.min(20, characterLevel))
     if lvl == 1 then 6 else 6 + (lvl - 1) * 2
+  }
 
   def maxSpellLevelForSlots(dndClass: DndClass, characterLevel: Int): Int =
-    forClass(dndClass, characterLevel) match
+    forClass(dndClass, characterLevel) match {
       case None => 0
       case Some(row) =>
         val lastNonZero = row.slots.lastIndexWhere(_ > 0)
         if lastNonZero < 0 then 0 else lastNonZero + 1
+    }
+}
