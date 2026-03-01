@@ -24,10 +24,12 @@ object CharacterSheetPdf {
   /** Test character for testPdf(): must exercise every filled section (header, combat incl. hit dice, abilities, saves, skills, armor, weapons, spellcasting, currency, feats/traits/class features). When adding new form fields, add filling logic and ensure this character covers them. */
   @JSExportTopLevel("testPdf")
   def generateTest(): Unit = {
+    val clericCantrips = Spell.cantripsForClass(Cleric).take(3)
+    val clericLvl1 = Spell.level1ForClass(Cleric).take(4)
     val testChar = Character(
       "Thorn Ironfist",
       Dwarf,
-      List(ClassLevel(Fighter, 1)),
+      List(ClassLevel(Cleric, 1)),
       Soldier,
       AbilityScores(Score(15), Score(14), Score(13), Score(8), Score(10), Score(12)),
       BackgroundBonus.TwoPlusOne(Ability.Strength, Ability.Constitution),
@@ -38,18 +40,16 @@ object CharacterSheetPdf {
         Weapon.all.find(_.name == "Longsword").get,
         Weapon.all.find(_.name == "Handaxe").get
       ),
-      Nil, Nil, Nil,
+      clericCantrips,
+      clericLvl1,
+      Nil,
       ClassFeatureSelections.empty.withChoices(
-        Some(FightingStyle.Defense),
         None,
+        Some(DivineOrder.Protector),
         None,
         None,
         Set.empty,
-        List(
-          Weapon.byName("Longsword").get,
-          Weapon.byName("Handaxe").get,
-          Weapon.byName("Greatsword").get
-        ),
+        Nil,
         None,
         None
       ),
@@ -126,24 +126,24 @@ object CharacterSheetPdf {
     PdfLib.check(PdfLib.getCheckBox(form, name))
 
   private def fillHeader(form: js.Dynamic, ch: Character): Unit = {
-    setField(form, "Name", ch.name)
-    setField(form, "Class", ch.classLabel)
-    setField(form, "Species", ch.species.displayName)
-    setField(form, "Background", ch.background.name)
-    setField(form, "Level", ch.characterLevel.toString)
-    setField(form, "XP Points", "0")
+    setField(form, PdfFormFields.Name, ch.name)
+    setField(form, PdfFormFields.Class, ch.classLabel)
+    setField(form, PdfFormFields.Species, ch.species.displayName)
+    setField(form, PdfFormFields.Background, ch.background.name)
+    setField(form, PdfFormFields.Level, ch.characterLevel.toString)
+    setField(form, PdfFormFields.XPPoints, "0")
   }
 
   private def fillCombatStats(form: js.Dynamic, ch: Character): Unit = {
-    setField(form, "Armor Class", ch.armorClass.toString)
-    setField(form, "Max HP", ch.maxHitPoints.toString)
-    setField(form, "Max HD", ch.hitDiceString)
+    setField(form, PdfFormFields.ArmorClass, ch.armorClass.toString)
+    setField(form, PdfFormFields.MaxHP, ch.maxHitPoints.toString)
+    setField(form, PdfFormFields.MaxHD, ch.hitDiceString)
     // Spent HD: left empty for the player to fill during play (count spent since last long rest)
-    setFieldSized(form, "PROF BONUS", ch.proficiencyBonus.format, 12)
-    setField(form, "PASSIVE PERCEPTION", ch.passivePerception.toString)
-    setFieldSized(form, "init", ch.initiative.format, 12)
-    setField(form, "SPEED", s"${ch.speed}ft")
-    setField(form, "SIZE", ch.species.size.label)
+    setFieldSized(form, PdfFormFields.ProfBonus, ch.proficiencyBonus.format, 12)
+    setField(form, PdfFormFields.PassivePerception, ch.passivePerception.toString)
+    setFieldSized(form, PdfFormFields.Init, ch.initiative.format, 12)
+    setField(form, PdfFormFields.Speed, s"${ch.speed}ft")
+    setField(form, PdfFormFields.Size, ch.species.size.label)
   }
 
   private def fillAbilityScores(form: js.Dynamic, ch: Character): Unit = {
@@ -159,27 +159,27 @@ object CharacterSheetPdf {
     abilities.foreach { case (abbr, ability) =>
       val score = scores.get(ability)
       val mod   = AbilityScores.modifier(score)
-      setField(form, s"$abbr SCORE", score.value.toString)
-      setFieldSized(form, s"$abbr MOD", mod.format, 14)
+      setField(form, PdfFormFields.abilityScore(abbr), score.value.toString)
+      setFieldSized(form, PdfFormFields.abilityMod(abbr), mod.format, 14)
     }
   }
 
   private val saveCheckboxes: Map[Ability, String] = Map(
-    Ability.Strength     -> "Check Box18",
-    Ability.Dexterity    -> "Check Box11",
-    Ability.Constitution -> "Check Box7",
-    Ability.Intelligence -> "Check Box25",
-    Ability.Wisdom       -> "Check Box17",
-    Ability.Charisma     -> "Check Box6"
+    Ability.Strength     -> PdfFormFields.CheckBox18,
+    Ability.Dexterity    -> PdfFormFields.CheckBox11,
+    Ability.Constitution -> PdfFormFields.CheckBox7,
+    Ability.Intelligence -> PdfFormFields.CheckBox25,
+    Ability.Wisdom       -> PdfFormFields.CheckBox17,
+    Ability.Charisma     -> PdfFormFields.CheckBox6
   )
 
   private val saveFields: Map[Ability, String] = Map(
-    Ability.Strength     -> "STR SAVE",
-    Ability.Dexterity    -> "DEX SAVE",
-    Ability.Constitution -> "CON SAVE",
-    Ability.Intelligence -> "INT SAVE",
-    Ability.Wisdom       -> "Text Field71",
-    Ability.Charisma     -> "CHA SAVE"
+    Ability.Strength     -> PdfFormFields.StrSave,
+    Ability.Dexterity    -> PdfFormFields.DexSave,
+    Ability.Constitution -> PdfFormFields.ConSave,
+    Ability.Intelligence -> PdfFormFields.IntSave,
+    Ability.Wisdom       -> PdfFormFields.WisSave,
+    Ability.Charisma     -> PdfFormFields.ChaSave
   )
 
   private def fillSavingThrows(form: js.Dynamic, ch: Character): Unit =
@@ -191,45 +191,45 @@ object CharacterSheetPdf {
     }
 
   private val skillCheckboxes: Map[Skill, String] = Map(
-    Skill.Athletics      -> "Check Box19",
-    Skill.Acrobatics     -> "Check Box8",
-    Skill.SleightOfHand  -> "Check Box9",
-    Skill.Stealth        -> "Check Box10",
-    Skill.Arcana         -> "Check Box24",
-    Skill.History        -> "Check Box20",
-    Skill.Investigation  -> "Check Box21",
-    Skill.Nature         -> "Check Box22",
-    Skill.Religion       -> "Check Box23",
-    Skill.AnimalHandling -> "Check Box15",
-    Skill.Insight        -> "Check Box13",
-    Skill.Medicine       -> "Check Box12",
-    Skill.Perception     -> "Check Box14",
-    Skill.Survival       -> "Check Box16",
-    Skill.Deception      -> "Check Box5",
-    Skill.Intimidation   -> "Check Box4",
-    Skill.Performance    -> "Check Box3",
-    Skill.Persuasion     -> "Check Box2"
+    Skill.Athletics      -> PdfFormFields.CheckBox19,
+    Skill.Acrobatics     -> PdfFormFields.CheckBox8,
+    Skill.SleightOfHand  -> PdfFormFields.CheckBox9,
+    Skill.Stealth        -> PdfFormFields.CheckBox10,
+    Skill.Arcana         -> PdfFormFields.CheckBox24,
+    Skill.History        -> PdfFormFields.CheckBox20,
+    Skill.Investigation  -> PdfFormFields.CheckBox21,
+    Skill.Nature         -> PdfFormFields.CheckBox22,
+    Skill.Religion       -> PdfFormFields.CheckBox23,
+    Skill.AnimalHandling -> PdfFormFields.CheckBox15,
+    Skill.Insight        -> PdfFormFields.CheckBox13,
+    Skill.Medicine       -> PdfFormFields.CheckBox12,
+    Skill.Perception     -> PdfFormFields.CheckBox14,
+    Skill.Survival       -> PdfFormFields.CheckBox16,
+    Skill.Deception      -> PdfFormFields.CheckBox5,
+    Skill.Intimidation   -> PdfFormFields.CheckBox4,
+    Skill.Performance    -> PdfFormFields.CheckBox3,
+    Skill.Persuasion     -> PdfFormFields.CheckBox2
   )
 
   private val skillFields: Map[Skill, String] = Map(
-    Skill.Athletics      -> "ATHLETICS",
-    Skill.Acrobatics     -> "ACROBATICS",
-    Skill.SleightOfHand  -> "SLEIGHT OF HAND",
-    Skill.Stealth        -> "STEALTH",
-    Skill.Arcana         -> "ARCANA",
-    Skill.History        -> "HISTORY",
-    Skill.Investigation  -> "INVESTIGATION",
-    Skill.Nature         -> "NATURE",
-    Skill.Religion       -> "RELIGION",
-    Skill.AnimalHandling -> "ANIMAL HANDLING",
-    Skill.Insight        -> "INSIGHT",
-    Skill.Medicine       -> "MEDICINE",
-    Skill.Perception     -> "PERCEPTION",
-    Skill.Survival       -> "SURVIVAL",
-    Skill.Deception      -> "DECEPTION",
-    Skill.Intimidation   -> "INTIMIDATE",
-    Skill.Performance    -> "PERFORMANCE",
-    Skill.Persuasion     -> "PERSUASION"
+    Skill.Athletics      -> PdfFormFields.Athletics,
+    Skill.Acrobatics     -> PdfFormFields.Acrobatics,
+    Skill.SleightOfHand  -> PdfFormFields.SleightOfHand,
+    Skill.Stealth        -> PdfFormFields.Stealth,
+    Skill.Arcana         -> PdfFormFields.Arcana,
+    Skill.History        -> PdfFormFields.History,
+    Skill.Investigation  -> PdfFormFields.Investigation,
+    Skill.Nature         -> PdfFormFields.Nature,
+    Skill.Religion       -> PdfFormFields.Religion,
+    Skill.AnimalHandling -> PdfFormFields.AnimalHandling,
+    Skill.Insight        -> PdfFormFields.Insight,
+    Skill.Medicine       -> PdfFormFields.Medicine,
+    Skill.Perception     -> PdfFormFields.Perception,
+    Skill.Survival       -> PdfFormFields.Survival,
+    Skill.Deception      -> PdfFormFields.Deception,
+    Skill.Intimidation   -> PdfFormFields.Intimidate,
+    Skill.Performance    -> PdfFormFields.Performance,
+    Skill.Persuasion     -> PdfFormFields.Persuasion
   )
 
   private def fillSkills(form: js.Dynamic, ch: Character): Unit =
@@ -242,40 +242,55 @@ object CharacterSheetPdf {
 
   private def fillArmorProficiencies(form: js.Dynamic, ch: Character): Unit = {
     val profs = ch.primaryClass.armorProficiencies
-    if profs.contains(ArmorType.Light) then checkBox(form, "Check Box33")
-    if profs.contains(ArmorType.Medium) then checkBox(form, "Check Box34")
-    if profs.contains(ArmorType.Heavy) then checkBox(form, "Check Box35")
-    if profs.contains(ArmorType.Shield) then checkBox(form, "Check Box36")
-    if ch.equippedShield then checkBox(form, "shield chk")
+    if profs.contains(ArmorType.Light) then checkBox(form, PdfFormFields.CheckBox33)
+    if profs.contains(ArmorType.Medium) then checkBox(form, PdfFormFields.CheckBox34)
+    if profs.contains(ArmorType.Heavy) then checkBox(form, PdfFormFields.CheckBox35)
+    if profs.contains(ArmorType.Shield) then checkBox(form, PdfFormFields.CheckBox36)
+    if ch.equippedShield then checkBox(form, PdfFormFields.ShieldChk)
   }
 
   private def fillWeapons(form: js.Dynamic, ch: Character): Unit =
     ch.equippedWeapons.zipWithIndex.foreach { case (weapon, idx) =>
       val n = idx + 1
       if n <= 6 then {
-        setField(form, s"NAME - WEAPON $n", weapon.name)
-        setField(form, s"BONUS/DC - WEAPON $n", ch.weaponAttackBonus(weapon).format)
-        setField(form, s"DAMAGE/TYPE - WEAPON $n", ch.weaponDamageString(weapon))
-        setField(form, s"NOTES - WEAPON $n", ch.weaponPropertiesSummary(weapon))
+        setField(form, PdfFormFields.nameWeapon(n), weapon.name)
+        setField(form, PdfFormFields.bonusWeapon(n), ch.weaponAttackBonus(weapon).format)
+        setField(form, PdfFormFields.damageWeapon(n), ch.weaponDamageString(weapon))
+        setField(form, PdfFormFields.notesWeapon(n), ch.weaponPropertiesSummary(weapon))
       }
     }
 
   private def fillSpellcasting(form: js.Dynamic, ch: Character): Unit = {
-    ch.primaryClass.spellcastingAbility.foreach { ability =>
-      setField(form, "SPELLCASTING ABILITY", ability.label)
-      setField(form, "SPELLCASTING MOD", ch.modifier(ability).format)
-      ch.spellSaveDC.foreach(dc => setField(form, "SPELL SAVE DC", dc.toString))
-      ch.spellAttackBonus.foreach(b => setField(form, "SPELL ATTACK BONUS", b.format))
+    val grantCantrips = ch.spellGrants.flatMap(g => if g.spellLevel == 0 then g.chosen else Nil)
+    val grantLvl1 = ch.spellGrants.flatMap(g => if g.spellLevel == 1 then g.chosen else Nil)
+    val allCantrips = ch.chosenCantrips ++ grantCantrips
+    val allPreparedLvl1 = ch.preparedSpells ++ grantLvl1
+    val hasAnySpells = ch.isSpellcaster || ch.spellGrants.nonEmpty
+
+    if hasAnySpells then {
+      val ability = ch.primaryClass.spellcastingAbility.getOrElse(Ability.Wisdom)
+      setField(form, PdfFormFields.SpellcastingAbility, ability.label)
+      setField(form, PdfFormFields.SpellcastingMod, ch.modifier(ability).format)
+      val dc = ch.spellSaveDC.getOrElse(8 + ch.proficiencyBonus.toInt + ch.modifier(ability).toInt)
+      setField(form, PdfFormFields.SpellSaveDC, dc.toString)
+      val atk = ch.spellAttackBonus.getOrElse(ch.proficiencyBonus + ch.modifier(ability))
+      setField(form, PdfFormFields.SpellAttackBonus, atk.format)
     }
-    ch.chosenCantrips.zipWithIndex.foreach { case (spell, idx) =>
-      trySetField(form, s"CANTRIP ${idx + 1}", spell.name)
+
+    val slotsByLevel: List[Int] = ch.spellProgression match {
+      case Some(row) => row.slots.padTo(9, 0)
+      case None      => List.fill(9)(0)
     }
-    ch.preparedSpells.zipWithIndex.foreach { case (spell, idx) =>
-      trySetField(form, s"SPELL LVL1 ${idx + 1}", spell.name)
+    PdfFormFields.spellSlotTotals.zip(slotsByLevel).foreach { case (name, n) =>
+      setField(form, name, n.toString)
     }
-    ch.spellProgression.foreach { row =>
-      row.slots.zipWithIndex.foreach { case (n, i) =>
-        if n > 0 then trySetField(form, s"SPELL SLOTS LVL${i + 1}", n.toString)
+
+    val spellRows = allCantrips.map(s => (s.name, "0")) ++ allPreparedLvl1.map(s => (s.name, "1"))
+    spellRows.zipWithIndex.foreach { case ((spellName, levelStr), idx) =>
+      if idx <= 28 then {
+        setField(form, PdfFormFields.spellName(idx), spellName)
+        setField(form, PdfFormFields.spellLevel(idx), levelStr)
+        tryCheckBox(form, PdfFormFields.spellPreparedCheckBox(idx))
       }
     }
   }
@@ -284,25 +299,29 @@ object CharacterSheetPdf {
     try setField(form, name, value)
     catch case _: Throwable => ()
 
+  private def tryCheckBox(form: js.Dynamic, name: String): Unit =
+    try PdfLib.check(PdfLib.getCheckBox(form, name))
+    catch case _: Throwable => ()
+
   private def fillCurrency(form: js.Dynamic, ch: Character): Unit = {
     def coinValue(n: Int): String = if n == 0 then "" else n.toString
-    setField(form, "GP", coinValue(ch.coins.gp))
-    setField(form, "SP", coinValue(ch.coins.sp))
-    setField(form, "EP", coinValue(ch.coins.ep))
-    setField(form, "CP", coinValue(ch.coins.cp))
-    setField(form, "PP", coinValue(ch.coins.pp))
+    setField(form, PdfFormFields.GP, coinValue(ch.coins.gp))
+    setField(form, PdfFormFields.SP, coinValue(ch.coins.sp))
+    setField(form, PdfFormFields.EP, coinValue(ch.coins.ep))
+    setField(form, PdfFormFields.CP, coinValue(ch.coins.cp))
+    setField(form, PdfFormFields.PP, coinValue(ch.coins.pp))
   }
 
   private def fillProficienciesAndFeatures(form: js.Dynamic, ch: Character): Unit = {
     val langStr = ch.languages.toList.sortBy(_.label).map(_.label).mkString(", ")
-    trySetField(form, "LANGUAGES", langStr)
-    setFieldPadded(form, "WEAPON PROF", ch.primaryClass.weaponSummary, 4)
-    setFieldPaddedSized(form, "TOOL PROF", ch.background.toolProficiency, 2, 11)
+    trySetField(form, PdfFormFields.Languages, langStr)
+    setFieldPadded(form, PdfFormFields.WeaponProf, ch.primaryClass.weaponSummary, 4)
+    setFieldPaddedSized(form, PdfFormFields.ToolProf, ch.background.toolProficiency, 2, 11)
     val featText = ch.originFeat.name + ":\n" + ch.originFeat.description
-    setFieldPadded(form, "FEATS", featText, 28)
-    setFieldPaddedSized(form, "EQUIPMENT", ch.equipmentSummary, 40, 11)
+    setFieldPadded(form, PdfFormFields.Feats, featText, 28)
+    setFieldPaddedSized(form, PdfFormFields.Equipment, ch.equipmentSummary, 40, 11)
     val traitsText = ch.species.traits.map(t => s" * $t").mkString("\n")
-    setFieldPadded(form, "SPECIES TRAITS", traitsText, 25)
+    setFieldPadded(form, PdfFormFields.SpeciesTraits, traitsText, 25)
 
     val features = ClassProgression.featuresUpToLevel(ch.primaryClass, ch.primaryClassLevel)
     val featureLines = features.map(f => featureLine(f, ch))
@@ -310,10 +329,10 @@ object CharacterSheetPdf {
     val col1Text = featureLines.take(mid).mkString("\n")
     val col2Text = featureLines.drop(mid)
 
-    setFieldPadded(form, "CLASS FEATURES 1", col1Text, 30)
+    setFieldPadded(form, PdfFormFields.ClassFeatures1, col1Text, 30)
 
     if col2Text.nonEmpty then
-      setFieldPadded(form, "CLASS FEATURES 2", col2Text.mkString("\n"), 35)
+      setFieldPadded(form, PdfFormFields.ClassFeatures2, col2Text.mkString("\n"), 35)
   }
 
   private def featureLine(f: ClassFeature, ch: Character): String = {

@@ -57,13 +57,19 @@ object SkillsScreen extends Screen {
       val classSkillsReady = model.chosenSkills.size == cls.numSkillChoices
       val grantSkillsReady = model.draft.skillGrants.forall(_.isFilled)
       if classSkillsReady && grantSkillsReady then {
-        val updated = model.draft.copy(chosenSkills = model.chosenSkills)
+        val updated = model.draft.copy(
+          chosenSkills = model.chosenSkills,
+          skillGrants = model.draft.skillGrants
+        )
         (model, Cmd.Emit(NavigateNext(ScreenId.FeaturesId, Some(ScreenOutput.Draft(updated)))))
       }
       else (model, Cmd.None)
 
     case SkillsMsg.Back =>
-      val updated = model.draft.copy(chosenSkills = model.chosenSkills)
+      val updated = model.draft.copy(
+        chosenSkills = model.chosenSkills,
+        skillGrants = model.draft.skillGrants
+      )
       (model, Cmd.Emit(NavigateNext(ScreenId.AbilitiesId, Some(ScreenOutput.Draft(updated)))))
 
     case _: NavigateNext =>

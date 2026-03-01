@@ -125,7 +125,8 @@ object SpellsScreen extends Screen {
           val updated = model.draft.copy(
             chosenCantrips = model.chosenCantrips,
             preparedSpells = model.preparedSpells,
-            spellbookSpells = model.spellbookSpells
+            spellbookSpells = model.spellbookSpells,
+            spellGrants = model.draft.spellGrants
           )
           (model, Cmd.Emit(NavigateNext(ScreenId.EquipmentId, Some(ScreenOutput.Draft(updated)))))
         case Phase.GrantSpell(i) if i > 0 =>
@@ -142,21 +143,24 @@ object SpellsScreen extends Screen {
           val updated = model.draft.copy(
             chosenCantrips = model.chosenCantrips,
             preparedSpells = model.preparedSpells,
-            spellbookSpells = model.spellbookSpells
+            spellbookSpells = model.spellbookSpells,
+            spellGrants = model.draft.spellGrants
           )
           (model, Cmd.Emit(NavigateNext(ScreenId.EquipmentId, Some(ScreenOutput.Draft(updated)))))
         case Phase.Prepared =>
           val updated = model.draft.copy(
             chosenCantrips = model.chosenCantrips,
             preparedSpells = model.preparedSpells,
-            spellbookSpells = model.spellbookSpells
+            spellbookSpells = model.spellbookSpells,
+            spellGrants = model.draft.spellGrants
           )
           (model, Cmd.Emit(NavigateNext(ScreenId.EquipmentId, Some(ScreenOutput.Draft(updated)))))
         case _ =>
           val updated = model.draft.copy(
             chosenCantrips = model.chosenCantrips,
             preparedSpells = model.preparedSpells,
-            spellbookSpells = model.spellbookSpells
+            spellbookSpells = model.spellbookSpells,
+            spellGrants = model.draft.spellGrants
           )
           (model, Cmd.Emit(NavigateNext(ScreenId.EquipmentId, Some(ScreenOutput.Draft(updated)))))
       }
@@ -168,7 +172,8 @@ object SpellsScreen extends Screen {
     val updated = model.draft.copy(
       chosenCantrips = model.chosenCantrips,
       preparedSpells = model.preparedSpells,
-      spellbookSpells = model.spellbookSpells
+      spellbookSpells = model.spellbookSpells,
+      spellGrants = model.draft.spellGrants
     )
     (model, Cmd.Emit(NavigateNext(ScreenId.ReviewId, Some(ScreenOutput.Draft(updated)))))
   }
