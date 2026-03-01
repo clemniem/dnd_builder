@@ -9,7 +9,7 @@ import scala.scalajs.js.annotation.JSExportTopLevel
 object CharacterSheetPdf {
 
   /** Bump this on every change to PDF filling logic so `testPdf()` output is visually distinguishable from stale builds. */
-  val testPdfVersion: Int = 7
+  val testPdfVersion: Int = 13
 
   /** Font size (pt) for all large content fields: Class Features, Species Traits, Feats, Languages, Equipment, Weapon Prof, Tool Prof, and weapon rows. Change this to adjust all at once. */
   val contentFontSizePt: Int = 10
@@ -25,6 +25,36 @@ object CharacterSheetPdf {
       val names = PdfLib.getFieldNames(form).sorted
       val json = "[" + names.map(n => "\"" + n.replace("\\", "\\\\").replace("\"", "\\\"") + "\"").mkString(", ") + "]"
       org.scalajs.dom.console.log(json)
+    } { err => org.scalajs.dom.console.error(err) }
+
+  /** Logs every checkbox's physical position (page, x, y) so we can map field names to visual positions. Run: mapCheckboxPositions() in browser console. */
+  @JSExportTopLevel("mapCheckboxPositions")
+  def mapCheckboxPositions(): Unit =
+    PdfLib.loadFromUrl(pdfUrl) { doc =>
+      val form = PdfLib.getForm(doc)
+      val fields = form.getFields().asInstanceOf[js.Array[js.Dynamic]]
+      val entries = scala.collection.mutable.ArrayBuffer.empty[String]
+      (0 until fields.length).foreach { i =>
+        val field = fields(i)
+        val name = field.getName().asInstanceOf[String]
+        if name.startsWith("Check Box") then {
+          try {
+            val widgets = field.acroField.getWidgets().asInstanceOf[js.Array[js.Dynamic]]
+            (0 until widgets.length).foreach { w =>
+              val rect = widgets(w).getRectangle()
+              val x = rect.x.asInstanceOf[Double]
+              val y = rect.y.asInstanceOf[Double]
+              val page = try {
+                val pageRef = widgets(w).P()
+                val pages = doc.getPages().asInstanceOf[js.Array[js.Dynamic]]
+                (0 until pages.length).find(p => pages(p).ref == pageRef).getOrElse(-1)
+              } catch { case _: Throwable => -1 }
+              entries += f"""{"name":"$name","page":$page,"x":$x%.1f,"y":$y%.1f}"""
+            }
+          } catch { case _: Throwable => entries += s"""{"name":"$name","error":"no widgets"}""" }
+        }
+      }
+      org.scalajs.dom.console.log("[\n" + entries.mkString(",\n") + "\n]")
     } { err => org.scalajs.dom.console.error(err) }
 
   /** Test character for testPdf(): must exercise every filled section (header, combat incl. hit dice, abilities, saves, skills, armor, weapons, spellcasting, currency, feats/traits/class features). When adding new form fields, add filling logic and ensure this character covers them. */
@@ -294,27 +324,14 @@ object CharacterSheetPdf {
     }
 
     val spellRows = allCantrips.map(s => (s.name, "0")) ++ allPreparedLvl1.map(s => (s.name, "1"))
-    spellRows.zipWithIndex.foreach { case ((name, levelStr), visualPos) =>
+    spellRows.zipWithIndex.foreach { case ((spellName, levelStr), visualPos) =>
       if visualPos < PdfFormFields.spellRowVisualOrder.length then {
-        setField(form, PdfFormFields.spellName(visualPos), name)
+        val displayName = if levelStr != "0" then s"[ ] $spellName" else spellName
+        setField(form, PdfFormFields.spellName(visualPos), displayName)
         setField(form, PdfFormFields.spellLevel(visualPos), levelStr)
-        val fieldIdx = PdfFormFields.spellRowVisualOrder(visualPos)
-        if levelStr == "1" && fieldIdx >= 0 then
-          tryCheckBox(form, PdfFormFields.spellPreparedCheckBox(fieldIdx))
       }
     }
-
-    PdfFormFields.spellSlotExpendedCheckBoxes.foreach(name => tryUncheckBox(form, name))
   }
-
-  private def tryCheckBox(form: js.Dynamic, name: String): Unit =
-    try PdfLib.check(PdfLib.getCheckBox(form, name))
-    catch case _: Throwable => ()
-
-  private def tryUncheckBox(form: js.Dynamic, name: String): Unit =
-    try PdfLib.uncheck(PdfLib.getCheckBox(form, name))
-    catch case t: Throwable =>
-      org.scalajs.dom.console.error(s"[PDF] tryUncheckBox failed for $name:", t.getMessage)
 
   private def fillCurrency(form: js.Dynamic, ch: Character): Unit = {
     def coinValue(n: Int): String = if n == 0 then "" else n.toString

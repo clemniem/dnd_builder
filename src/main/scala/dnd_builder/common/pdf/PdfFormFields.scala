@@ -121,12 +121,28 @@ object PdfFormFields {
 
   // Checkboxes (by index)
   def checkBox(i: Int): String         = s"Check Box$i"
-  /** Prepared tickbox for spell field index (0–28, matching SPELL NAME0–28). Check Box37–65. Visual row 0 (bare "SPELL NAME") has no prepared checkbox. */
-  def spellPreparedCheckBox(fieldIndex: Int): String = checkBox(37 + fieldIndex)
 
-  /** Spell slot expended checkboxes. Always uncheck these LAST: they are for the player to mark during play. Check Box149 does not exist in the template. */
-  val spellSlotExpendedCheckBoxes: List[String] =
-    ((66 to 148) ++ Seq(150)).map(i => checkBox(i)).toList
+  // ---------------------------------------------------------------------------
+  // Spell slot EXPENDED diamonds (y ≈ 650–680, above the spell table).
+  // These are for the player to mark during play — never touch them in code.
+  // ---------------------------------------------------------------------------
+  // Level 1 (4): 52, 46, 40, 37     Level 4 (3): 50, 53, 39     Level 7 (2): 55, 56
+  // Level 2 (3): 49, 38, 43         Level 5 (3): 48, 45, 42     Level 8 (1): 58
+  // Level 3 (3): 47, 44, 41         Level 6 (2): 51, 54         Level 9 (1): 57
+
+  // ---------------------------------------------------------------------------
+  // Spell table C/R/M diamonds (x ≈ 239/261/283, 30 rows top→bottom).
+  // These mark Concentration, Ritual, and Required Material — not filled by us.
+  // ---------------------------------------------------------------------------
+  // C column (x≈239): 0, 64, 67, 70, 73, 76, 79, 85, 82, 88, 91, 94, 97,
+  //   100, 103, 106, 109, 112, 115, 118, 121, 124, 127, 130, 133, 136, 139, 142, 145, 148
+  // R column (x≈261): 59, 65, 68, 71, 74, 77, 80, 86, 83, 89, 92, 95, 98,
+  //   101, 104, 107, 110, 113, 116, 119, 122, 125, 128, 131, 134, 137, 140, 143, 146 (149 missing)
+  // M column (x≈283): 60, 66, 69, 72, 75, 78, 81, 87, 84, 90, 93, 96, 99,
+  //   102, 105, 108, 111, 114, 117, 120, 123, 126, 129, 132, 135, 138, 141, 144, 147, 150
+
+  // NOTE: This template has NO "prepared" checkbox column. The spell table title
+  // is "CANTRIPS & PREPARED SPELLS" — being listed IS being prepared.
 
   // Armor proficiency checkboxes
   val CheckBox33 = "Check Box33"  // Light
