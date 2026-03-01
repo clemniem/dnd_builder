@@ -208,6 +208,23 @@ Each follows the same pattern. Estimated order by complexity:
 
 ---
 
+## Feature registry (supports configuration roadmap)
+
+**Current state:** Class features are declared inline in three places: `DndClass` (level 1), `ClassProgression` (level 2–3), and `Subclass` (level 3). The same text can be duplicated (e.g. "Fighting Style" for Fighter, Paladin, Ranger), and JSON config must repeat full `{ "name", "description", "uses" }` per class.
+
+**Why a registry helps:** Define each feature once in a central list (e.g. `ClassFeatureRegistry` or a `features` array in the RuleSet). Classes and progression then reference features by **id** (or stable name). Config can say `"level1Features": ["rage", "unarmored-defense", "weapon-mastery"]` and optionally override `description`/`uses` per class when needed. Custom classes can reference built-in feature ids or define new ones in the same RuleSet.
+
+**Proposed direction (when doing Subclasses + ClassProgression):**
+
+- **Feature registry:** e.g. `Map[String, ClassFeature]` keyed by a stable id (e.g. `"rage"`, `"fighting-style"`). Built-in features populated from current inline definitions; then DndClass and ClassProgression reference by id.
+- **DndClass:** `level1FeatureIds: List[String]` (or keep `level1Features: List[ClassFeature]` but populate from registry in factory).
+- **ClassProgression:** `LevelGain(featureIds: List[String], choices: ...)` with resolution at use site via `featuresUpToLevel(dndClass, level)` resolving ids through the RuleSet’s feature map.
+- **JSON:** RuleSet contains `"features": [{ "id": "rage", "name": "Rage", "description": "...", "uses": 2 }]` and classes have `"level1Features": ["rage", "unarmored-defense", "weapon-mastery"]`. Validation ensures every referenced id exists in the same RuleSet.
+
+This keeps a single source of truth for feature text, avoids duplication, and lets config reuse or override features cleanly.
+
+---
+
 ## Estimated Effort Per Phase
 
 - **Phase 1 (DndClass + RuleSet infra):** ~10 files, ~500 lines changed/added. Medium effort. This is the hardest phase because it establishes the pattern and threading.

@@ -41,113 +41,33 @@ object ClassProgression {
   )
 
   private val level2Entries: List[((String, Int), LevelGain)] = List(
-    (DndClass.Barbarian.name, 2) -> LevelGain(
-      List(
-        ClassFeature("Danger Sense", "Advantage on DEX saves you can see. Not Blinded, Deafened, or Incapacitated.", None),
-        ClassFeature("Reckless Attack", "First attack on your turn: choose Advantage on STR attacks this turn; attacks against you also have Advantage.", None)
-      ), Nil),
-    (DndClass.Bard.name, 2) -> LevelGain(
-      List(
-        ClassFeature("Expertise", "Choose 2 skill proficiencies to gain Expertise (double proficiency bonus).", None),
-        ClassFeature("Jack of All Trades", "Add half your proficiency bonus (round down) to ability checks you are not proficient in.", None)
-      ), List(LevelChoice.ChooseExpertise(2))),
-    (DndClass.Cleric.name, 2) -> LevelGain(
-      List(
-        ClassFeature("Channel Divinity", "2 uses per Short/Long Rest. Turn Undead: undead within 30ft must save or be turned for 1 min.", Some(2))
-      ), Nil),
-    (DndClass.Druid.name, 2) -> LevelGain(
-      List(
-        ClassFeature("Wild Shape", "Bonus Action to magically assume a beast form. Uses = proficiency bonus per Long Rest.", None),
-        ClassFeature("Wild Companion", "Expend a Wild Shape use to cast Find Familiar without material components.", None)
-      ), Nil),
-    (DndClass.Fighter.name, 2) -> LevelGain(
-      List(
-        ClassFeature("Action Surge", "1 use per Short/Long Rest. On your turn, take one additional Action.", Some(1)),
-        ClassFeature("Tactical Mind", "When you fail an ability check, expend a Second Wind use to add 1d10 to the roll.", None)
-      ), Nil),
-    (DndClass.Monk.name, 2) -> LevelGain(
-      List(
-        ClassFeature("Monk's Focus", "2 Focus Points per Short/Long Rest. Spend points for Flurry of Blows (1), Patient Defense (1), or Step of the Wind (1).", Some(2)),
-        ClassFeature("Unarmored Movement", "+10ft speed when not wearing armor or wielding a shield.", None)
-      ), Nil),
-    (DndClass.Paladin.name, 2) -> LevelGain(
-      List(
-        ClassFeature("Fighting Style", "Choose a Fighting Style feat.", None),
-        ClassFeature("Paladin's Smite", "When you hit with a melee weapon, expend a spell slot to deal 2d8 extra Radiant damage (+1d8 per slot level above 1st).", None)
-      ), List(LevelChoice.ChooseFightingStyle)),
-    (DndClass.Ranger.name, 2) -> LevelGain(
-      List(
-        ClassFeature("Deft Explorer", "Choose one of your skill proficiencies. Your proficiency bonus is doubled for ability checks using that skill.", None),
-        ClassFeature("Fighting Style", "Choose a Fighting Style feat.", None)
-      ), List(LevelChoice.ChooseExpertise(1), LevelChoice.ChooseFightingStyle)),
-    (DndClass.Rogue.name, 2) -> LevelGain(
-      List(
-        ClassFeature("Cunning Action", "Bonus Action each turn: Dash, Disengage, or Hide.", None)
-      ), Nil),
-    (DndClass.Sorcerer.name, 2) -> LevelGain(
-      List(
-        ClassFeature("Font of Magic", "2 Sorcery Points per Long Rest. Convert spell slots to points or points to slots.", Some(2)),
-        ClassFeature("Metamagic", "Choose 2 Metamagic options. Spend Sorcery Points to twist spells.", None)
-      ), Nil),
-    (DndClass.Warlock.name, 2) -> LevelGain(
-      List(
-        ClassFeature("Magical Cunning", "If all Pact Magic slots are expended, perform a 1-minute ritual to recover half (round up). Once per Long Rest.", Some(1))
-      ), Nil),
-    (DndClass.Wizard.name, 2) -> LevelGain(
-      List(
-        ClassFeature("Scholar", "Choose one of your skill proficiencies. Your proficiency bonus is doubled for ability checks using that skill.", None)
-      ), List(LevelChoice.ChooseExpertise(1)))
+    (DndClass.Barbarian.name, 2) -> LevelGain(SRD_registry.getMany("danger-sense", "reckless-attack"), Nil),
+    (DndClass.Bard.name, 2) -> LevelGain(SRD_registry.getMany("expertise", "jack-of-all-trades"), List(LevelChoice.ChooseExpertise(2))),
+    (DndClass.Cleric.name, 2) -> LevelGain(SRD_registry.getMany("channel-divinity-cleric"), Nil),
+    (DndClass.Druid.name, 2) -> LevelGain(SRD_registry.getMany("wild-shape", "wild-companion"), Nil),
+    (DndClass.Fighter.name, 2) -> LevelGain(SRD_registry.getMany("action-surge", "tactical-mind"), Nil),
+    (DndClass.Monk.name, 2) -> LevelGain(SRD_registry.getMany("monks-focus", "unarmored-movement"), Nil),
+    (DndClass.Paladin.name, 2) -> LevelGain(SRD_registry.getMany("fighting-style", "paladins-smite"), List(LevelChoice.ChooseFightingStyle)),
+    (DndClass.Ranger.name, 2) -> LevelGain(SRD_registry.getMany("deft-explorer", "fighting-style"), List(LevelChoice.ChooseExpertise(1), LevelChoice.ChooseFightingStyle)),
+    (DndClass.Rogue.name, 2) -> LevelGain(SRD_registry.getMany("cunning-action"), Nil),
+    (DndClass.Sorcerer.name, 2) -> LevelGain(SRD_registry.getMany("font-of-magic", "metamagic"), Nil),
+    (DndClass.Warlock.name, 2) -> LevelGain(SRD_registry.getMany("magical-cunning"), Nil),
+    (DndClass.Wizard.name, 2) -> LevelGain(SRD_registry.getMany("scholar"), List(LevelChoice.ChooseExpertise(1)))
   )
 
   private val level3Entries: List[((String, Int), LevelGain)] = List(
     (DndClass.Barbarian.name, 3) -> LevelGain(
-      List(
-        ClassFeature(
-          "Primal Knowledge",
-          "Gain proficiency in one more skill from the Barbarian skill list. While Rage is active, you can make Acrobatics, Intimidation, Perception, Stealth, or Survival checks using Strength.",
-          None
-        )
-      ),
+      SRD_registry.getMany("primal-knowledge"),
       List(LevelChoice.ChooseSubclass, LevelChoice.ChooseExtraSkills(1, DndClass.Barbarian.skillPool))
     ),
-    (DndClass.Bard.name, 3) -> LevelGain(
-      Nil,
-      List(LevelChoice.ChooseSubclass, LevelChoice.ChooseExtraSkills(3, Skill.values.toSet))
-    ),
+    (DndClass.Bard.name, 3) -> LevelGain(Nil, List(LevelChoice.ChooseSubclass, LevelChoice.ChooseExtraSkills(3, Skill.values.toSet))),
     (DndClass.Cleric.name, 3) -> LevelGain(Nil, List(LevelChoice.ChooseSubclass)),
     (DndClass.Druid.name, 3) -> LevelGain(Nil, List(LevelChoice.ChooseSubclass, LevelChoice.ChooseLandType)),
     (DndClass.Fighter.name, 3) -> LevelGain(Nil, List(LevelChoice.ChooseSubclass)),
-    (DndClass.Monk.name, 3) -> LevelGain(
-      List(
-        ClassFeature(
-          "Deflect Attacks",
-          "When an attack hits you and deals B/P/S damage, use a Reaction to reduce damage by 1d10 + DEX mod + Monk level. If reduced to 0, spend 1 Focus Point to redirect force at another creature.",
-          None
-        )
-      ),
-      List(LevelChoice.ChooseSubclass)
-    ),
-    (DndClass.Paladin.name, 3) -> LevelGain(
-      List(
-        ClassFeature(
-          "Channel Divinity",
-          "2 uses per Short/Long Rest. Divine Sense: detect Celestials, Fiends, Undead within 60 ft for 10 min.",
-          Some(2)
-        )
-      ),
-      List(LevelChoice.ChooseSubclass)
-    ),
+    (DndClass.Monk.name, 3) -> LevelGain(SRD_registry.getMany("deflect-attacks"), List(LevelChoice.ChooseSubclass)),
+    (DndClass.Paladin.name, 3) -> LevelGain(SRD_registry.getMany("channel-divinity-paladin"), List(LevelChoice.ChooseSubclass)),
     (DndClass.Ranger.name, 3) -> LevelGain(Nil, List(LevelChoice.ChooseSubclass, LevelChoice.ChooseHunterPrey)),
-    (DndClass.Rogue.name, 3) -> LevelGain(
-      List(
-        ClassFeature(
-          "Steady Aim",
-          "Bonus Action: gain Advantage on your next attack roll this turn. You cannot have moved this turn; after use, Speed is 0 until end of turn.",
-          None
-        )
-      ),
-      List(LevelChoice.ChooseSubclass)
-    ),
+    (DndClass.Rogue.name, 3) -> LevelGain(SRD_registry.getMany("steady-aim"), List(LevelChoice.ChooseSubclass)),
     (DndClass.Sorcerer.name, 3) -> LevelGain(Nil, List(LevelChoice.ChooseSubclass)),
     (DndClass.Warlock.name, 3) -> LevelGain(Nil, List(LevelChoice.ChooseSubclass)),
     (DndClass.Wizard.name, 3) -> LevelGain(Nil, List(LevelChoice.ChooseSubclass))

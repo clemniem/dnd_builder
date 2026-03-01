@@ -103,11 +103,7 @@ object DndClass {
       Skill.AnimalHandling, Skill.Athletics, Skill.Intimidation,
       Skill.Nature, Skill.Perception, Skill.Survival
     ),
-    level1Features = List(
-      ClassFeature("Rage", "2 uses. +2 damage, resistance to B/P/S, Advantage on STR checks. Bonus Action to activate.", Some(2)),
-      ClassFeature("Unarmored Defense", "AC = 10 + DEX mod + CON mod when not wearing armor.", None),
-      ClassFeature("Weapon Mastery", "Choose 2 weapons to gain Mastery properties.", None)
-    ),
+    level1Features = SRD_registry.getMany("rage", "unarmored-defense-barbarian", "weapon-mastery-2"),
     description = "A fierce warrior fueled by primal rage",
     recommendedScores = AbilityScores(Score(15), Score(13), Score(14), Score(10), Score(12), Score(8))
   ).copy(
@@ -123,10 +119,7 @@ object DndClass {
     armorProficiencies = Set(ArmorType.Light),
     weaponProficiencies = Set(WeaponProficiency.AllSimple),
     skillPool = Skill.values.toSet,
-    level1Features = List(
-      ClassFeature("Bardic Inspiration", "d6 die. CHA mod uses per Long Rest. Bonus Action to grant to ally within 60ft.", None),
-      ClassFeature("Spellcasting", "CHA-based. 2 cantrips, 4 prepared spells, 2 level-1 slots.", None)
-    ),
+    level1Features = SRD_registry.getMany("bardic-inspiration", "spellcasting-bard"),
     description = "An inspiring magician whose music channels arcane power",
     recommendedScores = AbilityScores(Score(8), Score(14), Score(12), Score(13), Score(10), Score(15))
   ).copy(
@@ -148,10 +141,7 @@ object DndClass {
     skillPool = Set(
       Skill.History, Skill.Insight, Skill.Medicine, Skill.Persuasion, Skill.Religion
     ),
-    level1Features = List(
-      ClassFeature("Spellcasting", "WIS-based. 3 cantrips, 4 prepared spells, 2 level-1 slots.", None),
-      ClassFeature("Divine Order", "Choose Protector (Martial weapons + Heavy armor) or Thaumaturge (extra cantrip + INT bonus to Arcana/Religion).", None)
-    ),
+    level1Features = SRD_registry.getMany("spellcasting-cleric", "divine-order"),
     description = "A divine champion who wields holy magic",
     recommendedScores = AbilityScores(Score(14), Score(8), Score(13), Score(10), Score(15), Score(12))
   ).copy(
@@ -172,11 +162,7 @@ object DndClass {
       Skill.Medicine, Skill.Nature, Skill.Perception,
       Skill.Religion, Skill.Survival
     ),
-    level1Features = List(
-      ClassFeature("Spellcasting", "WIS-based. 2 cantrips, 4 prepared spells, 2 level-1 slots.", None),
-      ClassFeature("Druidic", "Secret language. Speak with Animals always prepared.", None),
-      ClassFeature("Primal Order", "Choose Magician (extra cantrip + INT bonus to Arcana/Nature) or Warden (Martial weapons + Medium armor).", None)
-    ),
+    level1Features = SRD_registry.getMany("spellcasting-druid", "druidic", "primal-order"),
     description = "A priest of nature who wields elemental and beast magic",
     recommendedScores = AbilityScores(Score(8), Score(12), Score(14), Score(13), Score(15), Score(10))
   ).copy(
@@ -197,11 +183,7 @@ object DndClass {
       Skill.History, Skill.Insight, Skill.Intimidation,
       Skill.Perception, Skill.Survival
     ),
-    level1Features = List(
-      ClassFeature("Fighting Style", "Choose a Fighting Style feat.", None),
-      ClassFeature("Second Wind", "2 uses. Bonus Action to heal 1d10 + Fighter level HP.", Some(2)),
-      ClassFeature("Weapon Mastery", "Choose 3 weapons to gain Mastery properties.", None)
-    ),
+    level1Features = SRD_registry.getMany("fighting-style", "second-wind", "weapon-mastery-3"),
     description = "A master of martial combat with every weapon and armor",
     recommendedScores = AbilityScores(Score(15), Score(14), Score(13), Score(8), Score(10), Score(12))
   ).copy(weaponMasteryCount = 3)
@@ -217,10 +199,7 @@ object DndClass {
       Skill.Acrobatics, Skill.Athletics, Skill.History,
       Skill.Insight, Skill.Religion, Skill.Stealth
     ),
-    level1Features = List(
-      ClassFeature("Martial Arts", "1d6 martial arts die. Bonus Action Unarmed Strike. Use DEX for monk weapon attacks.", None),
-      ClassFeature("Unarmored Defense", "AC = 10 + DEX mod + WIS mod when not wearing armor or shield.", None)
-    ),
+    level1Features = SRD_registry.getMany("martial-arts", "unarmored-defense-monk"),
     description = "A martial artist harnessing body and mind as one weapon",
     recommendedScores = AbilityScores(Score(12), Score(15), Score(13), Score(10), Score(14), Score(8))
   ).copy(
@@ -251,11 +230,7 @@ object DndClass {
       Skill.Athletics, Skill.Insight, Skill.Intimidation,
       Skill.Medicine, Skill.Persuasion, Skill.Religion
     ),
-    level1Features = List(
-      ClassFeature("Lay On Hands", "Pool = 5 x Paladin level HP. Bonus Action to heal.", None),
-      ClassFeature("Spellcasting", "CHA-based. 2 prepared spells, 2 level-1 slots.", None),
-      ClassFeature("Weapon Mastery", "Choose 2 weapons to gain Mastery properties.", None)
-    ),
+    level1Features = SRD_registry.getMany("lay-on-hands", "spellcasting-paladin", "weapon-mastery-2"),
     description = "A holy warrior bound to a sacred oath",
     recommendedScores = AbilityScores(Score(15), Score(10), Score(13), Score(8), Score(12), Score(14))
   ).copy(
@@ -276,11 +251,7 @@ object DndClass {
       Skill.Investigation, Skill.Nature, Skill.Perception,
       Skill.Stealth, Skill.Survival
     ),
-    level1Features = List(
-      ClassFeature("Spellcasting", "WIS-based. 2 prepared spells, 2 level-1 slots.", None),
-      ClassFeature("Favored Enemy", "Hunter's Mark always prepared. 2 free casts per Long Rest.", Some(2)),
-      ClassFeature("Weapon Mastery", "Choose 2 weapons to gain Mastery properties.", None)
-    ),
+    level1Features = SRD_registry.getMany("spellcasting-ranger", "favored-enemy", "weapon-mastery-2"),
     description = "A wandering warrior attuned to nature and the hunt",
     recommendedScores = AbilityScores(Score(12), Score(15), Score(13), Score(8), Score(14), Score(10))
   ).copy(
@@ -304,12 +275,7 @@ object DndClass {
       Skill.Perception, Skill.Performance, Skill.Persuasion,
       Skill.SleightOfHand, Skill.Stealth
     ),
-    level1Features = List(
-      ClassFeature("Expertise", "Choose 2 skills to gain Expertise (double proficiency bonus).", None),
-      ClassFeature("Sneak Attack", "1d6 extra damage when you have Advantage or an ally adjacent to the target.", None),
-      ClassFeature("Thieves' Cant", "Secret language of rogues.", None),
-      ClassFeature("Weapon Mastery", "Choose 2 weapons to gain Mastery properties.", None)
-    ),
+    level1Features = SRD_registry.getMany("expertise", "sneak-attack", "thieves-cant", "weapon-mastery-2"),
     description = "A scoundrel who uses stealth and trickery to overcome obstacles",
     recommendedScores = AbilityScores(Score(12), Score(15), Score(13), Score(14), Score(10), Score(8))
   ).copy(
@@ -328,10 +294,7 @@ object DndClass {
       Skill.Arcana, Skill.Deception, Skill.Insight,
       Skill.Intimidation, Skill.Persuasion, Skill.Religion
     ),
-    level1Features = List(
-      ClassFeature("Spellcasting", "CHA-based. 4 cantrips, 4 prepared spells, 2 level-1 slots.", None),
-      ClassFeature("Innate Sorcery", "2 uses. Bonus Action for 1 min: Advantage on spell attacks, spell save DC +1.", Some(2))
-    ),
+    level1Features = SRD_registry.getMany("spellcasting-sorcerer", "innate-sorcery"),
     description = "A spellcaster who draws on inherent magic from birth or bloodline",
     recommendedScores = AbilityScores(Score(10), Score(13), Score(14), Score(8), Score(12), Score(15))
   ).copy(
@@ -351,10 +314,7 @@ object DndClass {
       Skill.Arcana, Skill.Deception, Skill.History,
       Skill.Intimidation, Skill.Investigation, Skill.Nature, Skill.Religion
     ),
-    level1Features = List(
-      ClassFeature("Pact Magic", "CHA-based. 2 cantrips, 2 prepared spells, 1 level-1 slot. Slots recover on Short/Long Rest.", None),
-      ClassFeature("Eldritch Invocations", "1 invocation. Choose from Pact of the Tome, Blade, or Chain.", None)
-    ),
+    level1Features = SRD_registry.getMany("pact-magic", "eldritch-invocations"),
     description = "A wielder of magic granted by an otherworldly patron",
     recommendedScores = AbilityScores(Score(8), Score(14), Score(13), Score(12), Score(10), Score(15))
   ).copy(
@@ -373,11 +333,7 @@ object DndClass {
       Skill.Arcana, Skill.History, Skill.Insight,
       Skill.Investigation, Skill.Medicine, Skill.Religion
     ),
-    level1Features = List(
-      ClassFeature("Spellcasting", "INT-based. 3 cantrips, 4 prepared from spellbook, 2 level-1 slots. Spellbook starts with 6 level-1 spells.", None),
-      ClassFeature("Ritual Adept", "Cast Ritual spells from spellbook without preparing them.", None),
-      ClassFeature("Arcane Recovery", "Once per day on Short Rest, recover spell slots totaling up to half Wizard level (round up).", Some(1))
-    ),
+    level1Features = SRD_registry.getMany("spellcasting-wizard", "ritual-adept", "arcane-recovery"),
     description = "A scholarly magic-user who commands arcane spells through study",
     recommendedScores = AbilityScores(Score(8), Score(12), Score(13), Score(15), Score(14), Score(10))
   ).copy(
