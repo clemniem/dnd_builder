@@ -13,13 +13,13 @@ object SpellsScreen extends Screen {
   val screenId: ScreenId = ScreenId.SpellsId
 
   private def spellInfo(draft: CharacterDraft): (DndClass, Int, Int, Int, Int) = {
-    val cls = draft.dndClass.getOrElse(Wizard)
+    val cls = draft.resolvedClass
     val lvl = draft.level.getOrElse(1)
     val prog = SpellProgression.forClass(cls, lvl)
     val cantrips = prog.map(_.cantrips).getOrElse(0)
     val prepared = prog.map(_.preparedSpells).getOrElse(0)
     val spellbook =
-      if cls.fullCasterVariant.contains(FullCasterVariant.Wizard) then SpellProgression.wizardSpellbookSize(lvl)
+      if cls.usesSpellbook then SpellProgression.wizardSpellbookSize(lvl)
       else 0
     (cls, cantrips, prepared, spellbook, SpellProgression.maxSpellLevelForSlots(cls, lvl))
   }
@@ -179,7 +179,7 @@ object SpellsScreen extends Screen {
   }
 
   def view(model: Model): Html[Msg] = {
-    val cls = model.draft.dndClass.getOrElse(Wizard)
+    val cls = model.draft.resolvedClass
     val needsSpells = FeatureGrants.needsSpellScreen(cls, model.draft.background)
     div(`class` := "screen-container")(
       StepIndicator(8, needsSpells),

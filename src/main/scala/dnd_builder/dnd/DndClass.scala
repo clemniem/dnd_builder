@@ -33,6 +33,12 @@ sealed trait DndClass {
   def weaponMasteryCount: Int = 0
   /** Number of additional languages the player may choose (from Language.choicePool). */
   def extraLanguageChoices: Int = 0
+  /** When unarmored, add this ability's modifier to AC (e.g. Barbarian: CON, Monk: WIS). None = DEX only. */
+  def unarmoredDefenseAbility: Option[Ability] = None
+  /** True if this class uses a spellbook (learned spells) rather than prepared-from-list. */
+  def usesSpellbook: Boolean = false
+  /** Level at which this class gains Jack of All Trades (half proficiency on non-proficient checks). None = never. */
+  def jackOfAllTradesAtLevel: Option[Int] = None
   def isSpellcaster: Boolean = spellCasterType != SpellCasterType.NonCaster
 
   def weaponSummary: String = {
@@ -65,6 +71,7 @@ case object Barbarian extends DndClass {
   val description          = "A fierce warrior fueled by primal rage"
   val recommendedScores    = AbilityScores(Score(15), Score(13), Score(14), Score(10), Score(12), Score(8))
   override val weaponMasteryCount = 2
+  override val unarmoredDefenseAbility = Some(Ability.Constitution)
   val level1Features       = List(
     ClassFeature("Rage", "2 uses. +2 damage, resistance to B/P/S, Advantage on STR checks. Bonus Action to activate.", Some(2)),
     ClassFeature("Unarmored Defense", "AC = 10 + DEX mod + CON mod when not wearing armor.", None),
@@ -84,6 +91,7 @@ case object Bard extends DndClass {
   override val spellcastingAbility   = Some(Ability.Charisma)
   override val spellCasterType       = SpellCasterType.FullCaster
   override val fullCasterVariant     = Some(FullCasterVariant.Bard)
+  override val jackOfAllTradesAtLevel = Some(2)
   val description          = "An inspiring magician whose music channels arcane power"
   val recommendedScores    = AbilityScores(Score(8), Score(14), Score(12), Score(13), Score(10), Score(15))
   val level1Features       = List(
@@ -171,6 +179,7 @@ case object Monk extends DndClass {
     Skill.Acrobatics, Skill.Athletics, Skill.History,
     Skill.Insight, Skill.Religion, Skill.Stealth
   )
+  override val unarmoredDefenseAbility = Some(Ability.Wisdom)
   val description          = "A martial artist harnessing body and mind as one weapon"
   val recommendedScores    = AbilityScores(Score(12), Score(15), Score(13), Score(10), Score(14), Score(8))
   val level1Features       = List(
@@ -310,6 +319,7 @@ case object Wizard extends DndClass {
   override val spellcastingAbility   = Some(Ability.Intelligence)
   override val spellCasterType       = SpellCasterType.FullCaster
   override val fullCasterVariant     = Some(FullCasterVariant.Wizard)
+  override val usesSpellbook         = true
   val description          = "A scholarly magic-user who commands arcane spells through study"
   val recommendedScores    = AbilityScores(Score(8), Score(12), Score(13), Score(15), Score(14), Score(10))
   val level1Features       = List(

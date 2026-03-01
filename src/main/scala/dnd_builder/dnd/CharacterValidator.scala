@@ -112,7 +112,7 @@ object CharacterValidator {
       val expectedCantrips = prog.map(_.cantrips).getOrElse(0)
       val expectedPrepared = prog.map(_.preparedSpells).getOrElse(0)
       val maxSpellLevel = SpellProgression.maxSpellLevelForSlots(dndClass, level)
-      val isWizard = dndClass.fullCasterVariant.contains(FullCasterVariant.Wizard)
+      val isWizard = dndClass.usesSpellbook
       val expectedSpellbook = if isWizard then SpellProgression.wizardSpellbookSize(level) else 0
 
       val cantripErrors =

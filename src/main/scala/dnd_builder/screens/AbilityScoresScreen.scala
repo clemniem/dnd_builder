@@ -19,8 +19,8 @@ object AbilityScoresScreen extends Screen {
       case _ => CharacterDraft.empty
     }
 
-    val cls = draft.dndClass.getOrElse(Barbarian)
-    val bg  = draft.background.getOrElse(Acolyte)
+    val cls = draft.resolvedClass
+    val bg  = draft.resolvedBackground
     val initialScores = draft.baseScores.getOrElse(cls.recommendedScores)
     val opts = bg.abilityOptionsList
     val initialBonus = draft.backgroundBonus.getOrElse(BackgroundBonus.TwoPlusOne(opts.head, opts(1)))
@@ -32,7 +32,7 @@ object AbilityScoresScreen extends Screen {
 
   def update(model: Model): Msg => (Model, Cmd[IO, Msg]) = {
     case AbilityScoresMsg.SetMethod(m) =>
-      val cls = model.draft.dndClass.getOrElse(Barbarian)
+      val cls = model.draft.resolvedClass
       val newScores = m match {
         case ScoreMethod.StandardArray => cls.recommendedScores
         case ScoreMethod.PointBuy      => AbilityScores.default
@@ -67,7 +67,7 @@ object AbilityScoresScreen extends Screen {
       (model.copy(backgroundBonus = bonus), Cmd.None)
 
     case AbilityScoresMsg.IncrementBonus(ability) =>
-      val bg = model.draft.background.getOrElse(Acolyte)
+      val bg = model.draft.resolvedBackground
       val currentIncreases = model.backgroundBonus.increases
       val currentForAbility = currentIncreases.find(_._1 == ability).map(_._2).getOrElse(0)
       val totalUsed = model.backgroundBonus.totalPoints
@@ -82,7 +82,7 @@ object AbilityScoresScreen extends Screen {
       }
 
     case AbilityScoresMsg.DecrementBonus(ability) =>
-      val bg = model.draft.background.getOrElse(Acolyte)
+      val bg = model.draft.resolvedBackground
       val currentIncreases = model.backgroundBonus.increases
       val currentForAbility = currentIncreases.find(_._1 == ability).map(_._2).getOrElse(0)
       if currentForAbility <= 0 then (model, Cmd.None)
@@ -131,8 +131,8 @@ object AbilityScoresScreen extends Screen {
   }
 
   def view(model: Model): Html[Msg] = {
-    val cls = model.draft.dndClass.getOrElse(Barbarian)
-    val bg  = model.draft.background.getOrElse(Acolyte)
+    val cls = model.draft.resolvedClass
+    val bg  = model.draft.resolvedBackground
     val finalScores = AbilityScores.applyBonus(model.baseScores, model.backgroundBonus)
     val pointsUsed = model.baseScores.totalPointBuyCost.getOrElse(0)
     val bonusUsed  = model.backgroundBonus.totalPoints
@@ -226,7 +226,7 @@ object AbilityScoresScreen extends Screen {
     )
 
   private def bonusControls(model: Model): Html[Msg] = {
-    val bg = model.draft.background.getOrElse(Acolyte)
+    val bg = model.draft.resolvedBackground
     val opts = bg.abilityOptionsList
     val currentMap = model.backgroundBonus.increases.toMap
     div(

@@ -1,0 +1,33 @@
+---
+description: Keep D&D content (classes, species, backgrounds, feats) data-driven so future RuleSet/configuration loading requires minimal changes
+alwaysApply: true
+---
+
+# Data-Driven Content Access
+
+These conventions keep the codebase ready for loading classes, species, backgrounds, and feats from configuration (see `Configuration_Roadmap.md`).
+
+## Rules
+
+1. **Do not pattern-match on specific DndClass, Species, Background, or Feat instances.** Use field access (`.name`, `.hitDie`, `.skillPool`, etc.) or data flags (e.g. `unarmoredDefenseAbility`, `usesSpellbook`) instead. Pattern matches on concrete case objects (e.g. `case Barbarian =>`) couple code to type identity and block data-driven content.
+
+2. **Do not use a specific case object as a fallback default.** Avoid `draft.dndClass.getOrElse(Barbarian)`, `draft.species.getOrElse(Human)`, or `draft.background.getOrElse(Acolyte)`. Use `CharacterDraft.resolvedClass`, `resolvedSpecies`, and `resolvedBackground` so fallbacks are centralized in one place.
+
+3. **Cross-reference game content by name string, not by type identity.** When checking "is this the X class/feat/background?", use `.name == "X"` (or a dedicated boolean field on the type) rather than `== SomeCaseObject`. Spells already reference classes via `Set[String]`; follow that pattern elsewhere.
+
+4. **Model behavioral differences as data fields, not pattern matches.** If a class or species has a unique mechanic (e.g. unarmored AC formula, spellbook vs prepared), add a field to the type (e.g. `unarmoredDefenseAbility: Option[Ability]`, `usesSpellbook: Boolean`) rather than matching on the class/species name or instance.
+
+5. **Prefer a single source for ".all" lists.** When adding screens or flows that need "all classes" or "all species", get that list from a parameter or from `CharacterDraft` / RuleSet when available, rather than importing `DndClass.all` or `Species.allTemplates` directly. This makes threading RuleSet through the wizard trivial later.
+
+## Existing helpers
+
+| Use | Instead of |
+|-----|------------|
+| `draft.resolvedClass` | `draft.dndClass.getOrElse(Barbarian)` (or any specific class) |
+| `draft.resolvedSpecies` | `draft.species.getOrElse(Human)` |
+| `draft.resolvedBackground` | `draft.background.getOrElse(Acolyte)` |
+| `cls.unarmoredDefenseAbility` | Pattern match on Barbarian/Monk for unarmored AC |
+| `cls.usesSpellbook` | `cls.fullCasterVariant.contains(FullCasterVariant.Wizard)` |
+| `cls.jackOfAllTradesAtLevel.exists(_ <= level)` | `featuresUpToLevel(...).exists(_.name == "Jack of All Trades")` |
+| `feat.grantsInitiativeBonus` | `feat == Alert` or `feat.name == "Alert"` |
+| `feat.skillGrant` / `feat.spellGrantSpecs` | Pattern match on Skilled / MagicInitiate in FeatureGrants |

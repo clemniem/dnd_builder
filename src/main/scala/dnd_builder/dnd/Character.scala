@@ -57,8 +57,8 @@ final case class Character(
 
   def initiative: Modifier = {
     val dexMod = modifier(Ability.Dexterity)
-    val alertBonus = if background.feat == Alert then proficiencyBonus else Modifier.zero
-    val jackBonus = if hasJackOfAllTrades && background.feat != Alert then Modifier(proficiencyBonus.toInt / 2) else Modifier.zero
+    val alertBonus = if background.feat.grantsInitiativeBonus then proficiencyBonus else Modifier.zero
+    val jackBonus = if hasJackOfAllTrades && !background.feat.grantsInitiativeBonus then Modifier(proficiencyBonus.toInt / 2) else Modifier.zero
     dexMod + alertBonus + jackBonus
   }
 
@@ -77,9 +77,9 @@ final case class Character(
   def allSkillProficiencies: Set[Skill] =
     background.skillProficiencySet ++ chosenSkills
 
-  /** True if character has Jack of All Trades (Bard 2+: half proficiency on non-proficient checks). */
+  /** True if character has Jack of All Trades (half proficiency on non-proficient checks). */
   def hasJackOfAllTrades: Boolean =
-    ClassProgression.featuresUpToLevel(primaryClass, primaryClassLevel).exists(_.name == "Jack of All Trades")
+    primaryClass.jackOfAllTradesAtLevel.exists(_ <= primaryClassLevel)
 
   def skillBonus(skill: Skill): Modifier = {
     val abilityMod = modifier(skill.ability)
@@ -99,11 +99,8 @@ final case class Character(
     val shieldBonus = if equippedShield then Armor.shieldACBonus else 0
     equippedArmor match {
       case None =>
-        val unarmored = primaryClass match {
-          case Barbarian => 10 + dexMod.toInt + modifier(Ability.Constitution).toInt
-          case Monk      => 10 + dexMod.toInt + modifier(Ability.Wisdom).toInt
-          case _         => 10 + dexMod.toInt
-        }
+        val unarmoredBonus = primaryClass.unarmoredDefenseAbility.fold(0)(a => modifier(a).toInt)
+        val unarmored = 10 + dexMod.toInt + unarmoredBonus
         unarmored + shieldBonus
       case Some(armor) =>
         import ArmorType.*
@@ -121,12 +118,12 @@ final case class Character(
   }
 
   def spellSaveDC: Option[Int] =
-    primaryClass.spellcastingAbility.map { ability =>
+    effectiveSpellcastingAbility.map { ability =>
       8 + proficiencyBonus.toInt + modifier(ability).toInt
     }
 
   def spellAttackBonus: Option[Modifier] =
-    primaryClass.spellcastingAbility.map { ability =>
+    effectiveSpellcastingAbility.map { ability =>
       proficiencyBonus + modifier(ability)
     }
 
@@ -165,7 +162,15 @@ final case class Character(
     SpellProgression.forClass(primaryClass, primaryClassLevel)
 
   def isSpellcaster: Boolean =
-    primaryClass.spellcastingAbility.isDefined
+    effectiveSpellcastingAbility.isDefined
+
+  /** Spellcasting ability for class spells, or inferred from first spell grant (e.g. Magic Initiate) when class has none. */
+  def effectiveSpellcastingAbility: Option[Ability] =
+    primaryClass.spellcastingAbility.orElse(
+      spellGrants.headOption.flatMap { g =>
+        SpellList.values.find(_.label == g.spellListLabel).map(_.ability)
+      }
+    )
 
   def equipmentSummary: String = {
     val armorStr = equippedArmor.fold("Unarmored")(_.name)

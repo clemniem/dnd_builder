@@ -21,7 +21,7 @@ object BackgroundScreen extends Screen {
   }
 
   private def canProceed(model: Model): Boolean = {
-    val cls = model.draft.dndClass.getOrElse(Barbarian)
+    val cls = model.draft.resolvedClass
     model.selectedBackground.isDefined &&
       (cls.extraLanguageChoices == 0 || model.chosenExtraLanguages.size == cls.extraLanguageChoices)
   }
@@ -33,7 +33,7 @@ object BackgroundScreen extends Screen {
     case BackgroundMsg.Next =>
       model.selectedBackground match {
         case Some(bg) =>
-          val (spellFromSp, skillFromSp) = FeatureGrants.fromSpecies(model.draft.species.getOrElse(Human))
+          val (spellFromSp, skillFromSp) = FeatureGrants.fromSpecies(model.draft.resolvedSpecies)
           val (spellFromBg, skillFromBg) = FeatureGrants.fromBackground(bg)
           val spellGrants = spellFromSp ++ spellFromBg
           val skillGrants = skillFromSp ++ skillFromBg
@@ -60,7 +60,7 @@ object BackgroundScreen extends Screen {
   }
 
   def view(model: Model): Html[Msg] = {
-    val cls = model.draft.dndClass.getOrElse(Barbarian)
+    val cls = model.draft.resolvedClass
     div(`class` := "screen-container")(
       StepIndicator(3, cls.isSpellcaster),
       StepNav(StepIndicator.backLabel(3, cls.isSpellcaster), BackgroundMsg.Back, StepIndicator.nextLabel(3, cls.isSpellcaster), BackgroundMsg.Next, canProceed(model)),
@@ -95,8 +95,8 @@ object BackgroundScreen extends Screen {
   }
 
   private def languagesSection(model: Model): Html[Msg] = {
-    val sp = model.draft.species.getOrElse(Human)
-    val cls = model.draft.dndClass.getOrElse(Barbarian)
+    val sp = model.draft.resolvedSpecies
+    val cls = model.draft.resolvedClass
     val granted = sp.languages
     val needChoices = cls.extraLanguageChoices
     val pool = Language.choicePool.filterNot(granted.contains)

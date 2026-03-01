@@ -8,16 +8,25 @@ sealed trait Feat {
 
 sealed trait OriginFeat extends Feat {
   val category = "Origin"
+  /** If true, add proficiency bonus to initiative (e.g. Alert). */
+  def grantsInitiativeBonus: Boolean = false
+  /** If defined, (count, pool) for extra skill proficiencies (e.g. Skilled). */
+  def skillGrant: Option[(Int, Set[Skill])] = None
+  /** If non-empty, (count, spellLevel, spellList) for each spell grant (e.g. Magic Initiate). */
+  def spellGrantSpecs: List[(Int, Int, SpellList)] = Nil
 }
 
 case object Alert extends OriginFeat {
   val name        = "Alert"
   val description = "Add Proficiency Bonus to Initiative. You can swap Initiative with a willing ally within 5ft."
+  override val grantsInitiativeBonus = true
 }
 
 final case class MagicInitiate(spellList: SpellList) extends OriginFeat {
   val name        = s"Magic Initiate (${spellList.label})"
   val description = s"2 cantrips + 1 level-1 spell from the ${spellList.label} spell list. WIS/INT/CHA as spellcasting ability."
+  override def spellGrantSpecs: List[(Int, Int, SpellList)] =
+    List((2, 0, spellList), (1, 1, spellList))
 }
 
 case object SavageAttacker extends OriginFeat {
@@ -28,6 +37,7 @@ case object SavageAttacker extends OriginFeat {
 case object Skilled extends OriginFeat {
   val name        = "Skilled"
   val description = "Gain proficiency in 3 skills or tools of your choice."
+  override val skillGrant = Some((3, Skill.values.toSet))
 }
 
 sealed trait GeneralFeat extends Feat {

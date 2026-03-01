@@ -265,17 +265,13 @@ object CharacterSheetPdf {
     val grantLvl1 = ch.spellGrants.flatMap(g => if g.spellLevel == 1 then g.chosen else Nil)
     val allCantrips = ch.chosenCantrips ++ grantCantrips
     val allPreparedLvl1 = ch.preparedSpells ++ grantLvl1
-    val hasAnySpells = ch.isSpellcaster || ch.spellGrants.nonEmpty
 
-    if hasAnySpells then {
-      val ability = ch.primaryClass.spellcastingAbility.getOrElse(Ability.Wisdom)
+    ch.effectiveSpellcastingAbility.foreach { ability =>
       setField(form, PdfFormFields.SpellcastingAbility, ability.label)
       setField(form, PdfFormFields.SpellcastingMod, ch.modifier(ability).format)
-      val dc = ch.spellSaveDC.getOrElse(8 + ch.proficiencyBonus.toInt + ch.modifier(ability).toInt)
-      setField(form, PdfFormFields.SpellSaveDC, dc.toString)
-      val atk = ch.spellAttackBonus.getOrElse(ch.proficiencyBonus + ch.modifier(ability))
-      setField(form, PdfFormFields.SpellAttackBonus, atk.format)
     }
+    ch.spellSaveDC.foreach(dc => setField(form, PdfFormFields.SpellSaveDC, dc.toString))
+    ch.spellAttackBonus.foreach(atk => setField(form, PdfFormFields.SpellAttackBonus, atk.format))
 
     val slotsByLevel: List[Int] = ch.spellProgression match {
       case Some(row) => row.slots.padTo(9, 0)

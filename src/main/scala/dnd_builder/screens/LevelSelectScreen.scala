@@ -45,7 +45,7 @@ object LevelSelectScreen extends Screen {
     model.draft.dndClass.map(ClassProgression.maxSupportedLevel).getOrElse(1)
 
   def view(model: Model): Html[Msg] = {
-    val cls = model.draft.dndClass.getOrElse(Barbarian)
+    val cls = model.draft.resolvedClass
     val max = maxLevel(model)
     val lvl = model.selectedLevel
     val prog = SpellProgression.forClass(cls, lvl)

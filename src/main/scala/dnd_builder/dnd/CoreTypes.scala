@@ -58,6 +58,12 @@ enum SpellList(val label: String) {
   case Cleric extends SpellList("Cleric")
   case Druid  extends SpellList("Druid")
   case Wizard extends SpellList("Wizard")
+
+  /** Spellcasting ability for this list (e.g. Magic Initiate uses this). */
+  def ability: Ability = this match {
+    case Cleric | Druid => Ability.Wisdom
+    case Wizard         => Ability.Intelligence
+  }
 }
 
 enum ProficiencyLevel {

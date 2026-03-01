@@ -45,7 +45,7 @@ object LevelUpScreen extends Screen {
     val summary = LevelSummary.forClassAtLevel(cls, tgt)
     val initialSpells = summary.spellProgression match {
       case Some(prog) =>
-        val fromBook = if ch.primaryClass.fullCasterVariant.contains(FullCasterVariant.Wizard) then ch.spellbookSpells else Nil
+        val fromBook = if ch.primaryClass.usesSpellbook then ch.spellbookSpells else Nil
         val prepared =
           if ch.preparedSpells.size <= prog.preparedSpells then ch.preparedSpells
           else ch.preparedSpells.take(prog.preparedSpells)
@@ -181,7 +181,7 @@ object LevelUpScreen extends Screen {
         subclass = if tgt >= 3 then subOpt.orElse(ch.subclass) else ch.subclass,
         chosenSkills = ch.chosenSkills ++ model.extraSkills,
         preparedSpells = newPrepared,
-        spellbookSpells = if cls.fullCasterVariant.contains(FullCasterVariant.Wizard) then model.spellbookSpells else ch.spellbookSpells,
+        spellbookSpells = if cls.usesSpellbook then model.spellbookSpells else ch.spellbookSpells,
         featureSelections = newFeatures
       )
       val updatedStored = StoredCharacter(model.storedCharacter.id, updated)
@@ -412,7 +412,7 @@ object LevelUpScreen extends Screen {
     val tgt = targetLevel(model)
     val prog = SpellProgression.forClass(cls, tgt).get
     val maxPrepared = prog.preparedSpells
-    val isWizard = cls.fullCasterVariant.contains(FullCasterVariant.Wizard)
+    val isWizard = cls.usesSpellbook
     val spellbookSize = SpellProgression.wizardSpellbookSize(tgt)
     val maxSpellLvl = SpellProgression.maxSpellLevelForSlots(cls, tgt)
     val availableForPrepared =

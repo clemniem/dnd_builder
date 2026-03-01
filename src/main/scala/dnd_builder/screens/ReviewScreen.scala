@@ -30,9 +30,9 @@ object ReviewScreen extends Screen {
 
     case ReviewMsg.Save =>
       val d = model.draft
-      val sp = d.species.getOrElse(Human: Species)
-      val cls = d.dndClass.getOrElse(Barbarian: DndClass)
-      val bg = d.background.getOrElse(Acolyte: Background)
+      val sp = d.resolvedSpecies
+      val cls = d.resolvedClass
+      val bg = d.resolvedBackground
       val scores = d.baseScores.getOrElse(AbilityScores.default)
       val bonus = d.backgroundBonus.getOrElse(BackgroundBonus.ThreePlusOnes(Ability.Strength, Ability.Dexterity, Ability.Constitution))
       val languages = sp.languages ++ d.chosenExtraLanguages
@@ -80,7 +80,7 @@ object ReviewScreen extends Screen {
       (model, Cmd.None)
 
     case ReviewMsg.Back =>
-      val cls = model.draft.dndClass.getOrElse(Barbarian)
+      val cls = model.draft.resolvedClass
       val backScreen = if FeatureGrants.needsSpellScreen(cls, model.draft.background) then ScreenId.SpellsId else ScreenId.EquipmentId
       (model, Cmd.Emit(NavigateNext(backScreen, Some(ScreenOutput.Draft(model.draft)))))
 
@@ -90,9 +90,9 @@ object ReviewScreen extends Screen {
 
   private def buildCharacter(model: Model): Character = {
     val d = model.draft
-    val sp = d.species.getOrElse(Human: Species)
-    val cls = d.dndClass.getOrElse(Barbarian: DndClass)
-    val bg = d.background.getOrElse(Acolyte: Background)
+    val sp = d.resolvedSpecies
+    val cls = d.resolvedClass
+    val bg = d.resolvedBackground
     val scores = d.baseScores.getOrElse(AbilityScores.default)
     val bonus = d.backgroundBonus.getOrElse(BackgroundBonus.ThreePlusOnes(Ability.Strength, Ability.Dexterity, Ability.Constitution))
     val languages = sp.languages ++ d.chosenExtraLanguages
@@ -108,7 +108,7 @@ object ReviewScreen extends Screen {
   }
 
   def view(model: Model): Html[Msg] = {
-    val cls = model.draft.dndClass.getOrElse(Barbarian)
+    val cls = model.draft.resolvedClass
     val needsSpells = FeatureGrants.needsSpellScreen(cls, model.draft.background)
     val currentStep = if needsSpells then 9 else 8
     val character = buildCharacter(model)

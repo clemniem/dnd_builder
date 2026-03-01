@@ -24,23 +24,16 @@ final case class SkillGrant(
 
 object FeatureGrants {
 
-  def fromBackground(bg: Background): (List[SpellGrant], List[SkillGrant]) =
-    bg.feat match {
-      case MagicInitiate(sl) =>
-        val sourceLabel = s"${bg.name}: ${bg.feat.name}"
-        val spellGrants = List(
-          SpellGrant(2, 0, sl.label, sourceLabel, Nil),
-          SpellGrant(1, 1, sl.label, sourceLabel, Nil)
-        )
-        (spellGrants, Nil)
-      case Skilled =>
-        val skillGrants = List(
-          SkillGrant(3, Skill.values.toSet, s"${bg.name}: Skilled", Set.empty)
-        )
-        (Nil, skillGrants)
-      case _ =>
-        (Nil, Nil)
+  def fromBackground(bg: Background): (List[SpellGrant], List[SkillGrant]) = {
+    val sourceLabel = s"${bg.name}: ${bg.feat.name}"
+    val spellGrants = bg.feat.spellGrantSpecs.map { case (count, level, list) =>
+      SpellGrant(count, level, list.label, sourceLabel, Nil)
     }
+    val skillGrants = bg.feat.skillGrant.toList.map { case (count, pool) =>
+      SkillGrant(count, pool, sourceLabel, Set.empty)
+    }
+    (spellGrants, skillGrants)
+  }
 
   def fromSpecies(sp: Species): (List[SpellGrant], List[SkillGrant]) = {
     val _ = sp

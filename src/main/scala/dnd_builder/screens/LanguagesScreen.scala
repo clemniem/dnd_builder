@@ -24,7 +24,7 @@ object LanguagesScreen extends Screen {
   val screenId: ScreenId = ScreenId.LanguagesId
 
   private def canProceed(model: Model): Boolean = {
-    val cls = model.draft.dndClass.getOrElse(Barbarian)
+    val cls = model.draft.resolvedClass
     model.chosenExtraLanguages.size == cls.extraLanguageChoices
   }
 
@@ -42,7 +42,7 @@ object LanguagesScreen extends Screen {
       (model, Cmd.Emit(NavigateNext(ScreenId.ReviewId, Some(ScreenOutput.Draft(updated)))))
 
     case LanguagesMsg.Back =>
-      val cls = model.draft.dndClass.getOrElse(Barbarian)
+      val cls = model.draft.resolvedClass
       val updated = model.draft.copy(chosenExtraLanguages = model.chosenExtraLanguages)
       if FeatureGrants.needsSpellScreen(cls, model.draft.background) then
         (model, Cmd.Emit(NavigateNext(ScreenId.SpellsId, Some(ScreenOutput.Draft(updated)))))
@@ -50,7 +50,7 @@ object LanguagesScreen extends Screen {
         (model, Cmd.Emit(NavigateNext(ScreenId.FeaturesId, Some(ScreenOutput.Draft(updated)))))
 
     case LanguagesMsg.ToggleExtraLanguage(lang) =>
-      val cls = model.draft.dndClass.getOrElse(Barbarian)
+      val cls = model.draft.resolvedClass
       val n = cls.extraLanguageChoices
       val current = model.chosenExtraLanguages
       val next =
@@ -64,8 +64,8 @@ object LanguagesScreen extends Screen {
   }
 
   def view(model: Model): Html[Msg] = {
-    val sp = model.draft.species.getOrElse(Human)
-    val cls = model.draft.dndClass.getOrElse(Barbarian)
+    val sp = model.draft.resolvedSpecies
+    val cls = model.draft.resolvedClass
     val needsSpells = FeatureGrants.needsSpellScreen(cls, model.draft.background)
     val granted = sp.languages
     val needChoices = cls.extraLanguageChoices

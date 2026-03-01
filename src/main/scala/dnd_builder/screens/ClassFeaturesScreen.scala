@@ -36,7 +36,7 @@ object ClassFeaturesScreen extends Screen {
     level1Choices(cls).nonEmpty
 
   private def canProceed(model: Model): Boolean = {
-    val cls = model.draft.dndClass.getOrElse(Barbarian)
+    val cls = model.draft.resolvedClass
     ClassProgression.satisfiesChoices(level1Choices(cls), model.featureSelections)
   }
 
@@ -45,7 +45,7 @@ object ClassFeaturesScreen extends Screen {
       case Some(ScreenOutput.Draft(d)) => d
       case _ => CharacterDraft.empty
     }
-    val cls = draft.dndClass.getOrElse(Barbarian)
+    val cls = draft.resolvedClass
     val model = ClassFeaturesModel(draft, draft.featureSelections)
     if !hasClassFeatureChoices(cls) then {
       (model, Cmd.Emit(NavigateNext(ScreenId.EquipmentId, Some(ScreenOutput.Draft(draft)))))
@@ -70,7 +70,7 @@ object ClassFeaturesScreen extends Screen {
     case ClassFeaturesMsg.SetEldritchInvocation(inv) =>
       (model.copy(featureSelections = model.featureSelections.withChoices(model.featureSelections.fightingStyle, model.featureSelections.divineOrder, model.featureSelections.primalOrder, inv, model.featureSelections.expertiseSkills, model.featureSelections.weaponMasteries, model.featureSelections.landType, model.featureSelections.hunterPrey)), Cmd.None)
     case ClassFeaturesMsg.ToggleExpertiseSkill(skill) =>
-      val cls = model.draft.dndClass.getOrElse(Barbarian)
+      val cls = model.draft.resolvedClass
       val fs = model.featureSelections
       val maxCount = ClassProgression.expertiseCountFromChoices(level1Choices(cls))
       val newExpertise =
@@ -79,7 +79,7 @@ object ClassFeaturesScreen extends Screen {
         else fs.expertiseSkills
       (model.copy(featureSelections = fs.withChoices(fs.fightingStyle, fs.divineOrder, fs.primalOrder, fs.eldritchInvocation, newExpertise, fs.weaponMasteries, fs.landType, fs.hunterPrey)), Cmd.None)
     case ClassFeaturesMsg.ToggleWeaponMastery(weapon) =>
-      val cls = model.draft.dndClass.getOrElse(Barbarian)
+      val cls = model.draft.resolvedClass
       val fs = model.featureSelections
       val maxCount = ClassProgression.weaponMasteryCountFromChoices(level1Choices(cls))
       val newList =
@@ -94,7 +94,7 @@ object ClassFeaturesScreen extends Screen {
   }
 
   def view(model: Model): Html[Msg] = {
-    val cls = model.draft.dndClass.getOrElse(Barbarian)
+    val cls = model.draft.resolvedClass
     val needsSpells = FeatureGrants.needsSpellScreen(cls, model.draft.background)
     val nextEnabled = canProceed(model)
     div(`class` := "screen-container")(
@@ -179,7 +179,7 @@ object ClassFeaturesScreen extends Screen {
     }
 
   private def fightingStyleSection(model: Model): Html[Msg] = {
-    val cls = model.draft.dndClass.getOrElse(Barbarian)
+    val cls = model.draft.resolvedClass
     if !level1Choices(cls).contains(LevelChoice.ChooseFightingStyle) then div()
     else
       ChoiceWidgets.cardPicker(
@@ -191,7 +191,7 @@ object ClassFeaturesScreen extends Screen {
   }
 
   private def divineOrderSection(model: Model): Html[Msg] = {
-    val cls = model.draft.dndClass.getOrElse(Barbarian)
+    val cls = model.draft.resolvedClass
     if !level1Choices(cls).contains(LevelChoice.ChooseDivineOrder) then div()
     else
       ChoiceWidgets.cardPicker(
@@ -203,7 +203,7 @@ object ClassFeaturesScreen extends Screen {
   }
 
   private def primalOrderSection(model: Model): Html[Msg] = {
-    val cls = model.draft.dndClass.getOrElse(Barbarian)
+    val cls = model.draft.resolvedClass
     if !level1Choices(cls).contains(LevelChoice.ChoosePrimalOrder) then div()
     else
       ChoiceWidgets.cardPicker(
@@ -215,7 +215,7 @@ object ClassFeaturesScreen extends Screen {
   }
 
   private def eldritchInvocationSection(model: Model): Html[Msg] = {
-    val cls = model.draft.dndClass.getOrElse(Barbarian)
+    val cls = model.draft.resolvedClass
     if !level1Choices(cls).contains(LevelChoice.ChooseEldritchInvocation) then div()
     else
       ChoiceWidgets.cardPicker(
@@ -227,7 +227,7 @@ object ClassFeaturesScreen extends Screen {
   }
 
   private def expertiseSection(model: Model): Html[Msg] = {
-    val cls = model.draft.dndClass.getOrElse(Barbarian)
+    val cls = model.draft.resolvedClass
     val expCount = ClassProgression.expertiseCountFromChoices(level1Choices(cls))
     if expCount <= 0 then div()
     else
@@ -242,7 +242,7 @@ object ClassFeaturesScreen extends Screen {
   }
 
   private def weaponMasterySection(model: Model): Html[Msg] = {
-    val cls = model.draft.dndClass.getOrElse(Barbarian)
+    val cls = model.draft.resolvedClass
     val count = ClassProgression.weaponMasteryCountFromChoices(level1Choices(cls))
     if count <= 0 then div()
     else {

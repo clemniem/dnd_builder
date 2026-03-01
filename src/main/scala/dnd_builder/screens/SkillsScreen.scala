@@ -22,8 +22,8 @@ object SkillsScreen extends Screen {
 
   def update(model: Model): Msg => (Model, Cmd[IO, Msg]) = {
     case SkillsMsg.ToggleSkill(skill) =>
-      val cls = model.draft.dndClass.getOrElse(Barbarian)
-      val bg  = model.draft.background.getOrElse(Acolyte)
+      val cls = model.draft.resolvedClass
+      val bg  = model.draft.resolvedBackground
       val bgSkills = bg.skillProficiencySet
       if bgSkills.contains(skill) then (model, Cmd.None)
       else {
@@ -53,7 +53,7 @@ object SkillsScreen extends Screen {
       }
 
     case SkillsMsg.Next =>
-      val cls = model.draft.dndClass.getOrElse(Barbarian)
+      val cls = model.draft.resolvedClass
       val classSkillsReady = model.chosenSkills.size == cls.numSkillChoices
       val grantSkillsReady = model.draft.skillGrants.forall(_.isFilled)
       if classSkillsReady && grantSkillsReady then {
@@ -77,8 +77,8 @@ object SkillsScreen extends Screen {
   }
 
   def view(model: Model): Html[Msg] = {
-    val cls = model.draft.dndClass.getOrElse(Barbarian)
-    val bg  = model.draft.background.getOrElse(Acolyte)
+    val cls = model.draft.resolvedClass
+    val bg  = model.draft.resolvedBackground
     val needsSpells = FeatureGrants.needsSpellScreen(cls, model.draft.background)
     val bgSkills = bg.skillProficiencySet
     val pool     = cls.skillPool -- bgSkills
@@ -136,7 +136,7 @@ object SkillsScreen extends Screen {
   }
 
   private def grantSkillSection(model: SkillsModel, grant: SkillGrant, grantIndex: Int): Html[Msg] = {
-    val bg = model.draft.background.getOrElse(Acolyte)
+    val bg = model.draft.resolvedBackground
     val alreadyProficient = bg.skillProficiencySet ++ model.chosenSkills
     val otherGrantsChosen = model.draft.skillGrants.zipWithIndex.filter(_._2 != grantIndex).flatMap(_._1.chosen).toSet
     val pool = (grant.pool -- alreadyProficient -- otherGrantsChosen).toList.sortBy(_.label)

@@ -21,7 +21,14 @@ case class CharacterDraft(
     coins: Coins,
     spellGrants: List[SpellGrant],
     skillGrants: List[SkillGrant]
-)
+) {
+  /** Fallback when class not yet chosen; use instead of getOrElse(Barbarian) etc. */
+  def resolvedClass: DndClass = dndClass.getOrElse(DndClass.all.head)
+  /** Fallback when species not yet chosen; use instead of getOrElse(Human) etc. */
+  def resolvedSpecies: Species = species.getOrElse(Human)
+  /** Fallback when background not yet chosen; use instead of getOrElse(Acolyte) etc. */
+  def resolvedBackground: Background = background.getOrElse(Background.all.head)
+}
 
 object CharacterDraft {
   val empty: CharacterDraft = CharacterDraft(
