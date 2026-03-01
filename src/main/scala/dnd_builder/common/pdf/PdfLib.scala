@@ -65,10 +65,15 @@ object PdfLib {
     val _ = checkbox.check()
   }
 
+  def uncheck(checkbox: js.Dynamic): Unit = {
+    val _ = checkbox.uncheck()
+  }
+
   def saveAndOpen(doc: js.Dynamic, filename: String): Unit = {
     import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
     dom.console.log("[PdfLib] saveAndOpen: calling doc.save()")
-    val future = doc.save().asInstanceOf[js.Promise[js.Any]].toFuture
+    val opts = js.Dynamic.literal(updateFieldAppearances = false)
+    val future = doc.save(opts).asInstanceOf[js.Promise[js.Any]].toFuture
     future.failed.foreach { t =>
       dom.console.error("[PdfLib] doc.save() failed:", t)
     }

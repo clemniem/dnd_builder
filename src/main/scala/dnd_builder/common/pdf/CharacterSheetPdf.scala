@@ -8,6 +8,9 @@ import scala.scalajs.js.annotation.JSExportTopLevel
 
 object CharacterSheetPdf {
 
+  /** Bump this on every change to PDF filling logic so `testPdf()` output is visually distinguishable from stale builds. */
+  val testPdfVersion: Int = 7
+
   /** Font size (pt) for all large content fields: Class Features, Species Traits, Feats, Languages, Equipment, Weapon Prof, Tool Prof, and weapon rows. Change this to adjust all at once. */
   val contentFontSizePt: Int = 10
 
@@ -27,10 +30,14 @@ object CharacterSheetPdf {
   /** Test character for testPdf(): must exercise every filled section (header, combat incl. hit dice, abilities, saves, skills, armor, weapons, spellcasting, currency, feats/traits/class features). When adding new form fields, add filling logic and ensure this character covers them. */
   @JSExportTopLevel("testPdf")
   def generateTest(): Unit = {
-    val clericCantrips = Spell.cantripsForClass(Cleric).take(3)
-    val clericLvl1 = Spell.level1ForClass(Cleric).take(4)
+    val testCantrips = (1 to 5).toList.map(i =>
+      Spell(f"Spell $i%02d", 0, SpellSchool.Evocation, Set("Cleric"), false)
+    )
+    val testLvl1Spells = (6 to 30).toList.map(i =>
+      Spell(f"Spell $i%02d", 1, SpellSchool.Evocation, Set("Cleric"), false)
+    )
     val testChar = Character(
-      "Thorn Ironfist",
+      s"Thorn Ironfist v$testPdfVersion",
       Dwarf,
       List(ClassLevel(Cleric, 1)),
       Soldier,
@@ -43,8 +50,8 @@ object CharacterSheetPdf {
         Weapon.all.find(_.name == "Longsword").get,
         Weapon.all.find(_.name == "Handaxe").get
       ),
-      clericCantrips,
-      clericLvl1,
+      testCantrips,
+      testLvl1Spells,
       Nil,
       ClassFeatureSelections.empty.withChoices(
         None,
@@ -268,8 +275,8 @@ object CharacterSheetPdf {
   private def fillSpellcasting(form: js.Dynamic, ch: Character): Unit = {
     val grantCantrips = ch.spellGrants.flatMap(g => if g.spellLevel == 0 then g.chosen else Nil)
     val grantLvl1 = ch.spellGrants.flatMap(g => if g.spellLevel == 1 then g.chosen else Nil)
-    val allCantrips = ch.chosenCantrips ++ grantCantrips
-    val allPreparedLvl1 = ch.preparedSpells ++ grantLvl1
+    val allCantrips = (ch.chosenCantrips ++ grantCantrips).sortBy(_.name)
+    val allPreparedLvl1 = (ch.preparedSpells ++ grantLvl1).sortBy(_.name)
 
     ch.effectiveSpellcastingAbility.foreach { ability =>
       setField(form, PdfFormFields.SpellcastingAbility, ability.label)
@@ -283,22 +290,31 @@ object CharacterSheetPdf {
       case None      => List.fill(9)(0)
     }
     PdfFormFields.spellSlotTotals.zip(slotsByLevel).foreach { case (name, n) =>
-      setField(form, name, n.toString)
+      if n > 0 then setField(form, name, n.toString)
     }
 
     val spellRows = allCantrips.map(s => (s.name, "0")) ++ allPreparedLvl1.map(s => (s.name, "1"))
-    spellRows.zipWithIndex.foreach { case ((spellName, levelStr), idx) =>
-      if idx <= 28 then {
-        setField(form, PdfFormFields.spellName(idx), spellName)
-        setField(form, PdfFormFields.spellLevel(idx), levelStr)
-        if levelStr == "1" then tryCheckBox(form, PdfFormFields.spellPreparedCheckBox(idx))
+    spellRows.zipWithIndex.foreach { case ((name, levelStr), visualPos) =>
+      if visualPos < PdfFormFields.spellRowVisualOrder.length then {
+        setField(form, PdfFormFields.spellName(visualPos), name)
+        setField(form, PdfFormFields.spellLevel(visualPos), levelStr)
+        val fieldIdx = PdfFormFields.spellRowVisualOrder(visualPos)
+        if levelStr == "1" && fieldIdx >= 0 then
+          tryCheckBox(form, PdfFormFields.spellPreparedCheckBox(fieldIdx))
       }
     }
+
+    PdfFormFields.spellSlotExpendedCheckBoxes.foreach(name => tryUncheckBox(form, name))
   }
 
   private def tryCheckBox(form: js.Dynamic, name: String): Unit =
     try PdfLib.check(PdfLib.getCheckBox(form, name))
     catch case _: Throwable => ()
+
+  private def tryUncheckBox(form: js.Dynamic, name: String): Unit =
+    try PdfLib.uncheck(PdfLib.getCheckBox(form, name))
+    catch case t: Throwable =>
+      org.scalajs.dom.console.error(s"[PDF] tryUncheckBox failed for $name:", t.getMessage)
 
   private def fillCurrency(form: js.Dynamic, ch: Character): Unit = {
     def coinValue(n: Int): String = if n == 0 then "" else n.toString

@@ -147,12 +147,8 @@ final case class Character(
 
   def weaponDamageString(weapon: Weapon): String = {
     val dmgMod = weaponDamageBonus(weapon).toInt
-    val parts   = weapon.damage.split(" ", 2)
-    val dice    = parts.headOption.getOrElse("")
-    val dmgType = if parts.length > 1 then parts(1) else ""
-    val modStr  = if dmgMod >= 0 then s" + $dmgMod" else s" - ${math.abs(dmgMod)}"
-    val typeStr = if dmgType.nonEmpty then s" $dmgType" else ""
-    s"$dice$modStr$typeStr"
+    val modStr = if dmgMod >= 0 then s" + $dmgMod" else s" - ${math.abs(dmgMod)}"
+    s"${weapon.damageDice}$modStr ${weapon.damageType.pdfAbbrev}"
   }
 
   def weaponPropertiesSummary(weapon: Weapon): String =

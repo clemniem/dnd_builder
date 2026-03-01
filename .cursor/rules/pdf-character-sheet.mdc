@@ -24,6 +24,10 @@ Hit dice is filled in `fillCombatStats` as `{level}d{hitDie.sides}` (e.g. `1d10`
 | `common/pdf/CharacterSheetPdf.scala` | Form filling logic, `generate()`, `generateTest()` |
 | `common/pdf/PdfLib.scala` | pdf-lib facade (setText, setFontSize, removeMaxLength, etc.) |
 
+## Test PDF version stamp
+
+`CharacterSheetPdf.testPdfVersion` is an integer appended to the test character's name (e.g. `Thorn Ironfist v3`). **Every change to PDF filling logic must bump `testPdfVersion`** so the downloaded PDF is immediately distinguishable from stale builds. If you forget, the user cannot tell whether they're looking at an old cached PDF or the latest code.
+
 ## Running the test
 
-In the browser console: `testPdf()`. Downloads a filled PDF for the test character so you can verify layout and font sizes without creating a character in the app.
+In the browser console: `testPdf()`. Downloads a filled PDF for the test character so you can verify layout and font sizes without creating a character in the app. Check the character name includes the expected version number to confirm you're seeing the latest build.

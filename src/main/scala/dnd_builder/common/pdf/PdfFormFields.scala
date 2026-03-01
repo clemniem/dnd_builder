@@ -93,16 +93,40 @@ object PdfFormFields {
   val Lvl8Total            = "LVL8 TOTAL"
   val Lvl9Total            = "LVL9 TOTAL"
   def spellSlotTotal(level: Int): String = s"LVL$level TOTAL"
-  def spellName(i: Int): String        = s"SPELL NAME$i"
-  def spellLevel(i: Int): String      = s"SPELL LEVEL$i"
+  /**
+   * PDF spell rows are NOT rendered in field-index order. The template
+   * lays them out as: bare, 0, 1, then groups of three reversed:
+   * (4,3,2), (7,6,5), (10,9,8), … (28,27,26).
+   * This array maps visual position (0–29) → field index (-1 = bare).
+   */
+  val spellRowVisualOrder: IndexedSeq[Int] = {
+    val first = IndexedSeq(-1, 0, 1)
+    val groups = (0 until 9).flatMap { n =>
+      IndexedSeq(3 * n + 4, 3 * n + 3, 3 * n + 2)
+    }
+    first ++ groups
+  }
+
+  def spellName(visualPos: Int): String = {
+    val idx = spellRowVisualOrder(visualPos)
+    if idx < 0 then "SPELL NAME" else s"SPELL NAME$idx"
+  }
+  def spellLevel(visualPos: Int): String = {
+    val idx = spellRowVisualOrder(visualPos)
+    if idx < 0 then "SPELL LEVEL" else s"SPELL LEVEL$idx"
+  }
 
   // Spell slots total field names (ordered 1–9)
   val spellSlotTotals: List[String]    = List(Lvl1Total, Lvl2Total, Lvl3Total, Lvl4Total, Lvl5Total, Lvl6Total, Lvl7Total, Lvl8Total, Lvl9Total)
 
   // Checkboxes (by index)
   def checkBox(i: Int): String         = s"Check Box$i"
-  /** Prepared tickbox for spell row i (0–28) in CANTRIPS & PREPARED SPELLS table. */
-  def spellPreparedCheckBox(rowIndex: Int): String = checkBox(37 + rowIndex)
+  /** Prepared tickbox for spell field index (0–28, matching SPELL NAME0–28). Check Box37–65. Visual row 0 (bare "SPELL NAME") has no prepared checkbox. */
+  def spellPreparedCheckBox(fieldIndex: Int): String = checkBox(37 + fieldIndex)
+
+  /** Spell slot expended checkboxes. Always uncheck these LAST: they are for the player to mark during play. Check Box149 does not exist in the template. */
+  val spellSlotExpendedCheckBoxes: List[String] =
+    ((66 to 148) ++ Seq(150)).map(i => checkBox(i)).toList
 
   // Armor proficiency checkboxes
   val CheckBox33 = "Check Box33"  // Light
