@@ -380,4 +380,7 @@ object Spell {
 
   def level1ForClass(dndClass: DndClass): List[Spell] =
     forClass(dndClass, 1)
+
+  def forSpellList(spellListLabel: String, spellLevel: Int): List[Spell] =
+    all.filter(s => s.level == spellLevel && s.classes.contains(spellListLabel))
 }

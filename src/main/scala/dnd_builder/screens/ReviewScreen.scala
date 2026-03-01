@@ -41,7 +41,8 @@ object ReviewScreen extends Screen {
         model.name, sp, cls, bg, scores, bonus, d.chosenSkills,
         d.equippedArmor, d.equippedShield, d.equippedWeapons,
         d.chosenCantrips, d.preparedSpells, d.spellbookSpells,
-        d.featureSelections, d.subclass, languages, lvl, d.coins
+        d.featureSelections, d.subclass, languages, lvl, d.coins,
+        d.spellGrants, d.skillGrants
       )
       result match {
         case Left(errors) =>
@@ -80,7 +81,7 @@ object ReviewScreen extends Screen {
 
     case ReviewMsg.Back =>
       val cls = model.draft.dndClass.getOrElse(Barbarian)
-      val backScreen = if cls.isSpellcaster then ScreenId.SpellsId else ScreenId.EquipmentId
+      val backScreen = if FeatureGrants.needsSpellScreen(cls, model.draft.background) then ScreenId.SpellsId else ScreenId.EquipmentId
       (model, Cmd.Emit(NavigateNext(backScreen, Some(ScreenOutput.Draft(model.draft)))))
 
     case _: NavigateNext =>
@@ -102,19 +103,20 @@ object ReviewScreen extends Screen {
       d.equippedArmor, d.equippedShield, d.equippedWeapons,
       d.chosenCantrips, d.preparedSpells, d.spellbookSpells,
       d.featureSelections, d.subclass, languages,
-      d.coins
+      d.coins, d.spellGrants, d.skillGrants
     )
   }
 
   def view(model: Model): Html[Msg] = {
     val cls = model.draft.dndClass.getOrElse(Barbarian)
-    val currentStep = if cls.isSpellcaster then 9 else 8
+    val needsSpells = FeatureGrants.needsSpellScreen(cls, model.draft.background)
+    val currentStep = if needsSpells then 9 else 8
     val character = buildCharacter(model)
 
     div(`class` := "screen-container")(
-      StepIndicator(currentStep, cls.isSpellcaster),
+      StepIndicator(currentStep, needsSpells),
       StepNav(
-        StepIndicator.backLabel(currentStep, cls.isSpellcaster),
+        StepIndicator.backLabel(currentStep, needsSpells),
         ReviewMsg.Back, if model.saving then "Saving..." else "Save Character", ReviewMsg.Save, !model.saving),
       h1(`class` := "screen-title")(text("Review & Save")),
       div(`class` := "field-block")(

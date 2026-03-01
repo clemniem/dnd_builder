@@ -118,6 +118,42 @@ object Codecs {
     Subclass.byName(s).toRight(s"Unknown subclass: $s")
   }
 
+  given Encoder[SpellGrant] = Encoder.instance { g =>
+    Json.obj(
+      "count"           -> g.count.asJson,
+      "spellLevel"      -> g.spellLevel.asJson,
+      "spellListLabel"  -> g.spellListLabel.asJson,
+      "sourceLabel"     -> g.sourceLabel.asJson,
+      "chosen"          -> g.chosen.asJson
+    )
+  }
+  given Decoder[SpellGrant] = Decoder.instance { c =>
+    for {
+      count          <- c.downField("count").as[Int]
+      spellLevel     <- c.downField("spellLevel").as[Int]
+      spellListLabel <- c.downField("spellListLabel").as[String]
+      sourceLabel    <- c.downField("sourceLabel").as[String]
+      chosen         <- c.downField("chosen").as[List[Spell]]
+    } yield SpellGrant(count, spellLevel, spellListLabel, sourceLabel, chosen)
+  }
+
+  given Encoder[SkillGrant] = Encoder.instance { g =>
+    Json.obj(
+      "count"       -> g.count.asJson,
+      "pool"        -> g.pool.toList.asJson,
+      "sourceLabel" -> g.sourceLabel.asJson,
+      "chosen"      -> g.chosen.toList.asJson
+    )
+  }
+  given Decoder[SkillGrant] = Decoder.instance { c =>
+    for {
+      count       <- c.downField("count").as[Int]
+      pool        <- c.downField("pool").as[List[Skill]]
+      sourceLabel <- c.downField("sourceLabel").as[String]
+      chosen      <- c.downField("chosen").as[List[Skill]]
+    } yield SkillGrant(count, pool.toSet, sourceLabel, chosen.toSet)
+  }
+
   given Encoder[ClassFeatureSelections] = Encoder.instance { fs =>
     Json.obj(
       "fightingStyle"      -> fs.fightingStyle.asJson,
@@ -319,7 +355,9 @@ object Codecs {
       "featureSelections" -> ch.featureSelections.asJson,
       "subclass"         -> ch.subclass.asJson,
       "languages"        -> ch.languages.toList.asJson,
-      "coins"            -> ch.coins.asJson
+      "coins"            -> ch.coins.asJson,
+      "spellGrants"      -> ch.spellGrants.asJson,
+      "skillGrants"      -> ch.skillGrants.asJson
     )
   }
 
@@ -342,8 +380,10 @@ object Codecs {
       subclass <- c.downField("subclass").as[Option[Subclass]].orElse(Right(None))
       languages <- c.downField("languages").as[Option[List[Language]]].map(_.fold(sp.languages.toList)(identity))
       coins     <- c.downField("coins").as[Option[Coins]].map(_.getOrElse(Coins(bg.startingGold, 0, 0, 0, 0)))
+      spellGrants <- c.downField("spellGrants").as[Option[List[SpellGrant]]].map(_.getOrElse(Nil))
+      skillGrants <- c.downField("skillGrants").as[Option[List[SkillGrant]]].map(_.getOrElse(Nil))
     }
     yield Character(name, sp, classLevels, bg, scores, bonus, skills.toSet, armor, shield, weapons, cantrips, prepared, spellbook,
-      featureSelections, subclass, languages.toSet, coins)
+      featureSelections, subclass, languages.toSet, coins, spellGrants, skillGrants)
   }
 }

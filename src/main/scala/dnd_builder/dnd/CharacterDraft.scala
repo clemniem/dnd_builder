@@ -18,13 +18,16 @@ case class CharacterDraft(
     featureSelections: ClassFeatureSelections,
     subclass: Option[Subclass],
     chosenExtraLanguages: Set[Language],
-    coins: Coins
+    coins: Coins,
+    spellGrants: List[SpellGrant],
+    skillGrants: List[SkillGrant]
 )
 
 object CharacterDraft {
   val empty: CharacterDraft = CharacterDraft(
     None, None, Some(1), None, None, None, Set.empty,
     None, false, Nil, Nil, Nil, Nil,
-    ClassFeatureSelections.empty, None, Set.empty, Coins.empty
+    ClassFeatureSelections.empty, None, Set.empty, Coins.empty,
+    Nil, Nil
   )
 }

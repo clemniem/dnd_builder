@@ -61,7 +61,7 @@ object EquipmentScreen extends Screen {
         coins = model.coins
       )
       val cls = model.draft.dndClass.getOrElse(Barbarian)
-      val nextScreen = if cls.isSpellcaster then ScreenId.SpellsId else ScreenId.ReviewId
+      val nextScreen = if FeatureGrants.needsSpellScreen(cls, model.draft.background) then ScreenId.SpellsId else ScreenId.ReviewId
       (model, Cmd.Emit(NavigateNext(nextScreen, Some(ScreenOutput.Draft(updated)))))
     case EquipmentMsg.Back =>
       val updated = model.draft.copy(
@@ -70,7 +70,7 @@ object EquipmentScreen extends Screen {
         equippedWeapons = model.selectedWeapons,
         coins = model.coins
       )
-      (model, Cmd.Emit(NavigateNext(ScreenId.ClassFeaturesId, Some(ScreenOutput.Draft(updated)))))
+      (model, Cmd.Emit(NavigateNext(ScreenId.FeaturesId, Some(ScreenOutput.Draft(updated)))))
     case EquipmentMsg.NoOp =>
       (model, Cmd.None)
     case _: NavigateNext =>
@@ -93,15 +93,16 @@ object EquipmentScreen extends Screen {
 
   def view(model: Model): Html[Msg] = {
     val cls = model.draft.dndClass.getOrElse(Barbarian)
+    val needsSpells = FeatureGrants.needsSpellScreen(cls, model.draft.background)
     val proficientArmors = Armor.all.filter(a => cls.armorProficiencies.contains(a.armorType))
     val proficientWeapons = Weapon.all.filter(w => WeaponProficiency.isProficient(w, cls.weaponProficiencies))
     val usedStars = totalStars(model)
     val nextEnabled = model.selectedWeapons.nonEmpty
 
     div(`class` := "screen-container")(
-      StepIndicator(7, cls.isSpellcaster),
-      StepNav(StepIndicator.backLabel(7, cls.isSpellcaster), EquipmentMsg.Back,
-        StepIndicator.nextLabel(7, cls.isSpellcaster),
+      StepIndicator(7, needsSpells),
+      StepNav(StepIndicator.backLabel(7, needsSpells), EquipmentMsg.Back,
+        StepIndicator.nextLabel(7, needsSpells),
         EquipmentMsg.Next, nextEnabled),
       h1(`class` := "screen-title")(text("Choose Equipment")),
       p(`class` := "screen-intro")(text("Select weapons and armor you are proficient with. Each item has a star cost (1–5); stay within your budget.")),

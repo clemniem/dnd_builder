@@ -195,7 +195,9 @@ object CharacterValidator {
       subclass: Option[Subclass],
       languages: Set[Language],
       level: Int,
-      coins: Coins
+      coins: Coins,
+      spellGrants: List[SpellGrant],
+      skillGrants: List[SkillGrant]
   ): Either[List[ValidationError], Character] = {
     val finalScores = AbilityScores.applyBonus(baseScores, bonus)
     val errors =
@@ -209,6 +211,6 @@ object CharacterValidator {
     if errors.nonEmpty then Left(errors)
     else Right(Character(name, species, classLevels, background, baseScores, bonus, chosenSkills,
       equippedArmor, equippedShield, equippedWeapons, chosenCantrips, preparedSpells, spellbookSpells,
-      featureSelections, subclass, languages, coins))
+      featureSelections, subclass, languages, coins, spellGrants, skillGrants))
   }
 }

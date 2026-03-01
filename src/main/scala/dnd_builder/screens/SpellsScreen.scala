@@ -29,8 +29,11 @@ object SpellsScreen extends Screen {
       case Some(ScreenOutput.Draft(d)) => d
       case _ => CharacterDraft.empty
     }
-    val (cls, cantrips, _, _, _) = spellInfo(draft)
-    val phase = if cantrips > 0 then Phase.Cantrips else Phase.Prepared
+    val (_, cantrips, _, _, _) = spellInfo(draft)
+    val phase =
+      if draft.spellGrants.nonEmpty then Phase.GrantSpell(0)
+      else if cantrips > 0 then Phase.Cantrips
+      else Phase.Prepared
     (SpellsModel(draft, draft.chosenCantrips, draft.preparedSpells, draft.spellbookSpells, phase), Cmd.None)
   }
 
@@ -62,6 +65,20 @@ object SpellsScreen extends Screen {
         (model.copy(preparedSpells = model.preparedSpells :+ spell), Cmd.None)
       else (model, Cmd.None)
 
+    case SpellsMsg.ToggleGrantSpell(grantIndex, spell) =>
+      val grants = model.draft.spellGrants
+      if grantIndex < 0 || grantIndex >= grants.size then (model, Cmd.None)
+      else {
+        val g = grants(grantIndex)
+        val newChosen =
+          if g.chosen.exists(_.name == spell.name) then g.chosen.filterNot(_.name == spell.name)
+          else if g.chosen.size < g.count then g.chosen :+ spell
+          else g.chosen
+        val newGrants = grants.updated(grantIndex, g.withChosen(newChosen))
+        val updatedDraft = model.draft.copy(spellGrants = newGrants)
+        (model.copy(draft = updatedDraft), Cmd.None)
+      }
+
     case SpellsMsg.SetPhase(phase) =>
       (model.copy(phase = phase), Cmd.None)
 
@@ -70,8 +87,20 @@ object SpellsScreen extends Screen {
       val cantripsReady = model.chosenCantrips.size == cantrips
       val preparedReady = model.preparedSpells.size == prepared
       val spellbookReady = spellbookSize == 0 || model.spellbookSpells.size == spellbookSize
+      val grantCount = model.draft.spellGrants.size
 
       model.phase match {
+        case Phase.GrantSpell(i) if i < grantCount && model.draft.spellGrants(i).isFilled =>
+          if i + 1 < grantCount then
+            (model.copy(phase = Phase.GrantSpell(i + 1)), Cmd.None)
+          else if cantrips > 0 then
+            (model.copy(phase = Phase.Cantrips), Cmd.None)
+          else if spellbookSize > 0 then
+            (model.copy(phase = Phase.Spellbook), Cmd.None)
+          else if prepared > 0 then
+            (model.copy(phase = Phase.Prepared), Cmd.None)
+          else
+            emitNext(model)
         case Phase.Cantrips if cantripsReady =>
           if spellbookSize > 0 then
             (model.copy(phase = Phase.Spellbook), Cmd.None)
@@ -90,13 +119,39 @@ object SpellsScreen extends Screen {
 
     case SpellsMsg.Back =>
       val (_, cantrips, _, spellbookSize, _) = spellInfo(model.draft)
+      val grantCount = model.draft.spellGrants.size
       model.phase match {
+        case Phase.GrantSpell(0) =>
+          val updated = model.draft.copy(
+            chosenCantrips = model.chosenCantrips,
+            preparedSpells = model.preparedSpells,
+            spellbookSpells = model.spellbookSpells
+          )
+          (model, Cmd.Emit(NavigateNext(ScreenId.EquipmentId, Some(ScreenOutput.Draft(updated)))))
+        case Phase.GrantSpell(i) if i > 0 =>
+          (model.copy(phase = Phase.GrantSpell(i - 1)), Cmd.None)
         case Phase.Prepared if spellbookSize > 0 =>
           (model.copy(phase = Phase.Spellbook), Cmd.None)
         case Phase.Prepared if cantrips > 0 =>
           (model.copy(phase = Phase.Cantrips), Cmd.None)
         case Phase.Spellbook if cantrips > 0 =>
           (model.copy(phase = Phase.Cantrips), Cmd.None)
+        case Phase.Cantrips if grantCount > 0 =>
+          (model.copy(phase = Phase.GrantSpell(grantCount - 1)), Cmd.None)
+        case Phase.Cantrips =>
+          val updated = model.draft.copy(
+            chosenCantrips = model.chosenCantrips,
+            preparedSpells = model.preparedSpells,
+            spellbookSpells = model.spellbookSpells
+          )
+          (model, Cmd.Emit(NavigateNext(ScreenId.EquipmentId, Some(ScreenOutput.Draft(updated)))))
+        case Phase.Prepared =>
+          val updated = model.draft.copy(
+            chosenCantrips = model.chosenCantrips,
+            preparedSpells = model.preparedSpells,
+            spellbookSpells = model.spellbookSpells
+          )
+          (model, Cmd.Emit(NavigateNext(ScreenId.EquipmentId, Some(ScreenOutput.Draft(updated)))))
         case _ =>
           val updated = model.draft.copy(
             chosenCantrips = model.chosenCantrips,
@@ -120,26 +175,57 @@ object SpellsScreen extends Screen {
 
   def view(model: Model): Html[Msg] = {
     val cls = model.draft.dndClass.getOrElse(Wizard)
+    val needsSpells = FeatureGrants.needsSpellScreen(cls, model.draft.background)
     div(`class` := "screen-container")(
-      StepIndicator(8, cls.isSpellcaster),
+      StepIndicator(8, needsSpells),
       model.phase match {
-        case Phase.Cantrips  => cantripsView(model)
-        case Phase.Spellbook => spellbookView(model)
-        case Phase.Prepared  => preparedView(model)
+        case Phase.GrantSpell(i) => grantSpellView(model, i)
+        case Phase.Cantrips      => cantripsView(model)
+        case Phase.Spellbook     => spellbookView(model)
+        case Phase.Prepared      => preparedView(model)
       }
     )
   }
 
+  private def grantSpellView(model: SpellsModel, grantIndex: Int): Html[Msg] = {
+    val grants = model.draft.spellGrants
+    if grantIndex < 0 || grantIndex >= grants.size then div()
+    else {
+      val g = grants(grantIndex)
+      val available = Spell.forSpellList(g.spellListLabel, g.spellLevel)
+      val remaining = g.count - g.chosen.size
+      val levelLabel = if g.spellLevel == 0 then "cantrips" else s"level-${g.spellLevel} spells"
+      val nextLabel = "Next >"
+      div(
+        StepNav("< Equipment", SpellsMsg.Back, nextLabel, SpellsMsg.Next, remaining == 0),
+        h1(`class` := "screen-title")(text(g.sourceLabel)),
+        p(`class` := "screen-intro")(
+          text(s"Choose ${g.count} $levelLabel from the ${g.spellListLabel} spell list.")
+        ),
+        div(`class` := "points-pool", style := "margin-bottom: 1rem;")(
+          text("Remaining: "),
+          span(`class` := "points-pool-value")(text(remaining.toString))
+        ),
+        spellListGrouped(
+          available,
+          g.chosen,
+          (s: Spell) => SpellsMsg.ToggleGrantSpell(grantIndex, s)
+        )
+      )
+    }
+  }
+
   private def cantripsView(model: SpellsModel): Html[Msg] = {
     val (cls, cantrips, prepared, spellbookSize, _) = spellInfo(model.draft)
+    val needsSpells = FeatureGrants.needsSpellScreen(cls, model.draft.background)
     val available = Spell.cantripsForClass(cls)
     val remaining = cantrips - model.chosenCantrips.size
     val nextLabel = if spellbookSize > 0 then "Next: Spellbook >"
       else if prepared > 0 then "Next: Spells >"
-      else StepIndicator.nextLabel(8, cls.isSpellcaster)
+      else StepIndicator.nextLabel(8, needsSpells)
 
     div(
-      StepNav(StepIndicator.backLabel(8, cls.isSpellcaster), SpellsMsg.Back, nextLabel, SpellsMsg.Next, remaining == 0),
+      StepNav(StepIndicator.backLabel(8, needsSpells), SpellsMsg.Back, nextLabel, SpellsMsg.Next, remaining == 0),
       h1(`class` := "screen-title")(text("Choose Cantrips")),
       p(`class` := "screen-intro")(
         text(s"Select $cantrips cantrips from the ${cls.name} spell list.")
@@ -192,7 +278,7 @@ object SpellsScreen extends Screen {
         s"Select $prepared spells from the ${cls.name} spell list."
 
     div(
-      StepNav(backLabel, SpellsMsg.Back, StepIndicator.nextLabel(8, cls.isSpellcaster), SpellsMsg.Next, remaining == 0),
+      StepNav(backLabel, SpellsMsg.Back, StepIndicator.nextLabel(8, FeatureGrants.needsSpellScreen(cls, model.draft.background)), SpellsMsg.Next, remaining == 0),
       h1(`class` := "screen-title")(text(title)),
       p(`class` := "screen-intro")(text(intro)),
       div(`class` := "points-pool", style := "margin-bottom: 1rem;")(
@@ -233,6 +319,7 @@ object SpellsScreen extends Screen {
 
 enum Phase {
   case Cantrips, Spellbook, Prepared
+  case GrantSpell(grantIndex: Int)
 }
 
 final case class SpellsModel(
@@ -246,6 +333,7 @@ enum SpellsMsg {
   case ToggleCantrip(spell: Spell)
   case ToggleSpellbook(spell: Spell)
   case TogglePrepared(spell: Spell)
+  case ToggleGrantSpell(grantIndex: Int, spell: Spell)
   case SetPhase(phase: Phase)
   case Next
   case Back

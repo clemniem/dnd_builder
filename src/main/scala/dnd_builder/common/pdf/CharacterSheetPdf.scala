@@ -55,7 +55,9 @@ object CharacterSheetPdf {
       ),
       None,
       Dwarf.languages,
-      Coins(Soldier.startingGold, 0, 0, 0, 0)
+      Coins(Soldier.startingGold, 0, 0, 0, 0),
+      Nil,
+      Nil
     )
     generate(testChar)
   }

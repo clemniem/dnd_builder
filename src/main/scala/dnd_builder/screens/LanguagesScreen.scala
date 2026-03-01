@@ -44,10 +44,10 @@ object LanguagesScreen extends Screen {
     case LanguagesMsg.Back =>
       val cls = model.draft.dndClass.getOrElse(Barbarian)
       val updated = model.draft.copy(chosenExtraLanguages = model.chosenExtraLanguages)
-      if cls.isSpellcaster then
+      if FeatureGrants.needsSpellScreen(cls, model.draft.background) then
         (model, Cmd.Emit(NavigateNext(ScreenId.SpellsId, Some(ScreenOutput.Draft(updated)))))
       else
-        (model, Cmd.Emit(NavigateNext(ScreenId.ClassFeaturesId, Some(ScreenOutput.Draft(updated)))))
+        (model, Cmd.Emit(NavigateNext(ScreenId.FeaturesId, Some(ScreenOutput.Draft(updated)))))
 
     case LanguagesMsg.ToggleExtraLanguage(lang) =>
       val cls = model.draft.dndClass.getOrElse(Barbarian)
@@ -66,15 +66,16 @@ object LanguagesScreen extends Screen {
   def view(model: Model): Html[Msg] = {
     val sp = model.draft.species.getOrElse(Human)
     val cls = model.draft.dndClass.getOrElse(Barbarian)
+    val needsSpells = FeatureGrants.needsSpellScreen(cls, model.draft.background)
     val granted = sp.languages
     val needChoices = cls.extraLanguageChoices
-    val step = if cls.isSpellcaster then 9 else 8
+    val step = if needsSpells then 9 else 8
     div(`class` := "screen-container")(
-      StepIndicator(step, cls.isSpellcaster),
+      StepIndicator(step, needsSpells),
       StepNav(
-        StepIndicator.backLabel(step, cls.isSpellcaster),
+        StepIndicator.backLabel(step, needsSpells),
         LanguagesMsg.Back,
-        StepIndicator.nextLabel(step, cls.isSpellcaster),
+        StepIndicator.nextLabel(step, needsSpells),
         LanguagesMsg.Next,
         canProceed(model)
       ),

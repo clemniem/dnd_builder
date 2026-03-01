@@ -6,8 +6,8 @@ import tyrian.*
 object StepIndicator {
 
   private val baseSteps = List("Race", "Class", "Background", "Abilities", "Skills")
-  private val casterSteps = baseSteps :+ "Class Features" :+ "Equipment" :+ "Spells" :+ "Review"
-  private val nonCasterSteps = baseSteps :+ "Class Features" :+ "Equipment" :+ "Review"
+  private val casterSteps = baseSteps :+ "Features" :+ "Equipment" :+ "Spells" :+ "Review"
+  private val nonCasterSteps = baseSteps :+ "Features" :+ "Equipment" :+ "Review"
 
   /** Canonical step list (0-indexed); used for progress bar and nav labels. */
   def steps(isSpellcaster: Boolean): List[String] =

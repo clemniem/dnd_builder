@@ -27,7 +27,7 @@ object ClassFeaturesScreen extends Screen {
   type Model = ClassFeaturesModel
   type Msg   = ClassFeaturesMsg | NavigateNext
 
-  val screenId: ScreenId = ScreenId.ClassFeaturesId
+  val screenId: ScreenId = ScreenId.FeaturesId
 
   private def level1Choices(cls: DndClass): List[LevelChoice] =
     ClassProgression.atLevel(cls, 1).choices
@@ -95,22 +95,88 @@ object ClassFeaturesScreen extends Screen {
 
   def view(model: Model): Html[Msg] = {
     val cls = model.draft.dndClass.getOrElse(Barbarian)
+    val needsSpells = FeatureGrants.needsSpellScreen(cls, model.draft.background)
     val nextEnabled = canProceed(model)
     div(`class` := "screen-container")(
-      StepIndicator(6, cls.isSpellcaster),
-      StepNav(StepIndicator.backLabel(6, cls.isSpellcaster), ClassFeaturesMsg.Back,
-        StepIndicator.nextLabel(6, cls.isSpellcaster),
+      StepIndicator(6, needsSpells),
+      StepNav(StepIndicator.backLabel(6, needsSpells), ClassFeaturesMsg.Back,
+        StepIndicator.nextLabel(6, needsSpells),
         ClassFeaturesMsg.Next, nextEnabled),
-      h1(`class` := "screen-title")(text("Class Features")),
-      p(`class` := "screen-intro")(text("Choose your class feature options.")),
+      h1(`class` := "screen-title")(text("Features")),
+      p(`class` := "screen-intro")(text("Choose your class feature options. Background and race features are listed below.")),
+      div(`class` := "section-title")(text("Class Features")),
       fightingStyleSection(model),
       divineOrderSection(model),
       primalOrderSection(model),
       eldritchInvocationSection(model),
       expertiseSection(model),
-      weaponMasterySection(model)
+      weaponMasterySection(model),
+      backgroundFeaturesSection(model),
+      raceFeaturesSection(model)
     )
   }
+
+  private def backgroundFeaturesSection(model: Model): Html[Msg] =
+    model.draft.background match {
+      case Some(bg) =>
+        val spellGrants = model.draft.spellGrants
+        val skillGrants = model.draft.skillGrants
+        val spellResolved = spellGrants.forall(_.isFilled)
+        val skillResolved = skillGrants.forall(_.isFilled)
+        div(style := "margin-top: 1.5rem;")(
+          div(`class` := "section-title")(text("Background Features")),
+          div(`class` := "feature-list")(
+            div(`class` := "feature-item")(
+              div(`class` := "feature-name")(text("Origin Feat")),
+              div(`class` := "feature-desc")(text(s"${bg.feat.name}: ${bg.feat.description}"))
+            ),
+            if spellGrants.nonEmpty then
+              div(`class` := "feature-item")(
+                div(`class` := "feature-name")(text("Spell choices")),
+                div(`class` := "feature-desc")(
+                  text(if spellResolved then "Chosen in Spells step." else "Will be chosen in Spells step.")
+                )
+              )
+            else div(),
+            if skillGrants.nonEmpty then
+              div(`class` := "feature-item")(
+                div(`class` := "feature-name")(text("Skill choices")),
+                div(`class` := "feature-desc")(
+                  text(if skillResolved then "Chosen in Skills step." else "Will be chosen in Skills step.")
+                )
+              )
+            else div()
+          )
+        )
+      case None => div()
+    }
+
+  private def raceFeaturesSection(model: Model): Html[Msg] =
+    model.draft.species match {
+      case Some(sp) =>
+        div(style := "margin-top: 1.5rem;")(
+          div(`class` := "section-title")(text("Race Features")),
+          div(`class` := "feature-list")(
+            div(`class` := "feature-item")(
+              div(`class` := "feature-name")(text("Speed")),
+              div(`class` := "feature-desc")(text(s"${sp.speed} ft"))
+            ),
+            sp.darkvision match {
+              case Some(dv) =>
+                div(`class` := "feature-item")(
+                  div(`class` := "feature-name")(text("Darkvision")),
+                  div(`class` := "feature-desc")(text(s"$dv ft"))
+                )
+              case None => div()
+            },
+            div(`class` := "feature-item")(
+              div(`class` := "feature-name")(text("Traits")),
+              div(`class` := "feature-desc")(text(sp.traits.mkString("; ")))
+            )
+          )
+        )
+      case None => div()
+    }
 
   private def fightingStyleSection(model: Model): Html[Msg] = {
     val cls = model.draft.dndClass.getOrElse(Barbarian)

@@ -33,7 +33,16 @@ object BackgroundScreen extends Screen {
     case BackgroundMsg.Next =>
       model.selectedBackground match {
         case Some(bg) =>
-          val updated = model.draft.copy(background = Some(bg), chosenExtraLanguages = model.chosenExtraLanguages)
+          val (spellFromSp, skillFromSp) = FeatureGrants.fromSpecies(model.draft.species.getOrElse(Human))
+          val (spellFromBg, skillFromBg) = FeatureGrants.fromBackground(bg)
+          val spellGrants = spellFromSp ++ spellFromBg
+          val skillGrants = skillFromSp ++ skillFromBg
+          val updated = model.draft.copy(
+            background = Some(bg),
+            chosenExtraLanguages = model.chosenExtraLanguages,
+            spellGrants = spellGrants,
+            skillGrants = skillGrants
+          )
           (model, Cmd.Emit(NavigateNext(ScreenId.AbilitiesId, Some(ScreenOutput.Draft(updated)))))
         case None =>
           (model, Cmd.None)

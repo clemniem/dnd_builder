@@ -19,7 +19,7 @@ object ScreenId {
   case object AbilitiesId   extends ScreenId { val name = "abilities"; val title = "Ability Scores" }
   case object SkillsId      extends ScreenId { val name = "skills"; val title = "Skills" }
   case object EquipmentId   extends ScreenId { val name = "equipment"; val title = "Equipment" }
-  case object ClassFeaturesId extends ScreenId { val name = "class-features"; val title = "Class Features" }
+  case object FeaturesId extends ScreenId { val name = "features"; val title = "Features" }
   case object SpellsId      extends ScreenId { val name = "spells"; val title = "Spells" }
   case object LanguagesId   extends ScreenId { val name = "languages"; val title = "Languages" }
   case object ReviewId      extends ScreenId { val name = "review"; val title = "Review" }
