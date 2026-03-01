@@ -26,11 +26,16 @@ object AboutScreen extends Screen {
       (false, Cmd.None)
     case AboutMsg.Back =>
       (model, Cmd.Emit(NavigateNext(ScreenId.HomeId, None)))
+    case open: AboutMsg.OpenLink =>
+      (model, CmdUtils.fireAndForget(openInNewWindow(open.url), AboutMsg.NoOp, _ => AboutMsg.NoOp))
     case AboutMsg.NoOp =>
       (model, Cmd.None)
     case _: NavigateNext =>
       (model, Cmd.None)
   }
+
+  private def openInNewWindow(url: String): IO[Unit] =
+    IO.delay((dom.window.open(url, "_blank", "noopener,noreferrer"): Unit))
 
   private def refreshAppFromSW: IO[Unit] = IO.delay {
     val f = js.Dynamic.global.selectDynamic("refreshApp")
@@ -52,11 +57,10 @@ object AboutScreen extends Screen {
         p(text("Built with Scala 3, Scala.js, Tyrian (Elm architecture), and Circe.")),
         p(text("All game rules follow the 2024 Systems Reference Document (SRD).")),
         p()(
-          a(
-            href := "https://github.com/clemniem/dnd_builder",
-            Attribute("target", "_blank"),
-            Attribute("rel", "noopener noreferrer"),
-            `class` := "about-link"
+          span(
+            `class` := "about-link",
+            style := "cursor: var(--nes-pointer);",
+            onClick(AboutMsg.OpenLink("https://github.com/clemniem/dnd_builder"))
           )(text("View on GitHub"))
         ),
         h2(`class` := "about-heading")(text("Libraries & tools")),
@@ -99,11 +103,10 @@ object AboutScreen extends Screen {
         rows.map { case (name, purpose, url) =>
           tr(
             td(
-              a(
-                href := url,
-                Attribute("target", "_blank"),
-                Attribute("rel", "noopener noreferrer"),
-                `class` := "about-link"
+              span(
+                `class` := "about-link",
+                style := "cursor: var(--nes-pointer);",
+                onClick(AboutMsg.OpenLink(url))
               )(text(name))
             ),
             td(text(purpose))
@@ -119,5 +122,6 @@ enum AboutMsg {
   case ConfirmRefresh
   case CancelRefresh
   case Back
+  case OpenLink(url: String)
   case NoOp
 }

@@ -9,10 +9,10 @@ import scala.scalajs.js.annotation.JSExportTopLevel
 object CharacterSheetPdf {
 
   /** Bump this on every change to PDF filling logic so `testPdf()` output is visually distinguishable from stale builds. */
-  val testPdfVersion: Int = 18
+  val testPdfVersion: Int = 19
 
   /** Font size (pt) for all large content fields: Class Features, Species Traits, Feats, Languages, Equipment, Weapon Prof, Tool Prof, and weapon rows. Change this to adjust all at once. */
-  val contentFontSizePt: Int = 10
+  val contentFontSizePt: Int = 12
 
   private val pdfUrl =
     "https://raw.githubusercontent.com/birddie721/5e2024Builder/main/Character-Sheet.pdf"

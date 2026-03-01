@@ -74,7 +74,8 @@ object PdfLib {
       x = x,
       y = y,
       size = size,
-      color = lib.rgb(0, 0, 0)
+      color = lib.rgb(0, 0, 0),
+      opacity = 1.0
     )
     val _ = page.drawCircle(opts)
   }
