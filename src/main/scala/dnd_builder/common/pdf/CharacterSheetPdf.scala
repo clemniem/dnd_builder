@@ -9,10 +9,10 @@ import scala.scalajs.js.annotation.JSExportTopLevel
 object CharacterSheetPdf {
 
   /** Bump this on every change to PDF filling logic so `testPdf()` output is visually distinguishable from stale builds. */
-  val testPdfVersion: Int = 19
+  val testPdfVersion: Int = 31
 
   /** Font size (pt) for all large content fields: Class Features, Species Traits, Feats, Languages, Equipment, Weapon Prof, Tool Prof, and weapon rows. Change this to adjust all at once. */
-  val contentFontSizePt: Int = 12
+  val contentFontSizePt: Int = 14
 
   private val pdfUrl =
     "https://raw.githubusercontent.com/birddie721/5e2024Builder/main/Character-Sheet.pdf"
@@ -142,27 +142,43 @@ object CharacterSheetPdf {
     PdfLib.setText(field, value)
   }
 
+  /**
+   * Calibration baseline: targetLines values throughout the code were measured at this font size.
+   * Changing contentFontSizePt rescales padding automatically.
+   */
+  private val referenceFontSizePt: Int = 10
+
   private def padToLines(text: String, targetLines: Int): String = {
     val currentLines = text.count(_ == '\n') + 1
     val padding = math.max(0, targetLines - currentLines)
     text + "\n" * padding
   }
 
-  /** Like setField + padToLines but also sets font size (pt) for content fields. */
-  private def setFieldPaddedSized(form: js.Dynamic, name: String, value: String, targetLines: Int, fontSizePt: Int): Unit = {
+  /**
+   * Central function for big multiline content fields. Takes reference line count (calibrated
+   * at 10pt), rescales to the current contentFontSizePt, then pads with newlines and sets.
+   */
+  private def setContentField(form: js.Dynamic, name: String, value: String, refLines: Int): Unit = {
+    val scaledLines = (refLines * referenceFontSizePt) / contentFontSizePt
     val field = PdfLib.getTextField(form, name)
     PdfLib.removeMaxLength(field)
-    PdfLib.setFontSize(field, fontSizePt)
-    PdfLib.setText(field, padToLines(value, targetLines))
+    PdfLib.setFontSize(field, contentFontSizePt)
+    PdfLib.setText(field, padToLines(value, scaledLines))
   }
 
-  private def trySetFieldSized(form: js.Dynamic, name: String, value: String, pt: Int): Unit =
-    try {
-      val field = PdfLib.getTextField(form, name)
-      PdfLib.removeMaxLength(field)
-      PdfLib.setFontSize(field, pt)
-      PdfLib.setText(field, value)
-    } catch case _: Throwable => ()
+  /**
+   * For single-line content fields (Languages, weapon cells). Pads with trailing spaces
+   * so the auto-sizer picks a smaller font without adding newlines that push content out.
+   * refChars = how many characters the field fits at 10pt.
+   */
+  private def setContentFieldSingleLine(form: js.Dynamic, name: String, value: String, refChars: Int): Unit = {
+    val scaledChars = (refChars * referenceFontSizePt) / contentFontSizePt
+    val padding = math.max(0, scaledChars - value.length)
+    val field = PdfLib.getTextField(form, name)
+    PdfLib.removeMaxLength(field)
+    PdfLib.setFontSize(field, contentFontSizePt)
+    PdfLib.setText(field, value + " " * padding)
+  }
 
   private def checkBox(form: js.Dynamic, name: String): Unit =
     PdfLib.check(PdfLib.getCheckBox(form, name))
@@ -300,14 +316,16 @@ object CharacterSheetPdf {
     if ch.equippedShield then checkBox(form, PdfFormFields.ShieldChk)
   }
 
+  private val weaponRowFontSizePt: Int = 10
+
   private def fillWeapons(form: js.Dynamic, ch: Character): Unit =
     ch.equippedWeapons.zipWithIndex.foreach { case (weapon, idx) =>
       val n = idx + 1
       if n <= 6 then {
-        setFieldSized(form, PdfFormFields.nameWeapon(n), weapon.name, contentFontSizePt)
-        setFieldSized(form, PdfFormFields.bonusWeapon(n), ch.weaponAttackBonus(weapon).format, contentFontSizePt)
-        setFieldSized(form, PdfFormFields.damageWeapon(n), ch.weaponDamageString(weapon), contentFontSizePt)
-        setFieldSized(form, PdfFormFields.notesWeapon(n), ch.weaponPropertiesSummary(weapon), contentFontSizePt)
+        setFieldSized(form, PdfFormFields.nameWeapon(n), weapon.name, weaponRowFontSizePt)
+        setFieldSized(form, PdfFormFields.bonusWeapon(n), ch.weaponAttackBonus(weapon).format, weaponRowFontSizePt)
+        setFieldSized(form, PdfFormFields.damageWeapon(n), ch.weaponDamageString(weapon), weaponRowFontSizePt)
+        setFieldSized(form, PdfFormFields.notesWeapon(n), ch.weaponPropertiesSummary(weapon), weaponRowFontSizePt)
       }
     }
 
@@ -353,14 +371,14 @@ object CharacterSheetPdf {
 
   private def fillProficienciesAndFeatures(form: js.Dynamic, ch: Character): Unit = {
     val langStr = ch.languages.toList.sortBy(_.label).map(_.label).mkString(", ")
-    trySetFieldSized(form, PdfFormFields.Languages, langStr, contentFontSizePt)
-    setFieldPaddedSized(form, PdfFormFields.WeaponProf, ch.primaryClass.weaponSummary, 4, contentFontSizePt)
-    setFieldPaddedSized(form, PdfFormFields.ToolProf, ch.background.toolProficiency, 2, contentFontSizePt)
+    setContentFieldSingleLine(form, PdfFormFields.Languages, langStr, 40)
+    setContentField(form, PdfFormFields.WeaponProf, ch.primaryClass.weaponSummary, 5)
+    setContentField(form, PdfFormFields.ToolProf, ch.background.toolProficiency, 2)
     val featText = ch.originFeat.name + ":\n" + ch.originFeat.description
-    setFieldPaddedSized(form, PdfFormFields.Feats, featText, 28, contentFontSizePt)
-    setFieldPaddedSized(form, PdfFormFields.Equipment, ch.equipmentSummary, 40, contentFontSizePt)
+    setContentField(form, PdfFormFields.Feats, featText, 28)
+    setContentField(form, PdfFormFields.Equipment, ch.equipmentSummary, 18)
     val traitsText = ch.species.traits.map(t => s" * $t").mkString("\n")
-    setFieldPaddedSized(form, PdfFormFields.SpeciesTraits, traitsText, 25, contentFontSizePt)
+    setContentField(form, PdfFormFields.SpeciesTraits, traitsText, 25)
 
     val features = ClassProgression.featuresUpToLevel(ch.primaryClass, ch.primaryClassLevel)
     val featureLines = features.map(f => featureLine(f, ch))
@@ -368,10 +386,10 @@ object CharacterSheetPdf {
     val col1Text = featureLines.take(mid).mkString("\n")
     val col2Text = featureLines.drop(mid)
 
-    setFieldPaddedSized(form, PdfFormFields.ClassFeatures1, col1Text, 30, contentFontSizePt)
+    setContentField(form, PdfFormFields.ClassFeatures1, col1Text, 30)
 
     if col2Text.nonEmpty then
-      setFieldPaddedSized(form, PdfFormFields.ClassFeatures2, col2Text.mkString("\n"), 35, contentFontSizePt)
+      setContentField(form, PdfFormFields.ClassFeatures2, col2Text.mkString("\n"), 35)
   }
 
   private def featureLine(f: ClassFeature, ch: Character): String = {

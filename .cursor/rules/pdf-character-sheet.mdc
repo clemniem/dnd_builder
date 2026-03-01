@@ -46,6 +46,27 @@ All checkboxes in the spell area are one of:
 
 `@JSExportTopLevel("fnName")` in Scala.js is not enough. You must also add the import and `window.fnName = fnName` in `export-wrapper.js`, or the function won't be accessible from the browser console.
 
+## Font sizing in large content fields (CRITICAL)
+
+`setFontSize()` / `setFieldSized()` does NOT reliably control the visual font size in multiline PDF form fields. The PDF viewer's auto-sizer overrides the explicit font size based on how much content fits in the field's physical box. **Never use `setFieldSized` for content fields** (Class Features, Species Traits, Feats, Languages, Equipment, Weapon Prof, Tool Prof, weapon rows).
+
+Instead, use the two content-field helpers — both scale with `contentFontSizePt`:
+
+- **Multiline fields** (Class Features, Species Traits, Feats, Equipment, Weapon Prof, Tool Prof): `setContentField(form, name, value, refLines)` — pads with **newlines** to control auto-sizing. `refLines` = line capacity at 10pt.
+- **Single-line fields** (Languages, weapon row cells): `setContentFieldSingleLine(form, name, value, refChars)` — pads with **trailing spaces** instead of newlines (newlines push content out of the box in Acrobat). `refChars` = character capacity at 10pt.
+
+`contentFontSizePt` is the **single knob** for all content fields — change it once, all scale together.
+
+For small fixed-size cells (ability mods, save bonuses, skill bonuses, initiative, proficiency bonus), `setFieldSized` with an explicit pt value is fine — those cells are small enough that the explicit size works. Individual weapon row cells (name, bonus, damage, notes) use `weaponRowFontSizePt` — these are **separate** from `contentFontSizePt` and from the large "Weapon Prof" text box.
+
+## Ambiguity rule
+
+When the user asks to change font size for a field, **always clarify which specific field group** before making changes if there is any ambiguity. Examples of distinct groups:
+- `contentFontSizePt` — large multiline boxes (Class Features, Species Traits, Feats, Equipment, Weapon Prof, Tool Prof)
+- `weaponRowFontSizePt` — individual weapon table cells (Name, Atk Bonus, Damage, Notes)
+- `setContentFieldSingleLine` — single-line content fields (Languages)
+- Hardcoded sizes — small numeric cells (ability mods, saves, skills, initiative, prof bonus)
+
 ## Running the test
 
 In the browser console: `testPdf()`. Downloads a filled PDF for the test character so you can verify layout and font sizes without creating a character in the app. Check the character name includes the expected version number to confirm you're seeing the latest build.
