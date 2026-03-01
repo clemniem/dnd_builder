@@ -34,8 +34,8 @@ object HomeScreen extends Screen {
           "Build a new Level 1 character step by step"),
         linkCard("My Characters", ScreenId.GalleryId,
           "View, manage, and export your saved characters"),
-        linkCard("Manage RuleSets", ScreenId.RuleSetsId,
-          "Import and manage custom class collections"),
+        // linkCard("Manage RuleSets", ScreenId.RuleSetsId,
+        //   "Import and manage custom class collections"),
         linkCard("About", ScreenId.AboutId,
           "Tech stack and tools")
       )
