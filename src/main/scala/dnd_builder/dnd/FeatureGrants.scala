@@ -22,9 +22,24 @@ final case class SkillGrant(
   def withChosen(newChosen: Set[Skill]): SkillGrant = copy(chosen = newChosen)
 }
 
+case class Grants(
+    spellGrants: List[SpellGrant],
+    skillGrants: List[SkillGrant],
+    attackGrants: List[AttackGrant]
+) {
+  def ++(other: Grants): Grants = Grants(
+    spellGrants ++ other.spellGrants,
+    skillGrants ++ other.skillGrants,
+    attackGrants ++ other.attackGrants
+  )
+}
+object Grants {
+  val empty: Grants = Grants(Nil, Nil, Nil)
+}
+
 object FeatureGrants {
 
-  def fromBackground(bg: Background): (List[SpellGrant], List[SkillGrant]) = {
+  def fromBackground(bg: Background): Grants = {
     val sourceLabel = s"${bg.name}: ${bg.feat.name}"
     val spellGrants = bg.feat.spellGrantSpecs.map { case (count, level, list) =>
       SpellGrant(count, level, list.label, sourceLabel, Nil)
@@ -32,14 +47,15 @@ object FeatureGrants {
     val skillGrants = bg.feat.skillGrant.toList.map { case (count, pool) =>
       SkillGrant(count, pool, sourceLabel, Set.empty)
     }
-    (spellGrants, skillGrants)
+    Grants(spellGrants, skillGrants, Nil)
   }
 
-  def fromSpecies(sp: Species): (List[SpellGrant], List[SkillGrant]) = {
-    val _ = sp
-    (Nil, Nil)
-  }
+  def fromSpecies(sp: Species): Grants =
+    Grants(Nil, Nil, sp.grantedAttacks)
+
+  def fromClass(cls: DndClass): Grants =
+    Grants(Nil, Nil, cls.grantedAttacks)
 
   def needsSpellScreen(cls: DndClass, bg: Option[Background]): Boolean =
-    cls.isSpellcaster || bg.exists(b => fromBackground(b)._1.nonEmpty)
+    cls.isSpellcaster || bg.exists(b => fromBackground(b).spellGrants.nonEmpty)
 }

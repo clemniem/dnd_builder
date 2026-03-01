@@ -1,6 +1,6 @@
 package dndbuilder.dnd
 
-import dndbuilder.dnd.DndTypes.Score
+import dndbuilder.dnd.DndTypes.{Modifier, Score}
 import io.circe.*
 import io.circe.syntax.*
 
@@ -116,6 +116,86 @@ object Codecs {
   given Encoder[Subclass] = Encoder.encodeString.contramap(_.name)
   given Decoder[Subclass] = Decoder.decodeString.emap { s =>
     Subclass.byName(s).toRight(s"Unknown subclass: $s")
+  }
+
+  given Encoder[AttackKind] = mkEncoder(_.toString)
+  given Decoder[AttackKind] = mkDecoder(AttackKind.values, _.toString)
+
+  given Encoder[AttackGrantDelivery] = Encoder.instance {
+    case AttackGrantDelivery.MeleeAttack(a)   => Json.obj("type" -> "MeleeAttack".asJson, "ability" -> a.toString.asJson)
+    case AttackGrantDelivery.RangedAttack(a)  => Json.obj("type" -> "RangedAttack".asJson, "ability" -> a.toString.asJson)
+    case AttackGrantDelivery.SaveDC(save, dc) => Json.obj("type" -> "SaveDC".asJson, "save" -> save.toString.asJson, "dcAbility" -> dc.toString.asJson)
+  }
+  given Decoder[AttackGrantDelivery] = Decoder.instance { c =>
+    c.downField("type").as[String].flatMap {
+      case "MeleeAttack"  => c.downField("ability").as[Ability].map(AttackGrantDelivery.MeleeAttack.apply)
+      case "RangedAttack" => c.downField("ability").as[Ability].map(AttackGrantDelivery.RangedAttack.apply)
+      case "SaveDC"       =>
+        for {
+          save <- c.downField("save").as[Ability]
+          dc   <- c.downField("dcAbility").as[Ability]
+        } yield AttackGrantDelivery.SaveDC(save, dc)
+      case other => Left(DecodingFailure(s"Unknown AttackGrantDelivery: $other", c.history))
+    }
+  }
+
+  given Encoder[AttackGrant] = Encoder.forProduct10(
+    "name", "kind", "baseDamageDice", "damageType", "delivery",
+    "scalesLikeCantrip", "scalesLikeMartialArts", "usesPerLR", "range", "sourceLabel"
+  )(g => (g.name, g.kind, g.baseDamageDice, g.damageType, g.delivery, g.scalesLikeCantrip, g.scalesLikeMartialArts, g.usesPerLR, g.range, g.sourceLabel))
+  given Decoder[AttackGrant] = Decoder.instance { c =>
+    for {
+      name              <- c.downField("name").as[String]
+      kind              <- c.downField("kind").as[AttackKind]
+      baseDamageDice    <- c.downField("baseDamageDice").as[String]
+      damageType        <- c.downField("damageType").as[String]
+      delivery          <- c.downField("delivery").as[AttackGrantDelivery]
+      scalesLikeCantrip <- c.downField("scalesLikeCantrip").as[Boolean]
+      scalesLikeMartialArts <- c.downField("scalesLikeMartialArts").as[Option[Boolean]].map(_.getOrElse(false))
+      usesPerLR         <- c.downField("usesPerLR").as[Boolean]
+      range             <- c.downField("range").as[String]
+      sourceLabel       <- c.downField("sourceLabel").as[String]
+    } yield AttackGrant(name, kind, baseDamageDice, damageType, delivery, scalesLikeCantrip, scalesLikeMartialArts, usesPerLR, range, sourceLabel)
+  }
+
+  given Encoder[Modifier] = Encoder.encodeInt.contramap(_.toInt)
+  given Decoder[Modifier] = Decoder.decodeInt.map(Modifier.apply)
+
+  given Encoder[AttackDelivery] = Encoder.instance {
+    case AttackDelivery.AttackRoll(bonus) =>
+      Json.obj("type" -> "AttackRoll".asJson, "bonus" -> bonus.toInt.asJson)
+    case AttackDelivery.SaveDC(dc, save) =>
+      Json.obj("type" -> "SaveDC".asJson, "dc" -> dc.asJson, "save" -> save.toString.asJson)
+  }
+  given Decoder[AttackDelivery] = Decoder.instance { c =>
+    c.downField("type").as[String].flatMap {
+      case "AttackRoll" => c.downField("bonus").as[Int].map(b => AttackDelivery.AttackRoll(Modifier(b)))
+      case "SaveDC"     =>
+        for {
+          dc   <- c.downField("dc").as[Int]
+          save <- c.downField("save").as[Ability]
+        } yield AttackDelivery.SaveDC(dc, save)
+      case other => Left(DecodingFailure(s"Unknown AttackDelivery: $other", c.history))
+    }
+  }
+
+  given Encoder[Attack] = Encoder.forProduct5("name", "kind", "delivery", "damage", "notes")(a =>
+    (a.name, a.kind, a.delivery, a.damage, a.notes)
+  )
+  given Decoder[Attack] = Decoder.forProduct5("name", "kind", "delivery", "damage", "notes")(Attack.apply)
+
+  given Encoder[SpellDelivery] = Encoder.instance {
+    case SpellDelivery.RangedAttack     => Json.obj("type" -> "RangedAttack".asJson)
+    case SpellDelivery.MeleeAttack      => Json.obj("type" -> "MeleeAttack".asJson)
+    case SpellDelivery.Save(ability)    => Json.obj("type" -> "Save".asJson, "ability" -> ability.toString.asJson)
+  }
+  given Decoder[SpellDelivery] = Decoder.instance { c =>
+    c.downField("type").as[String].flatMap {
+      case "RangedAttack" => Right(SpellDelivery.RangedAttack)
+      case "MeleeAttack"  => Right(SpellDelivery.MeleeAttack)
+      case "Save"         => c.downField("ability").as[Ability].map(SpellDelivery.Save.apply)
+      case other          => Left(DecodingFailure(s"Unknown SpellDelivery: $other", c.history))
+    }
   }
 
   given Encoder[SpellGrant] = Encoder.instance { g =>
@@ -357,7 +437,8 @@ object Codecs {
       "languages"        -> ch.languages.toList.asJson,
       "coins"            -> ch.coins.asJson,
       "spellGrants"      -> ch.spellGrants.asJson,
-      "skillGrants"      -> ch.skillGrants.asJson
+      "skillGrants"      -> ch.skillGrants.asJson,
+      "attackGrants"     -> ch.attackGrants.asJson
     )
   }
 
@@ -382,8 +463,9 @@ object Codecs {
       coins     <- c.downField("coins").as[Option[Coins]].map(_.getOrElse(Coins(bg.startingGold, 0, 0, 0, 0)))
       spellGrants <- c.downField("spellGrants").as[Option[List[SpellGrant]]].map(_.getOrElse(Nil))
       skillGrants <- c.downField("skillGrants").as[Option[List[SkillGrant]]].map(_.getOrElse(Nil))
+      attackGrants <- c.downField("attackGrants").as[Option[List[AttackGrant]]].map(_.getOrElse(Nil))
     }
     yield Character(name, sp, classLevels, bg, scores, bonus, skills.toSet, armor, shield, weapons, cantrips, prepared, spellbook,
-      featureSelections, subclass, languages.toSet, coins, spellGrants, skillGrants)
+      featureSelections, subclass, languages.toSet, coins, spellGrants, skillGrants, attackGrants)
   }
 }

@@ -9,7 +9,7 @@ import scala.scalajs.js.annotation.JSExportTopLevel
 object CharacterSheetPdf {
 
   /** Bump this on every change to PDF filling logic so `testPdf()` output is visually distinguishable from stale builds. */
-  val testPdfVersion: Int = 31
+  val testPdfVersion: Int = 32
 
   /** Font size (pt) for all large content fields: Class Features, Species Traits, Feats, Languages, Equipment, Weapon Prof, Tool Prof, and weapon rows. Change this to adjust all at once. */
   val contentFontSizePt: Int = 14
@@ -60,15 +60,18 @@ object CharacterSheetPdf {
   /** Test character for testPdf(): must exercise every filled section (header, combat incl. hit dice, abilities, saves, skills, armor, weapons, spellcasting, currency, feats/traits/class features). When adding new form fields, add filling logic and ensure this character covers them. */
   @JSExportTopLevel("testPdf")
   def generateTest(): Unit = {
-    val testCantrips = (1 to 5).toList.map(i =>
-      Spell(f"Spell $i%02d", 0, SpellSchool.Evocation, Set("Cleric"), false)
+    val dragonbornRed = DragonbornOf(DragonAncestry.Red)
+    val attackGrants = FeatureGrants.fromSpecies(dragonbornRed).attackGrants
+    val sacredFlame = Spell.all.find(_.name == "Sacred Flame").get
+    val testCantrips = sacredFlame :: (1 to 4).toList.map(i =>
+      Spell.utility(f"Spell $i%02d", 0, SpellSchool.Evocation, Set("Cleric"), false)
     )
     val testLvl1Spells = (6 to 30).toList.map(i =>
-      Spell(f"Spell $i%02d", 1, SpellSchool.Evocation, Set("Cleric"), false)
+      Spell.utility(f"Spell $i%02d", 1, SpellSchool.Evocation, Set("Cleric"), false)
     )
     val testChar = Character(
       s"Thorn Ironfist v$testPdfVersion",
-      Dwarf,
+      dragonbornRed,
       List(ClassLevel(Cleric, 1)),
       Soldier,
       AbilityScores(Score(15), Score(14), Score(13), Score(8), Score(10), Score(12)),
@@ -76,10 +79,7 @@ object CharacterSheetPdf {
       Set(Skill.Perception, Skill.Survival),
       Some(Armor.all.find(_.name == "Chain Mail").get),
       true,
-      List(
-        Weapon.all.find(_.name == "Longsword").get,
-        Weapon.all.find(_.name == "Handaxe").get
-      ),
+      List(Weapon.all.find(_.name == "Mace").get),
       testCantrips,
       testLvl1Spells,
       Nil,
@@ -94,10 +94,11 @@ object CharacterSheetPdf {
         None
       ),
       None,
-      Dwarf.languages,
+      dragonbornRed.languages,
       Coins(Soldier.startingGold, 0, 0, 0, 0),
       Nil,
-      Nil
+      Nil,
+      attackGrants
     )
     generate(testChar)
   }
@@ -319,13 +320,13 @@ object CharacterSheetPdf {
   private val weaponRowFontSizePt: Int = 10
 
   private def fillWeapons(form: js.Dynamic, ch: Character): Unit =
-    ch.equippedWeapons.zipWithIndex.foreach { case (weapon, idx) =>
+    ch.allAttacks.zipWithIndex.foreach { case (atk, idx) =>
       val n = idx + 1
       if n <= 6 then {
-        setFieldSized(form, PdfFormFields.nameWeapon(n), weapon.name, weaponRowFontSizePt)
-        setFieldSized(form, PdfFormFields.bonusWeapon(n), ch.weaponAttackBonus(weapon).format, weaponRowFontSizePt)
-        setFieldSized(form, PdfFormFields.damageWeapon(n), ch.weaponDamageString(weapon), weaponRowFontSizePt)
-        setFieldSized(form, PdfFormFields.notesWeapon(n), ch.weaponPropertiesSummary(weapon), weaponRowFontSizePt)
+        setFieldSized(form, PdfFormFields.nameWeapon(n), atk.name, weaponRowFontSizePt)
+        setFieldSized(form, PdfFormFields.bonusWeapon(n), atk.delivery.format, weaponRowFontSizePt)
+        setFieldSized(form, PdfFormFields.damageWeapon(n), atk.damage, weaponRowFontSizePt)
+        setFieldSized(form, PdfFormFields.notesWeapon(n), atk.notes, weaponRowFontSizePt)
       }
     }
 

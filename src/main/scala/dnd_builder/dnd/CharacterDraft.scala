@@ -20,7 +20,8 @@ case class CharacterDraft(
     chosenExtraLanguages: Set[Language],
     coins: Coins,
     spellGrants: List[SpellGrant],
-    skillGrants: List[SkillGrant]
+    skillGrants: List[SkillGrant],
+    attackGrants: List[AttackGrant]
 ) {
   /** Fallback when class not yet chosen; use instead of getOrElse(Barbarian) etc. */
   def resolvedClass: DndClass = dndClass.getOrElse(DndClass.all.head)
@@ -35,6 +36,6 @@ object CharacterDraft {
     None, None, Some(1), None, None, None, Set.empty,
     None, false, Nil, Nil, Nil, Nil,
     ClassFeatureSelections.empty, None, Set.empty, Coins.empty,
-    Nil, Nil
+    Nil, Nil, Nil
   )
 }

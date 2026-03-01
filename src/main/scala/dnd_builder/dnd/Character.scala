@@ -21,7 +21,8 @@ final case class Character(
     languages: Set[Language],
     coins: Coins,
     spellGrants: List[SpellGrant],
-    skillGrants: List[SkillGrant]) {
+    skillGrants: List[SkillGrant],
+    attackGrants: List[AttackGrant]) {
 
   def primaryClass: DndClass = classLevels.head.dndClass
 
@@ -192,4 +193,112 @@ final case class Character(
       val base = s"${primaryClass.name} $primaryClassLevel"
       subclass.fold(base)(s => s"$base (${s.name})")
     } else classLevels.map(cl => s"${cl.dndClass.name} ${cl.classLevel}").mkString(" / ")
+
+  private def scaledDice(baseDice: String): String = {
+    val numDice = characterLevel match {
+      case l if l >= 17 => 4
+      case l if l >= 11 => 3
+      case l if l >= 5  => 2
+      case _            => 1
+    }
+    s"$numDice${baseDice.dropWhile(_.isDigit)}"
+  }
+
+  /** Martial Arts die by character level: 1d6 (1-4), 1d8 (5-10), 1d10 (11-16), 1d12 (17-20). */
+  private def martialArtsDiceForLevel(level: Int): String = level match {
+    case l if l >= 17 => "1d12"
+    case l if l >= 11 => "1d10"
+    case l if l >= 5  => "1d8"
+    case _            => "1d6"
+  }
+
+  private def resolveGrants(grants: List[AttackGrant]): List[Attack] =
+    grants.map { grant =>
+      val dice =
+        if grant.scalesLikeMartialArts then martialArtsDiceForLevel(characterLevel)
+        else if grant.scalesLikeCantrip then scaledDice(grant.baseDamageDice)
+        else grant.baseDamageDice
+      val delivery = grant.delivery match {
+        case AttackGrantDelivery.MeleeAttack(ability) =>
+          AttackDelivery.AttackRoll(proficiencyBonus + modifier(ability))
+        case AttackGrantDelivery.RangedAttack(ability) =>
+          AttackDelivery.AttackRoll(proficiencyBonus + modifier(ability))
+        case AttackGrantDelivery.SaveDC(save, dcAbility) =>
+          AttackDelivery.SaveDC(
+            8 + proficiencyBonus.toInt + modifier(dcAbility).toInt,
+            save
+          )
+      }
+      val usesStr =
+        if grant.usesPerLR then List.fill(proficiencyBonus.toInt)("o").mkString(" ")
+        else ""
+      val notes = List(grant.range, usesStr).filter(_.nonEmpty).mkString(", ")
+      Attack(
+        grant.name,
+        grant.kind,
+        delivery,
+        s"$dice ${grant.damageType}",
+        notes
+      )
+    }
+
+  def allAttacks: List[Attack] = {
+    val weaponAttacks = equippedWeapons.map { weapon =>
+      Attack(
+        weapon.name,
+        AttackKind.Weapon,
+        AttackDelivery.AttackRoll(weaponAttackBonus(weapon)),
+        weaponDamageString(weapon),
+        weaponPropertiesSummary(weapon)
+      )
+    }
+
+    val grantCantrips = spellGrants.flatMap(g =>
+      if g.spellLevel == 0 then g.chosen else Nil
+    )
+    val spellAttacks = (chosenCantrips ++ grantCantrips)
+      .filter(_.damageDice.isDefined)
+      .map { spell =>
+        val delivery = spell.spellDelivery match {
+          case Some(SpellDelivery.RangedAttack | SpellDelivery.MeleeAttack) =>
+            AttackDelivery.AttackRoll(
+              spellAttackBonus.getOrElse(Modifier.zero)
+            )
+          case Some(SpellDelivery.Save(ability)) =>
+            AttackDelivery.SaveDC(spellSaveDC.getOrElse(0), ability)
+          case scala.None =>
+            AttackDelivery.AttackRoll(Modifier.zero)
+        }
+        val dice = scaledDice(spell.damageDice.get)
+        Attack(
+          spell.name,
+          AttackKind.Spell,
+          delivery,
+          s"$dice ${spell.damageType.getOrElse("")}",
+          ""
+        )
+      }
+
+    val granted = resolveGrants(attackGrants)
+
+    val hasUnarmed = granted.exists(_.name == "Unarmed Strike")
+    val fightingStyleAttack =
+      if !hasUnarmed && featureSelections.fightingStyle
+        .exists(_.label == "Unarmed Fighting")
+      then {
+        val bonus = proficiencyBonus + modifier(Ability.Strength)
+        List(
+          Attack(
+            "Unarmed Strike",
+            AttackKind.Weapon,
+            AttackDelivery.AttackRoll(bonus),
+            "1d6 bludg.",
+            "1d8 two-hand, 1d4 grapple"
+          )
+        )
+      }
+      else Nil
+
+    weaponAttacks ++ spellAttacks ++ granted ++ fightingStyleAttack
+  }
 }

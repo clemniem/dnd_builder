@@ -51,6 +51,8 @@ sealed trait Species {
   def displayName: String = subLabel.fold(name)(sub => s"$name ($sub)")
   /** Languages granted by this species (everyone has Common; race adds others). */
   def languages: Set[Language]
+  /** Attack grants from this species (e.g. Breath Weapon). */
+  def grantedAttacks: List[AttackGrant] = Nil
 }
 
 case object Dragonborn extends Species {
@@ -78,6 +80,20 @@ final case class DragonbornOf(ancestry: DragonAncestry) extends Species {
   )
   val subLabel         = Some(ancestry.label)
   val languages        = Set(Language.Common, Language.Draconic)
+  override val grantedAttacks: List[AttackGrant] = List(
+    AttackGrant(
+      "Breath Weapon",
+      AttackKind.Spell,
+      "1d10",
+      ancestry.damageType,
+      AttackGrantDelivery.SaveDC(Ability.Dexterity, Ability.Constitution),
+      true,
+      false,
+      true,
+      "15ft/30ft",
+      s"Dragonborn (${ancestry.label})"
+    )
+  )
 }
 
 case object Dwarf extends Species {

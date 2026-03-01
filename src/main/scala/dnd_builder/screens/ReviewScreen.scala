@@ -42,7 +42,7 @@ object ReviewScreen extends Screen {
         d.equippedArmor, d.equippedShield, d.equippedWeapons,
         d.chosenCantrips, d.preparedSpells, d.spellbookSpells,
         d.featureSelections, d.subclass, languages, lvl, d.coins,
-        d.spellGrants, d.skillGrants
+        d.spellGrants, d.skillGrants, d.attackGrants
       )
       result match {
         case Left(errors) =>
@@ -103,7 +103,7 @@ object ReviewScreen extends Screen {
       d.equippedArmor, d.equippedShield, d.equippedWeapons,
       d.chosenCantrips, d.preparedSpells, d.spellbookSpells,
       d.featureSelections, d.subclass, languages,
-      d.coins, d.spellGrants, d.skillGrants
+      d.coins, d.spellGrants, d.skillGrants, d.attackGrants
     )
   }
 

@@ -39,6 +39,8 @@ sealed trait DndClass {
   def usesSpellbook: Boolean = false
   /** Level at which this class gains Jack of All Trades (half proficiency on non-proficient checks). None = never. */
   def jackOfAllTradesAtLevel: Option[Int] = None
+  /** Attack grants from this class (e.g. Unarmed Strike). */
+  def grantedAttacks: List[AttackGrant] = Nil
   def isSpellcaster: Boolean = spellCasterType != SpellCasterType.NonCaster
 
   def weaponSummary: String = {
@@ -185,6 +187,20 @@ case object Monk extends DndClass {
   val level1Features       = List(
     ClassFeature("Martial Arts", "1d6 martial arts die. Bonus Action Unarmed Strike. Use DEX for monk weapon attacks.", None),
     ClassFeature("Unarmored Defense", "AC = 10 + DEX mod + WIS mod when not wearing armor or shield.", None)
+  )
+  override val grantedAttacks: List[AttackGrant] = List(
+    AttackGrant(
+      "Unarmed Strike",
+      AttackKind.Weapon,
+      "1d6",
+      "bludg.",
+      AttackGrantDelivery.MeleeAttack(Ability.Dexterity),
+      false,
+      true,
+      false,
+      "",
+      "Monk"
+    )
   )
 }
 

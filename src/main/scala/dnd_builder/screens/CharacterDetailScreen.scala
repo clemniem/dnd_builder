@@ -21,7 +21,7 @@ object CharacterDetailScreen extends Screen {
           "Unknown", Human, List(ClassLevel(Barbarian, 1)), Acolyte,
           AbilityScores.default,
           BackgroundBonus.ThreePlusOnes(Ability.Intelligence, Ability.Wisdom, Ability.Charisma),
-          Set.empty, None, false, Nil, Nil, Nil, Nil, ClassFeatureSelections.empty, None, Human.languages, Coins.empty, Nil, Nil
+          Set.empty, None, false, Nil, Nil, Nil, Nil, ClassFeatureSelections.empty, None, Human.languages, Coins.empty, Nil, Nil, Nil
         ))
     }
     (DetailModel(sc), Cmd.None)
