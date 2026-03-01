@@ -195,8 +195,7 @@ case object Monk extends DndClass {
       "1d6",
       "bludg.",
       AttackGrantDelivery.MeleeAttack(Ability.Dexterity),
-      false,
-      true,
+      DiceScaling.MartialArts,
       false,
       "",
       "Monk"

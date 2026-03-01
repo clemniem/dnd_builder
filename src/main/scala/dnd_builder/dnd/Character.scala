@@ -24,6 +24,8 @@ final case class Character(
     skillGrants: List[SkillGrant],
     attackGrants: List[AttackGrant]) {
 
+  require(classLevels.nonEmpty, "classLevels cannot be empty")
+
   def primaryClass: DndClass = classLevels.head.dndClass
 
   def primaryClassLevel: Int = classLevels.head.classLevel
@@ -195,6 +197,14 @@ final case class Character(
     } else classLevels.map(cl => s"${cl.dndClass.name} ${cl.classLevel}").mkString(" / ")
 
   private def scaledDice(baseDice: String): String = {
+    val idx = baseDice.indexOf('d')
+    require(
+      idx > 0 &&
+        baseDice.substring(0, idx).forall(_.isDigit) &&
+        baseDice.length > idx + 1 &&
+        baseDice.drop(idx + 1).forall(_.isDigit),
+      s"Invalid dice format (expected NdM, e.g. 1d6): $baseDice"
+    )
     val numDice = characterLevel match {
       case l if l >= 17 => 4
       case l if l >= 11 => 3
@@ -214,10 +224,11 @@ final case class Character(
 
   private def resolveGrants(grants: List[AttackGrant]): List[Attack] =
     grants.map { grant =>
-      val dice =
-        if grant.scalesLikeMartialArts then martialArtsDiceForLevel(characterLevel)
-        else if grant.scalesLikeCantrip then scaledDice(grant.baseDamageDice)
-        else grant.baseDamageDice
+      val dice = grant.diceScaling match {
+        case DiceScaling.MartialArts => martialArtsDiceForLevel(characterLevel)
+        case DiceScaling.Cantrip     => scaledDice(grant.baseDamageDice)
+        case DiceScaling.None        => grant.baseDamageDice
+      }
       val delivery = grant.delivery match {
         case AttackGrantDelivery.MeleeAttack(ability) =>
           AttackDelivery.AttackRoll(proficiencyBonus + modifier(ability))

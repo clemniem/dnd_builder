@@ -87,8 +87,7 @@ final case class DragonbornOf(ancestry: DragonAncestry) extends Species {
       "1d10",
       ancestry.damageType,
       AttackGrantDelivery.SaveDC(Ability.Dexterity, Ability.Constitution),
-      true,
-      false,
+      DiceScaling.Cantrip,
       true,
       "15ft/30ft",
       s"Dragonborn (${ancestry.label})"

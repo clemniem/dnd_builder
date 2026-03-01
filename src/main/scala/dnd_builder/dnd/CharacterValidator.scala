@@ -32,6 +32,16 @@ enum ValidationError(val message: String) {
     extends ValidationError(s"Expected $expected spellbook spells, but got $chosen.")
   case DuplicateSpell(spellName: String)
     extends ValidationError(s"$spellName is selected more than once.")
+  case SubclassWrongClass(subclassName: String, className: String)
+    extends ValidationError(s"Subclass $subclassName does not belong to class $className.")
+  case LevelOutOfRange(level: Int)
+    extends ValidationError(s"Level $level is out of valid range (1-20).")
+  case FeatureChoicesNotSatisfied
+    extends ValidationError("Required class feature choices (e.g. fighting style, divine order) are missing.")
+  case SpellGrantsNotFilled
+    extends ValidationError("Some spell grants from background or origin are not filled.")
+  case SkillGrantsNotFilled
+    extends ValidationError("Some skill grants from background or origin are not filled.")
 }
 
 object CharacterValidator {
@@ -177,6 +187,34 @@ object CharacterValidator {
       cantripErrors ++ spellbookErrors ++ preparedErrors
     }
 
+  def validateSubclass(subclass: Option[Subclass], primaryClass: DndClass): List[ValidationError] =
+    subclass.toList.flatMap { sub =>
+      if sub.dndClass != primaryClass then List(ValidationError.SubclassWrongClass(sub.name, primaryClass.name))
+      else Nil
+    }
+
+  def validateLevel(level: Int): List[ValidationError] =
+    if level < 1 || level > 20 then List(ValidationError.LevelOutOfRange(level))
+    else Nil
+
+  def validateFeatureChoices(
+      dndClass: DndClass,
+      level: Int,
+      featureSelections: ClassFeatureSelections
+  ): List[ValidationError] = {
+    val choices = ClassProgression.choicesUpToLevel(dndClass, level)
+    if ClassProgression.satisfiesChoices(choices, featureSelections) then Nil
+    else List(ValidationError.FeatureChoicesNotSatisfied)
+  }
+
+  def validateSpellGrants(spellGrants: List[SpellGrant]): List[ValidationError] =
+    if spellGrants.forall(_.isFilled) then Nil
+    else List(ValidationError.SpellGrantsNotFilled)
+
+  def validateSkillGrants(skillGrants: List[SkillGrant]): List[ValidationError] =
+    if skillGrants.forall(_.isFilled) then Nil
+    else List(ValidationError.SkillGrantsNotFilled)
+
   def validate(
       name: String,
       species: Species,
@@ -206,7 +244,12 @@ object CharacterValidator {
       validateBackgroundBonus(bonus, background) ++
       validateFinalScores(finalScores) ++
       validateSkillSelection(chosenSkills, dndClass, background) ++
-      validateSpells(dndClass, level, chosenCantrips, preparedSpells, spellbookSpells)
+      validateSpells(dndClass, level, chosenCantrips, preparedSpells, spellbookSpells) ++
+      validateSubclass(subclass, dndClass) ++
+      validateLevel(level) ++
+      validateFeatureChoices(dndClass, level, featureSelections) ++
+      validateSpellGrants(spellGrants) ++
+      validateSkillGrants(skillGrants)
 
     val classLevels = List(ClassLevel(dndClass, level))
     if errors.nonEmpty then Left(errors)

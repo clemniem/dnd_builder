@@ -28,14 +28,18 @@ enum AttackGrantDelivery {
   case SaveDC(save: Ability, dcAbility: Ability)
 }
 
+/** How damage dice scale with level. Mutually exclusive. */
+enum DiceScaling {
+  case None, Cantrip, MartialArts
+}
+
 final case class AttackGrant(
     name: String,
     kind: AttackKind,
     baseDamageDice: String,
     damageType: String,
     delivery: AttackGrantDelivery,
-    scalesLikeCantrip: Boolean,
-    scalesLikeMartialArts: Boolean,
+    diceScaling: DiceScaling,
     usesPerLR: Boolean,
     range: String,
     sourceLabel: String

@@ -75,9 +75,30 @@ object ReviewScreen extends Screen {
       (model.copy(errors = List(msg), saving = false), Cmd.None)
 
     case ReviewMsg.ExportPdf =>
-      org.scalajs.dom.console.log("[Export PDF] clicked, building character and calling generate")
-      CharacterSheetPdf.generate(buildCharacter(model))
-      (model, Cmd.None)
+      val d = model.draft
+      val sp = d.resolvedSpecies
+      val cls = d.resolvedClass
+      val bg = d.resolvedBackground
+      val scores = d.baseScores.getOrElse(AbilityScores.default)
+      val bonus = d.backgroundBonus.getOrElse(BackgroundBonus.ThreePlusOnes(Ability.Strength, Ability.Dexterity, Ability.Constitution))
+      val languages = sp.languages ++ d.chosenExtraLanguages
+      val lvl = d.level.getOrElse(1)
+      val result = CharacterValidator.validate(
+        if model.name.trim.isEmpty then "Unnamed Hero" else model.name,
+        sp, cls, bg, scores, bonus, d.chosenSkills,
+        d.equippedArmor, d.equippedShield, d.equippedWeapons,
+        d.chosenCantrips, d.preparedSpells, d.spellbookSpells,
+        d.featureSelections, d.subclass, languages, lvl, d.coins,
+        d.spellGrants, d.skillGrants, d.attackGrants
+      )
+      result match {
+        case Right(character) =>
+          org.scalajs.dom.console.log("[Export PDF] validation passed, generating PDF")
+          CharacterSheetPdf.generate(character)
+          (model, Cmd.None)
+        case Left(errors) =>
+          (model.copy(errors = errors.map(_.message)), Cmd.None)
+      }
 
     case ReviewMsg.Back =>
       val cls = model.draft.resolvedClass

@@ -139,23 +139,34 @@ object Codecs {
     }
   }
 
-  given Encoder[AttackGrant] = Encoder.forProduct10(
+  given Encoder[DiceScaling] = mkEncoder(_.toString)
+  given Decoder[DiceScaling] = mkDecoder(DiceScaling.values, _.toString)
+
+  given Encoder[AttackGrant] = Encoder.forProduct9(
     "name", "kind", "baseDamageDice", "damageType", "delivery",
-    "scalesLikeCantrip", "scalesLikeMartialArts", "usesPerLR", "range", "sourceLabel"
-  )(g => (g.name, g.kind, g.baseDamageDice, g.damageType, g.delivery, g.scalesLikeCantrip, g.scalesLikeMartialArts, g.usesPerLR, g.range, g.sourceLabel))
+    "diceScaling", "usesPerLR", "range", "sourceLabel"
+  )(g => (g.name, g.kind, g.baseDamageDice, g.damageType, g.delivery, g.diceScaling, g.usesPerLR, g.range, g.sourceLabel))
   given Decoder[AttackGrant] = Decoder.instance { c =>
+    val diceScalingResult: Decoder.Result[DiceScaling] =
+      c.downField("diceScaling").as[Option[DiceScaling]].flatMap {
+        case Some(s) => Right(s)
+        case None =>
+          for {
+            cantrip <- c.downField("scalesLikeCantrip").as[Option[Boolean]].map(_.getOrElse(false))
+            martial <- c.downField("scalesLikeMartialArts").as[Option[Boolean]].map(_.getOrElse(false))
+          } yield if martial then DiceScaling.MartialArts else if cantrip then DiceScaling.Cantrip else DiceScaling.None
+      }
     for {
-      name              <- c.downField("name").as[String]
-      kind              <- c.downField("kind").as[AttackKind]
-      baseDamageDice    <- c.downField("baseDamageDice").as[String]
-      damageType        <- c.downField("damageType").as[String]
-      delivery          <- c.downField("delivery").as[AttackGrantDelivery]
-      scalesLikeCantrip <- c.downField("scalesLikeCantrip").as[Boolean]
-      scalesLikeMartialArts <- c.downField("scalesLikeMartialArts").as[Option[Boolean]].map(_.getOrElse(false))
-      usesPerLR         <- c.downField("usesPerLR").as[Boolean]
-      range             <- c.downField("range").as[String]
-      sourceLabel       <- c.downField("sourceLabel").as[String]
-    } yield AttackGrant(name, kind, baseDamageDice, damageType, delivery, scalesLikeCantrip, scalesLikeMartialArts, usesPerLR, range, sourceLabel)
+      name           <- c.downField("name").as[String]
+      kind           <- c.downField("kind").as[AttackKind]
+      baseDamageDice <- c.downField("baseDamageDice").as[String]
+      damageType     <- c.downField("damageType").as[String]
+      delivery       <- c.downField("delivery").as[AttackGrantDelivery]
+      diceScaling    <- diceScalingResult
+      usesPerLR      <- c.downField("usesPerLR").as[Boolean]
+      range          <- c.downField("range").as[String]
+      sourceLabel    <- c.downField("sourceLabel").as[String]
+    } yield AttackGrant(name, kind, baseDamageDice, damageType, delivery, diceScaling, usesPerLR, range, sourceLabel)
   }
 
   given Encoder[Modifier] = Encoder.encodeInt.contramap(_.toInt)
@@ -446,7 +457,10 @@ object Codecs {
     for {
       name   <- c.downField("name").as[String]
       sp     <- c.downField("species").as[Species]
-      classLevels <- c.downField("classLevels").as[List[ClassLevel]]
+      classLevels <- c.downField("classLevels").as[List[ClassLevel]].flatMap { list =>
+        if list.nonEmpty then Right(list)
+        else Left(DecodingFailure("classLevels cannot be empty", c.history))
+      }
       bg     <- c.downField("background").as[Background]
       scores <- c.downField("baseScores").as[AbilityScores]
       bonus  <- c.downField("backgroundBonus").as[BackgroundBonus]
