@@ -4,6 +4,15 @@ import dndbuilder.dnd.DndTypes.Score
 
 final case class ClassFeature(name: String, description: String, uses: Option[Int])
 
+enum SpellCasterType {
+  case NonCaster, FullCaster, HalfCaster, PactMagic
+}
+
+/** For full casters, which progression table (cantrips/prepared) to use. */
+enum FullCasterVariant {
+  case Bard, Cleric, Druid, Sorcerer, Wizard
+}
+
 sealed trait DndClass {
   def name: String
   def hitDie: HitDie
@@ -14,18 +23,17 @@ sealed trait DndClass {
   def skillPool: Set[Skill]
   def numSkillChoices: Int = 2
   def spellcastingAbility: Option[Ability] = None
-  def cantripsKnown: Int = 0
-  def level1SpellSlots: Int = 0
-  def numPreparedSpells: Int = 0
-  def spellbookSize: Int = 0
+  /** Determines which spell progression table applies; NonCaster => no slots. */
+  def spellCasterType: SpellCasterType = SpellCasterType.NonCaster
+  /** For FullCaster only: which cantrip/prepared table to use. */
+  def fullCasterVariant: Option[FullCasterVariant] = None
   def level1Features: List[ClassFeature]
   def description: String
   def recommendedScores: AbilityScores
   def weaponMasteryCount: Int = 0
   /** Number of additional languages the player may choose (from Language.choicePool). */
   def extraLanguageChoices: Int = 0
-
-  def isSpellcaster: Boolean = spellcastingAbility.isDefined
+  def isSpellcaster: Boolean = spellCasterType != SpellCasterType.NonCaster
 
   def weaponSummary: String = {
     val hasSimple  = weaponProficiencies.contains(WeaponProficiency.AllSimple)
@@ -72,11 +80,10 @@ case object Bard extends DndClass {
   val armorProficiencies  = Set(ArmorType.Light)
   val weaponProficiencies = Set(WeaponProficiency.AllSimple)
   val skillPool          = Skill.values.toSet
-  override val numSkillChoices     = 3
-  override val spellcastingAbility = Some(Ability.Charisma)
-  override val cantripsKnown       = 2
-  override val level1SpellSlots    = 2
-  override val numPreparedSpells   = 4
+  override val numSkillChoices       = 3
+  override val spellcastingAbility   = Some(Ability.Charisma)
+  override val spellCasterType       = SpellCasterType.FullCaster
+  override val fullCasterVariant     = Some(FullCasterVariant.Bard)
   val description          = "An inspiring magician whose music channels arcane power"
   val recommendedScores    = AbilityScores(Score(8), Score(14), Score(12), Score(13), Score(10), Score(15))
   val level1Features       = List(
@@ -96,10 +103,9 @@ case object Cleric extends DndClass {
   val skillPool          = Set(
     Skill.History, Skill.Insight, Skill.Medicine, Skill.Persuasion, Skill.Religion
   )
-  override val spellcastingAbility = Some(Ability.Wisdom)
-  override val cantripsKnown       = 3
-  override val level1SpellSlots    = 2
-  override val numPreparedSpells   = 4
+  override val spellcastingAbility   = Some(Ability.Wisdom)
+  override val spellCasterType       = SpellCasterType.FullCaster
+  override val fullCasterVariant     = Some(FullCasterVariant.Cleric)
   val description          = "A divine champion who wields holy magic"
   val recommendedScores    = AbilityScores(Score(14), Score(8), Score(13), Score(10), Score(15), Score(12))
   val level1Features       = List(
@@ -120,10 +126,9 @@ case object Druid extends DndClass {
     Skill.Medicine, Skill.Nature, Skill.Perception,
     Skill.Religion, Skill.Survival
   )
-  override val spellcastingAbility = Some(Ability.Wisdom)
-  override val cantripsKnown       = 2
-  override val level1SpellSlots    = 2
-  override val numPreparedSpells   = 4
+  override val spellcastingAbility   = Some(Ability.Wisdom)
+  override val spellCasterType       = SpellCasterType.FullCaster
+  override val fullCasterVariant     = Some(FullCasterVariant.Druid)
   val description          = "A priest of nature who wields elemental and beast magic"
   val recommendedScores    = AbilityScores(Score(8), Score(12), Score(14), Score(13), Score(15), Score(10))
   val level1Features       = List(
@@ -185,10 +190,9 @@ case object Paladin extends DndClass {
     Skill.Athletics, Skill.Insight, Skill.Intimidation,
     Skill.Medicine, Skill.Persuasion, Skill.Religion
   )
-  override val spellcastingAbility = Some(Ability.Charisma)
-  override val level1SpellSlots    = 2
-  override val numPreparedSpells   = 2
-  override val weaponMasteryCount  = 2
+  override val spellcastingAbility   = Some(Ability.Charisma)
+  override val spellCasterType       = SpellCasterType.HalfCaster
+  override val weaponMasteryCount    = 2
   val description          = "A holy warrior bound to a sacred oath"
   val recommendedScores    = AbilityScores(Score(15), Score(10), Score(13), Score(8), Score(12), Score(14))
   val level1Features       = List(
@@ -211,10 +215,9 @@ case object Ranger extends DndClass {
     Skill.Stealth, Skill.Survival
   )
   override val numSkillChoices     = 3
-  override val spellcastingAbility = Some(Ability.Wisdom)
-  override val level1SpellSlots    = 2
-  override val numPreparedSpells   = 2
-  override val weaponMasteryCount  = 2
+  override val spellcastingAbility   = Some(Ability.Wisdom)
+  override val spellCasterType       = SpellCasterType.HalfCaster
+  override val weaponMasteryCount    = 2
   val description          = "A wandering warrior attuned to nature and the hunt"
   val recommendedScores    = AbilityScores(Score(12), Score(15), Score(13), Score(8), Score(14), Score(10))
   val level1Features       = List(
@@ -261,10 +264,9 @@ case object Sorcerer extends DndClass {
     Skill.Arcana, Skill.Deception, Skill.Insight,
     Skill.Intimidation, Skill.Persuasion, Skill.Religion
   )
-  override val spellcastingAbility = Some(Ability.Charisma)
-  override val cantripsKnown       = 4
-  override val level1SpellSlots    = 2
-  override val numPreparedSpells   = 4
+  override val spellcastingAbility   = Some(Ability.Charisma)
+  override val spellCasterType       = SpellCasterType.FullCaster
+  override val fullCasterVariant     = Some(FullCasterVariant.Sorcerer)
   val description          = "A spellcaster who draws on inherent magic from birth or bloodline"
   val recommendedScores    = AbilityScores(Score(10), Score(13), Score(14), Score(8), Score(12), Score(15))
   val level1Features       = List(
@@ -284,10 +286,8 @@ case object Warlock extends DndClass {
     Skill.Arcana, Skill.Deception, Skill.History,
     Skill.Intimidation, Skill.Investigation, Skill.Nature, Skill.Religion
   )
-  override val spellcastingAbility = Some(Ability.Charisma)
-  override val cantripsKnown       = 2
-  override val level1SpellSlots    = 1
-  override val numPreparedSpells   = 2
+  override val spellcastingAbility   = Some(Ability.Charisma)
+  override val spellCasterType       = SpellCasterType.PactMagic
   val description          = "A wielder of magic granted by an otherworldly patron"
   val recommendedScores    = AbilityScores(Score(8), Score(14), Score(13), Score(12), Score(10), Score(15))
   val level1Features       = List(
@@ -307,11 +307,9 @@ case object Wizard extends DndClass {
     Skill.Arcana, Skill.History, Skill.Insight,
     Skill.Investigation, Skill.Medicine, Skill.Religion
   )
-  override val spellcastingAbility = Some(Ability.Intelligence)
-  override val cantripsKnown       = 3
-  override val level1SpellSlots    = 2
-  override val numPreparedSpells   = 4
-  override val spellbookSize       = 6
+  override val spellcastingAbility   = Some(Ability.Intelligence)
+  override val spellCasterType       = SpellCasterType.FullCaster
+  override val fullCasterVariant     = Some(FullCasterVariant.Wizard)
   val description          = "A scholarly magic-user who commands arcane spells through study"
   val recommendedScores    = AbilityScores(Score(8), Score(12), Score(13), Score(15), Score(14), Score(10))
   val level1Features       = List(

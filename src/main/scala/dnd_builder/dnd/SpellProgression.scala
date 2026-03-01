@@ -75,6 +75,23 @@ object SpellProgression {
     11 -> 16, 12 -> 16, 13 -> 17, 14 -> 18, 15 -> 19, 16 -> 21, 17 -> 22, 18 -> 23, 19 -> 24, 20 -> 26
   )
 
+  private val fullCasterCantrips: Map[FullCasterVariant, Map[Int, Int]] = Map(
+    FullCasterVariant.Bard    -> bardCantrips,
+    FullCasterVariant.Cleric  -> clericCantrips,
+    FullCasterVariant.Druid   -> druidCantrips,
+    FullCasterVariant.Sorcerer -> sorcererCantrips,
+    FullCasterVariant.Wizard  -> wizardCantrips
+  )
+  private val fullCasterBasePrepared: Map[Int, Int] =
+    fullCasterBase.map { case (lvl, (_, prepared, _)) => lvl -> prepared }
+  private val fullCasterPrepared: Map[FullCasterVariant, Map[Int, Int]] = Map(
+    FullCasterVariant.Bard     -> bardPrepared,
+    FullCasterVariant.Cleric   -> fullCasterBasePrepared,
+    FullCasterVariant.Druid    -> fullCasterBasePrepared,
+    FullCasterVariant.Sorcerer -> sorcererPrepared,
+    FullCasterVariant.Wizard   -> wizardPrepared
+  )
+
   // Half caster progression (Paladin, Ranger): no cantrips, spell slots up to level 5
   private val halfCasterSlots: Map[Int, List[Int]] = Map(
     1  -> List(2, 0, 0, 0, 0, 0, 0, 0, 0),
@@ -130,41 +147,27 @@ object SpellProgression {
 
   def forClass(dndClass: DndClass, characterLevel: Int): Option[SpellSlotRow] = {
     val lvl = math.max(1, math.min(20, characterLevel))
-    dndClass match {
-      case Bard =>
-        fullCasterBase.get(lvl).map { case (_, _, slots) =>
-          SpellSlotRow(bardCantrips(lvl), bardPrepared(lvl), slots)
+    dndClass.spellCasterType match {
+      case SpellCasterType.NonCaster => None
+      case SpellCasterType.FullCaster =>
+        dndClass.fullCasterVariant.flatMap { variant =>
+          fullCasterBase.get(lvl).flatMap { case (_, _, slots) =>
+            fullCasterCantrips.get(variant).flatMap(_.get(lvl)).flatMap { cantrips =>
+              fullCasterPrepared.get(variant).flatMap(_.get(lvl)).map { prepared =>
+                SpellSlotRow(cantrips, prepared, slots)
+              }
+            }
+          }
         }
-      case Cleric =>
-        fullCasterBase.get(lvl).map { case (_, _, slots) =>
-          SpellSlotRow(clericCantrips(lvl), fullCasterBase(lvl)._2, slots)
-        }
-      case Druid =>
-        fullCasterBase.get(lvl).map { case (_, _, slots) =>
-          SpellSlotRow(druidCantrips(lvl), fullCasterBase(lvl)._2, slots)
-        }
-      case Sorcerer =>
-        fullCasterBase.get(lvl).map { case (_, _, slots) =>
-          SpellSlotRow(sorcererCantrips(lvl), sorcererPrepared(lvl), slots)
-        }
-      case Wizard =>
-        fullCasterBase.get(lvl).map { case (_, _, slots) =>
-          SpellSlotRow(wizardCantrips(lvl), wizardPrepared(lvl), slots)
-        }
-      case Paladin =>
+      case SpellCasterType.HalfCaster =>
         halfCasterSlots.get(lvl).map { slots =>
           SpellSlotRow(0, halfCasterPrepared(lvl), slots)
         }
-      case Ranger =>
-        halfCasterSlots.get(lvl).map { slots =>
-          SpellSlotRow(0, halfCasterPrepared(lvl), slots)
-        }
-      case Warlock =>
+      case SpellCasterType.PactMagic =>
         warlockTable.get(lvl).map { pm =>
           val slots = List.fill(9)(0).updated(pm.slotLevel - 1, pm.numSlots)
           SpellSlotRow(pm.cantrips, pm.preparedSpells, slots)
         }
-      case _ => None
     }
   }
 

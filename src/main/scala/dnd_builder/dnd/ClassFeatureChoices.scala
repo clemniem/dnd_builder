@@ -54,18 +54,82 @@ enum HunterPreyChoice(val label: String, val description: String) {
       )
 }
 
-final case class ClassFeatureSelections(
-    fightingStyle: Option[FightingStyle],
-    divineOrder: Option[DivineOrder],
-    primalOrder: Option[PrimalOrder],
-    eldritchInvocation: Option[EldritchInvocation],
-    expertiseSkills: Set[Skill],
-    weaponMasteries: List[Weapon],
-    landType: Option[LandType],
-    hunterPrey: Option[HunterPreyChoice]
-)
+/** Extensible sum type: add new variants without changing ClassFeatureSelections shape. */
+sealed trait FeatureSelection
+object FeatureSelection {
+  case class FightingStyleChoice(value: FightingStyle)       extends FeatureSelection
+  case class DivineOrderChoice(value: DivineOrder)             extends FeatureSelection
+  case class PrimalOrderChoice(value: PrimalOrder)             extends FeatureSelection
+  case class EldritchInvocationChoice(value: EldritchInvocation) extends FeatureSelection
+  case class ExpertiseChoice(skills: Set[Skill])               extends FeatureSelection
+  case class WeaponMasteryChoice(weapons: List[Weapon])       extends FeatureSelection
+  case class LandTypeChoice(value: LandType)                  extends FeatureSelection
+  case class HunterPreyChoiceSelection(value: HunterPreyChoice) extends FeatureSelection
+}
+
+/** Stores class feature choices as a list; new choice types add a FeatureSelection variant only. */
+final case class ClassFeatureSelections(selections: List[FeatureSelection]) {
+
+  def fightingStyle: Option[FightingStyle] =
+    selections.collectFirst { case FeatureSelection.FightingStyleChoice(s) => s }
+
+  def divineOrder: Option[DivineOrder] =
+    selections.collectFirst { case FeatureSelection.DivineOrderChoice(o) => o }
+
+  def primalOrder: Option[PrimalOrder] =
+    selections.collectFirst { case FeatureSelection.PrimalOrderChoice(o) => o }
+
+  def eldritchInvocation: Option[EldritchInvocation] =
+    selections.collectFirst { case FeatureSelection.EldritchInvocationChoice(i) => i }
+
+  def expertiseSkills: Set[Skill] =
+    selections.collect { case FeatureSelection.ExpertiseChoice(skills) => skills }.flatten.toSet
+
+  def weaponMasteries: List[Weapon] =
+    selections.collect { case FeatureSelection.WeaponMasteryChoice(weapons) => weapons }.flatten
+
+  def landType: Option[LandType] =
+    selections.collectFirst { case FeatureSelection.LandTypeChoice(lt) => lt }
+
+  def hunterPrey: Option[HunterPreyChoice] =
+    selections.collectFirst { case FeatureSelection.HunterPreyChoiceSelection(hp) => hp }
+
+  /** Update choices; pass all parameters (use this.foo for unchanged). */
+  def withChoices(
+      fightingStyle: Option[FightingStyle],
+      divineOrder: Option[DivineOrder],
+      primalOrder: Option[PrimalOrder],
+      eldritchInvocation: Option[EldritchInvocation],
+      expertiseSkills: Set[Skill],
+      weaponMasteries: List[Weapon],
+      landType: Option[LandType],
+      hunterPrey: Option[HunterPreyChoice]
+  ): ClassFeatureSelections = {
+    val without =
+      selections.filterNot {
+        case FeatureSelection.FightingStyleChoice(_)       => true
+        case FeatureSelection.DivineOrderChoice(_)         => true
+        case FeatureSelection.PrimalOrderChoice(_)        => true
+        case FeatureSelection.EldritchInvocationChoice(_) => true
+        case FeatureSelection.ExpertiseChoice(_)          => true
+        case FeatureSelection.WeaponMasteryChoice(_)      => true
+        case FeatureSelection.LandTypeChoice(_)            => true
+        case FeatureSelection.HunterPreyChoiceSelection(_) => true
+      }
+    val added = List(
+      fightingStyle.map(FeatureSelection.FightingStyleChoice.apply),
+      divineOrder.map(FeatureSelection.DivineOrderChoice.apply),
+      primalOrder.map(FeatureSelection.PrimalOrderChoice.apply),
+      eldritchInvocation.map(FeatureSelection.EldritchInvocationChoice.apply),
+      Some(FeatureSelection.ExpertiseChoice(expertiseSkills)),
+      Some(FeatureSelection.WeaponMasteryChoice(weaponMasteries)),
+      landType.map(FeatureSelection.LandTypeChoice.apply),
+      hunterPrey.map(FeatureSelection.HunterPreyChoiceSelection.apply)
+    ).flatten
+    ClassFeatureSelections(without ++ added)
+  }
+}
 
 object ClassFeatureSelections {
-  val empty: ClassFeatureSelections =
-    ClassFeatureSelections(None, None, None, None, Set.empty, Nil, None, None)
+  val empty: ClassFeatureSelections = ClassFeatureSelections(Nil)
 }

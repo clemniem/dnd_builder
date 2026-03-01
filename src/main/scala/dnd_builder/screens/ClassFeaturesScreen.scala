@@ -29,33 +29,15 @@ object ClassFeaturesScreen extends Screen {
 
   val screenId: ScreenId = ScreenId.ClassFeaturesId
 
+  private def level1Choices(cls: DndClass): List[LevelChoice] =
+    ClassProgression.atLevel(cls, 1).choices
+
   private def hasClassFeatureChoices(cls: DndClass): Boolean =
-    cls match {
-      case Fighter => true
-      case Cleric => true
-      case Druid => true
-      case Warlock => true
-      case Rogue => true
-      case _ => cls.weaponMasteryCount > 0
-    }
+    level1Choices(cls).nonEmpty
 
   private def canProceed(model: Model): Boolean = {
     val cls = model.draft.dndClass.getOrElse(Barbarian)
-    val fs = model.featureSelections
-    cls match {
-      case Fighter =>
-        fs.fightingStyle.isDefined && fs.weaponMasteries.size == 3
-      case Cleric =>
-        fs.divineOrder.isDefined
-      case Druid =>
-        fs.primalOrder.isDefined
-      case Warlock =>
-        fs.eldritchInvocation.isDefined
-      case Rogue =>
-        fs.expertiseSkills.size == 2 && fs.weaponMasteries.size == 2
-      case _ =>
-        fs.weaponMasteries.size == cls.weaponMasteryCount
-    }
+    ClassProgression.satisfiesChoices(level1Choices(cls), model.featureSelections)
   }
 
   def init(previous: Option[ScreenOutput]): (Model, Cmd[IO, Msg]) = {
@@ -80,29 +62,31 @@ object ClassFeaturesScreen extends Screen {
       val updated = model.draft.copy(featureSelections = model.featureSelections)
       (model, Cmd.Emit(NavigateNext(ScreenId.SkillsId, Some(ScreenOutput.Draft(updated)))))
     case ClassFeaturesMsg.SetFightingStyle(style) =>
-      (model.copy(featureSelections = model.featureSelections.copy(fightingStyle = style)), Cmd.None)
+      (model.copy(featureSelections = model.featureSelections.withChoices(style, model.featureSelections.divineOrder, model.featureSelections.primalOrder, model.featureSelections.eldritchInvocation, model.featureSelections.expertiseSkills, model.featureSelections.weaponMasteries, model.featureSelections.landType, model.featureSelections.hunterPrey)), Cmd.None)
     case ClassFeaturesMsg.SetDivineOrder(order) =>
-      (model.copy(featureSelections = model.featureSelections.copy(divineOrder = order)), Cmd.None)
+      (model.copy(featureSelections = model.featureSelections.withChoices(model.featureSelections.fightingStyle, order, model.featureSelections.primalOrder, model.featureSelections.eldritchInvocation, model.featureSelections.expertiseSkills, model.featureSelections.weaponMasteries, model.featureSelections.landType, model.featureSelections.hunterPrey)), Cmd.None)
     case ClassFeaturesMsg.SetPrimalOrder(order) =>
-      (model.copy(featureSelections = model.featureSelections.copy(primalOrder = order)), Cmd.None)
+      (model.copy(featureSelections = model.featureSelections.withChoices(model.featureSelections.fightingStyle, model.featureSelections.divineOrder, order, model.featureSelections.eldritchInvocation, model.featureSelections.expertiseSkills, model.featureSelections.weaponMasteries, model.featureSelections.landType, model.featureSelections.hunterPrey)), Cmd.None)
     case ClassFeaturesMsg.SetEldritchInvocation(inv) =>
-      (model.copy(featureSelections = model.featureSelections.copy(eldritchInvocation = inv)), Cmd.None)
+      (model.copy(featureSelections = model.featureSelections.withChoices(model.featureSelections.fightingStyle, model.featureSelections.divineOrder, model.featureSelections.primalOrder, inv, model.featureSelections.expertiseSkills, model.featureSelections.weaponMasteries, model.featureSelections.landType, model.featureSelections.hunterPrey)), Cmd.None)
     case ClassFeaturesMsg.ToggleExpertiseSkill(skill) =>
+      val cls = model.draft.dndClass.getOrElse(Barbarian)
       val fs = model.featureSelections
+      val maxCount = ClassProgression.expertiseCountFromChoices(level1Choices(cls))
       val newExpertise =
         if fs.expertiseSkills.contains(skill) then fs.expertiseSkills - skill
-        else if fs.expertiseSkills.size < 2 then fs.expertiseSkills + skill
+        else if fs.expertiseSkills.size < maxCount then fs.expertiseSkills + skill
         else fs.expertiseSkills
-      (model.copy(featureSelections = fs.copy(expertiseSkills = newExpertise)), Cmd.None)
+      (model.copy(featureSelections = fs.withChoices(fs.fightingStyle, fs.divineOrder, fs.primalOrder, fs.eldritchInvocation, newExpertise, fs.weaponMasteries, fs.landType, fs.hunterPrey)), Cmd.None)
     case ClassFeaturesMsg.ToggleWeaponMastery(weapon) =>
       val cls = model.draft.dndClass.getOrElse(Barbarian)
       val fs = model.featureSelections
-      val maxCount = cls.weaponMasteryCount
+      val maxCount = ClassProgression.weaponMasteryCountFromChoices(level1Choices(cls))
       val newList =
         if fs.weaponMasteries.contains(weapon) then fs.weaponMasteries.filter(_ != weapon)
         else if fs.weaponMasteries.size < maxCount then fs.weaponMasteries :+ weapon
         else fs.weaponMasteries
-      (model.copy(featureSelections = fs.copy(weaponMasteries = newList)), Cmd.None)
+      (model.copy(featureSelections = fs.withChoices(fs.fightingStyle, fs.divineOrder, fs.primalOrder, fs.eldritchInvocation, fs.expertiseSkills, newList, fs.landType, fs.hunterPrey)), Cmd.None)
     case ClassFeaturesMsg.NoOp =>
       (model, Cmd.None)
     case _: NavigateNext =>
@@ -130,118 +114,70 @@ object ClassFeaturesScreen extends Screen {
 
   private def fightingStyleSection(model: Model): Html[Msg] = {
     val cls = model.draft.dndClass.getOrElse(Barbarian)
-    if cls != Fighter then div()
+    if !level1Choices(cls).contains(LevelChoice.ChooseFightingStyle) then div()
     else
-      div(style := "margin-bottom: 1.5rem;")(
-        h2(`class` := "about-heading")(text("Fighting Style (choose 1)")),
-        div(`class` := "card-grid")(
-          FightingStyle.values.toList.map { style =>
-            val selected = model.featureSelections.fightingStyle.contains(style)
-            div(
-              `class` := (if selected then "card card--selected" else "card"),
-              onClick(ClassFeaturesMsg.SetFightingStyle(Some(style)))
-            )(
-              div(`class` := "card-title")(text(style.label)),
-              div(`class` := "card-desc")(text(style.description))
-            )
-          }*
-        )
+      ChoiceWidgets.cardPicker(
+        "Fighting Style (choose 1)",
+        FightingStyle.values.toList.map(s => (s, s.label, Some(s.description))),
+        model.featureSelections.fightingStyle,
+        s => ClassFeaturesMsg.SetFightingStyle(Some(s))
       )
   }
 
   private def divineOrderSection(model: Model): Html[Msg] = {
     val cls = model.draft.dndClass.getOrElse(Barbarian)
-    if cls != Cleric then div()
+    if !level1Choices(cls).contains(LevelChoice.ChooseDivineOrder) then div()
     else
-      div(style := "margin-bottom: 1.5rem;")(
-        h2(`class` := "about-heading")(text("Divine Order (choose 1)")),
-        div(`class` := "card-grid")(
-          DivineOrder.values.toList.map { order =>
-            val selected = model.featureSelections.divineOrder.contains(order)
-            div(
-              `class` := (if selected then "card card--selected" else "card"),
-              onClick(ClassFeaturesMsg.SetDivineOrder(Some(order)))
-            )(
-              div(`class` := "card-title")(text(order.label)),
-              div(`class` := "card-desc")(text(order.description))
-            )
-          }*
-        )
+      ChoiceWidgets.cardPicker(
+        "Divine Order (choose 1)",
+        DivineOrder.values.toList.map(o => (o, o.label, Some(o.description))),
+        model.featureSelections.divineOrder,
+        o => ClassFeaturesMsg.SetDivineOrder(Some(o))
       )
   }
 
   private def primalOrderSection(model: Model): Html[Msg] = {
     val cls = model.draft.dndClass.getOrElse(Barbarian)
-    if cls != Druid then div()
+    if !level1Choices(cls).contains(LevelChoice.ChoosePrimalOrder) then div()
     else
-      div(style := "margin-bottom: 1.5rem;")(
-        h2(`class` := "about-heading")(text("Primal Order (choose 1)")),
-        div(`class` := "card-grid")(
-          PrimalOrder.values.toList.map { order =>
-            val selected = model.featureSelections.primalOrder.contains(order)
-            div(
-              `class` := (if selected then "card card--selected" else "card"),
-              onClick(ClassFeaturesMsg.SetPrimalOrder(Some(order)))
-            )(
-              div(`class` := "card-title")(text(order.label)),
-              div(`class` := "card-desc")(text(order.description))
-            )
-          }*
-        )
+      ChoiceWidgets.cardPicker(
+        "Primal Order (choose 1)",
+        PrimalOrder.values.toList.map(o => (o, o.label, Some(o.description))),
+        model.featureSelections.primalOrder,
+        o => ClassFeaturesMsg.SetPrimalOrder(Some(o))
       )
   }
 
   private def eldritchInvocationSection(model: Model): Html[Msg] = {
     val cls = model.draft.dndClass.getOrElse(Barbarian)
-    if cls != Warlock then div()
+    if !level1Choices(cls).contains(LevelChoice.ChooseEldritchInvocation) then div()
     else
-      div(style := "margin-bottom: 1.5rem;")(
-        h2(`class` := "about-heading")(text("Eldritch Invocation (choose 1)")),
-        div(`class` := "card-grid")(
-          EldritchInvocation.values.toList.map { inv =>
-            val selected = model.featureSelections.eldritchInvocation.contains(inv)
-            div(
-              `class` := (if selected then "card card--selected" else "card"),
-              onClick(ClassFeaturesMsg.SetEldritchInvocation(Some(inv)))
-            )(
-              div(`class` := "card-title")(text(inv.label)),
-              div(`class` := "card-desc")(text(inv.description))
-            )
-          }*
-        )
+      ChoiceWidgets.cardPicker(
+        "Eldritch Invocation (choose 1)",
+        EldritchInvocation.values.toList.map(i => (i, i.label, Some(i.description))),
+        model.featureSelections.eldritchInvocation,
+        i => ClassFeaturesMsg.SetEldritchInvocation(Some(i))
       )
   }
 
   private def expertiseSection(model: Model): Html[Msg] = {
     val cls = model.draft.dndClass.getOrElse(Barbarian)
-    if cls != Rogue then div()
-    else {
-      val pool = cls.skillPool
-      val chosen = model.featureSelections.expertiseSkills
-      div(style := "margin-bottom: 1.5rem;")(
-        h2(`class` := "about-heading")(text("Expertise (choose 2 skills)")),
-        div(`class` := "points-pool", style := "margin-bottom: 0.5rem;")(
-          text("Chosen: "),
-          span(`class` := "points-pool-value")(text(s"${chosen.size} / 2"))
-        ),
-        div(
-          pool.toList.sortBy(_.label).map { skill =>
-            val isChosen = chosen.contains(skill)
-            val clsName = if isChosen then "skill-item skill-item--selected" else "skill-item"
-            div(`class` := clsName, onClick(ClassFeaturesMsg.ToggleExpertiseSkill(skill)))(
-              div(`class` := "skill-checkbox")(text(if isChosen then "*" else "")),
-              span(`class` := "skill-label")(text(skill.label)),
-              span(`class` := "skill-ability-tag")(text(skill.ability.abbreviation))
-            )
-          }*
-        )
+    val expCount = ClassProgression.expertiseCountFromChoices(level1Choices(cls))
+    if expCount <= 0 then div()
+    else
+      ChoiceWidgets.skillPicker(
+        s"Expertise (choose $expCount skill${if expCount > 1 then "s" else ""})",
+        None,
+        cls.skillPool.toList,
+        model.featureSelections.expertiseSkills,
+        expCount,
+        ClassFeaturesMsg.ToggleExpertiseSkill.apply
       )
-    }
   }
 
   private def weaponMasterySection(model: Model): Html[Msg] = {
     val cls = model.draft.dndClass.getOrElse(Barbarian)
-    val count = cls.weaponMasteryCount
+    val count = ClassProgression.weaponMasteryCountFromChoices(level1Choices(cls))
     if count <= 0 then div()
     else {
       val proficient = Weapon.all.filter(w => WeaponProficiency.isProficient(w, cls.weaponProficiencies))

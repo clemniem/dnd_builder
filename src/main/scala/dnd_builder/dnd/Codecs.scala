@@ -2,7 +2,6 @@ package dndbuilder.dnd
 
 import dndbuilder.dnd.DndTypes.Score
 import io.circe.*
-import io.circe.generic.semiauto.*
 import io.circe.syntax.*
 
 object Codecs {
@@ -112,8 +111,42 @@ object Codecs {
     Subclass.byName(s).toRight(s"Unknown subclass: $s")
   }
 
-  given Encoder[ClassFeatureSelections] = deriveEncoder
-  given Decoder[ClassFeatureSelections] = deriveDecoder
+  given Encoder[ClassFeatureSelections] = Encoder.instance { fs =>
+    Json.obj(
+      "fightingStyle"      -> fs.fightingStyle.asJson,
+      "divineOrder"       -> fs.divineOrder.asJson,
+      "primalOrder"       -> fs.primalOrder.asJson,
+      "eldritchInvocation" -> fs.eldritchInvocation.asJson,
+      "expertiseSkills"   -> fs.expertiseSkills.toList.asJson,
+      "weaponMasteries"   -> fs.weaponMasteries.map(_.name).asJson,
+      "landType"          -> fs.landType.asJson,
+      "hunterPrey"        -> fs.hunterPrey.asJson
+    )
+  }
+  given Decoder[ClassFeatureSelections] = Decoder.instance { c =>
+    for {
+      fightingStyle      <- c.downField("fightingStyle").as[Option[FightingStyle]]
+      divineOrder        <- c.downField("divineOrder").as[Option[DivineOrder]]
+      primalOrder        <- c.downField("primalOrder").as[Option[PrimalOrder]]
+      eldritchInvocation <- c.downField("eldritchInvocation").as[Option[EldritchInvocation]]
+      expertiseSkills    <- c.downField("expertiseSkills").as[Option[List[Skill]]].map(_.fold(Set.empty[Skill])(_.toSet))
+      weaponMasteries    <- c.downField("weaponMasteries").as[Option[List[String]]].map(_.fold(List.empty[Weapon])(_.flatMap(Weapon.byName)))
+      landType           <- c.downField("landType").as[Option[LandType]]
+      hunterPrey         <- c.downField("hunterPrey").as[Option[HunterPreyChoice]]
+    } yield {
+      val selections = List(
+        fightingStyle.map(FeatureSelection.FightingStyleChoice.apply),
+        divineOrder.map(FeatureSelection.DivineOrderChoice.apply),
+        primalOrder.map(FeatureSelection.PrimalOrderChoice.apply),
+        eldritchInvocation.map(FeatureSelection.EldritchInvocationChoice.apply),
+        Some(FeatureSelection.ExpertiseChoice(expertiseSkills)),
+        Some(FeatureSelection.WeaponMasteryChoice(weaponMasteries)),
+        landType.map(FeatureSelection.LandTypeChoice.apply),
+        hunterPrey.map(FeatureSelection.HunterPreyChoiceSelection.apply)
+      ).flatten
+      ClassFeatureSelections(selections)
+    }
+  }
 
   given Encoder[AbilityScores] = Encoder.instance { s =>
     Json.obj(

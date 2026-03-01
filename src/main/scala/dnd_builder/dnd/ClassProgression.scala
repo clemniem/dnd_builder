@@ -17,9 +17,28 @@ object LevelChoice {
   case object ChooseHunterPrey extends LevelChoice
   case object ChooseFightingStyle extends LevelChoice
   case class ChooseExpertise(count: Int) extends LevelChoice
+  case object ChooseDivineOrder extends LevelChoice
+  case object ChoosePrimalOrder extends LevelChoice
+  case object ChooseEldritchInvocation extends LevelChoice
+  case class ChooseWeaponMastery(count: Int) extends LevelChoice
 }
 
 object ClassProgression {
+
+  private val level1Entries: List[((DndClass, Int), LevelGain)] = List(
+    (Barbarian, 1) -> LevelGain(Barbarian.level1Features, List(LevelChoice.ChooseWeaponMastery(2))),
+    (Bard, 1) -> LevelGain(Bard.level1Features, Nil),
+    (Cleric, 1) -> LevelGain(Cleric.level1Features, List(LevelChoice.ChooseDivineOrder)),
+    (Druid, 1) -> LevelGain(Druid.level1Features, List(LevelChoice.ChoosePrimalOrder)),
+    (Fighter, 1) -> LevelGain(Fighter.level1Features, List(LevelChoice.ChooseFightingStyle, LevelChoice.ChooseWeaponMastery(3))),
+    (Monk, 1) -> LevelGain(Monk.level1Features, Nil),
+    (Paladin, 1) -> LevelGain(Paladin.level1Features, List(LevelChoice.ChooseWeaponMastery(2))),
+    (Ranger, 1) -> LevelGain(Ranger.level1Features, List(LevelChoice.ChooseWeaponMastery(2))),
+    (Rogue, 1) -> LevelGain(Rogue.level1Features, List(LevelChoice.ChooseExpertise(2), LevelChoice.ChooseWeaponMastery(2))),
+    (Sorcerer, 1) -> LevelGain(Sorcerer.level1Features, Nil),
+    (Warlock, 1) -> LevelGain(Warlock.level1Features, List(LevelChoice.ChooseEldritchInvocation)),
+    (Wizard, 1) -> LevelGain(Wizard.level1Features, Nil)
+  )
 
   private val level2Entries: List[((DndClass, Int), LevelGain)] = List(
     (Barbarian, 2) -> LevelGain(
@@ -134,12 +153,8 @@ object ClassProgression {
     (Wizard, 3) -> LevelGain(Nil, List(LevelChoice.ChooseSubclass))
   )
 
-  private lazy val registry: Map[(DndClass, Int), LevelGain] = {
-    val level1 = DndClass.all.map { cls =>
-      (cls, 1) -> LevelGain(cls.level1Features, Nil)
-    }
-    (level1 ++ level2Entries ++ level3Entries).toMap
-  }
+  private lazy val registry: Map[(DndClass, Int), LevelGain] =
+    (level1Entries ++ level2Entries ++ level3Entries).toMap
 
   def atLevel(dndClass: DndClass, level: Int): LevelGain =
     registry.getOrElse((dndClass, level), LevelGain.empty)
@@ -152,4 +167,30 @@ object ClassProgression {
 
   def maxSupportedLevel(dndClass: DndClass): Int =
     (1 to 20).reverse.find(l => registry.contains((dndClass, l))).getOrElse(1)
+
+  /** Whether the given selections satisfy all choices (e.g. for creation or level-up validation). */
+  def satisfiesChoices(choices: List[LevelChoice], fs: ClassFeatureSelections): Boolean = {
+    val needFightingStyle = choices.contains(LevelChoice.ChooseFightingStyle)
+    val needDivineOrder = choices.contains(LevelChoice.ChooseDivineOrder)
+    val needPrimalOrder = choices.contains(LevelChoice.ChoosePrimalOrder)
+    val needEldritchInvocation = choices.contains(LevelChoice.ChooseEldritchInvocation)
+    val needLandType = choices.contains(LevelChoice.ChooseLandType)
+    val needHunterPrey = choices.contains(LevelChoice.ChooseHunterPrey)
+    val expertiseRequired = choices.collect { case LevelChoice.ChooseExpertise(n) => n }.sum
+    val weaponMasteryRequired = choices.collect { case LevelChoice.ChooseWeaponMastery(n) => n }.sum
+    (!needFightingStyle || fs.fightingStyle.isDefined) &&
+    (!needDivineOrder || fs.divineOrder.isDefined) &&
+    (!needPrimalOrder || fs.primalOrder.isDefined) &&
+    (!needEldritchInvocation || fs.eldritchInvocation.isDefined) &&
+    (!needLandType || fs.landType.isDefined) &&
+    (!needHunterPrey || fs.hunterPrey.isDefined) &&
+    fs.expertiseSkills.size >= expertiseRequired &&
+    fs.weaponMasteries.size >= weaponMasteryRequired
+  }
+
+  def expertiseCountFromChoices(choices: List[LevelChoice]): Int =
+    choices.collect { case LevelChoice.ChooseExpertise(n) => n }.sum
+
+  def weaponMasteryCountFromChoices(choices: List[LevelChoice]): Int =
+    choices.collect { case LevelChoice.ChooseWeaponMastery(n) => n }.sum
 }

@@ -39,19 +39,19 @@ object CharacterSheetPdf {
         Weapon.all.find(_.name == "Handaxe").get
       ),
       Nil, Nil, Nil,
-      ClassFeatureSelections(
-        fightingStyle = Some(FightingStyle.Defense),
-        divineOrder = None,
-        primalOrder = None,
-        eldritchInvocation = None,
-        expertiseSkills = Set.empty,
-        weaponMasteries = List(
+      ClassFeatureSelections.empty.withChoices(
+        Some(FightingStyle.Defense),
+        None,
+        None,
+        None,
+        Set.empty,
+        List(
           Weapon.byName("Longsword").get,
           Weapon.byName("Handaxe").get,
           Weapon.byName("Greatsword").get
         ),
-        landType = None,
-        hunterPrey = None
+        None,
+        None
       ),
       None,
       Dwarf.languages,

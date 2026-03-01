@@ -18,7 +18,9 @@ object SpellsScreen extends Screen {
     val prog = SpellProgression.forClass(cls, lvl)
     val cantrips = prog.map(_.cantrips).getOrElse(0)
     val prepared = prog.map(_.preparedSpells).getOrElse(0)
-    val spellbook = if cls == Wizard then SpellProgression.wizardSpellbookSize(lvl) else 0
+    val spellbook =
+      if cls.fullCasterVariant.contains(FullCasterVariant.Wizard) then SpellProgression.wizardSpellbookSize(lvl)
+      else 0
     (cls, cantrips, prepared, spellbook, SpellProgression.maxSpellLevelForSlots(cls, lvl))
   }
 

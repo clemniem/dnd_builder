@@ -18,9 +18,10 @@ object LevelUpScreen extends Screen {
 
   /** Ordered phases for this level-up (depends on class and target level). */
   private def phasesForLevel(cls: DndClass, level: Int): List[LevelUpPhase] = {
-    val hasSub = level >= 3 && Subclass.forClass(cls).isDefined
-    val hasSpells = hasSpellChangesAtLevel(cls, level)
-    val hasFeatures = hasClassFeatureChoicesAtLevel(cls, level)
+    val summary = LevelSummary.forClassAtLevel(cls, level)
+    val hasSub = summary.subclassEligible.isDefined
+    val hasSpells = summary.spellProgression.isDefined
+    val hasFeatures = summary.choices.filterNot(_ == LevelChoice.ChooseSubclass).nonEmpty
     val base = LevelUpPhase.Preview :: (if hasSub then List(LevelUpPhase.Subclass) else Nil)
     val withSpells = if hasSpells then base :+ LevelUpPhase.Spells else base
     val withFeatures = if hasFeatures then withSpells :+ LevelUpPhase.ClassFeatures else withSpells
@@ -41,11 +42,13 @@ object LevelUpScreen extends Screen {
     val ch = sc.character
     val cls = ch.primaryClass
     val tgt = ch.primaryClassLevel + 1
-    val nextProg = SpellProgression.forClass(cls, tgt)
-    val initialSpells = nextProg match {
+    val summary = LevelSummary.forClassAtLevel(cls, tgt)
+    val initialSpells = summary.spellProgression match {
       case Some(prog) =>
-        val fromBook = if cls == Wizard then ch.spellbookSpells else Nil
-        val prepared = if ch.preparedSpells.size <= prog.preparedSpells then ch.preparedSpells else ch.preparedSpells.take(prog.preparedSpells)
+        val fromBook = if ch.primaryClass.fullCasterVariant.contains(FullCasterVariant.Wizard) then ch.spellbookSpells else Nil
+        val prepared =
+          if ch.preparedSpells.size <= prog.preparedSpells then ch.preparedSpells
+          else ch.preparedSpells.take(prog.preparedSpells)
         (fromBook, prepared)
       case None => (Nil, Nil)
     }
@@ -163,18 +166,22 @@ object LevelUpScreen extends Screen {
         case Nil          => List(ClassLevel(cls, tgt))
       }
       val newPrepared = (model.preparedSpells ++ subclassSpells).distinctBy(_.name)
-      val newFeatures = ch.featureSelections.copy(
-        fightingStyle = model.fightingStyle.orElse(ch.featureSelections.fightingStyle),
-        expertiseSkills = ch.featureSelections.expertiseSkills ++ model.expertiseSkills,
-        landType = model.landType.orElse(ch.featureSelections.landType),
-        hunterPrey = model.hunterPrey.orElse(ch.featureSelections.hunterPrey)
+      val newFeatures = ch.featureSelections.withChoices(
+        model.fightingStyle.orElse(ch.featureSelections.fightingStyle),
+        ch.featureSelections.divineOrder,
+        ch.featureSelections.primalOrder,
+        ch.featureSelections.eldritchInvocation,
+        ch.featureSelections.expertiseSkills ++ model.expertiseSkills,
+        ch.featureSelections.weaponMasteries,
+        model.landType.orElse(ch.featureSelections.landType),
+        model.hunterPrey.orElse(ch.featureSelections.hunterPrey)
       )
       val updated = ch.copy(
         classLevels = newClassLevels,
         subclass = if tgt >= 3 then subOpt.orElse(ch.subclass) else ch.subclass,
         chosenSkills = ch.chosenSkills ++ model.extraSkills,
         preparedSpells = newPrepared,
-        spellbookSpells = if cls == Wizard then model.spellbookSpells else ch.spellbookSpells,
+        spellbookSpells = if cls.fullCasterVariant.contains(FullCasterVariant.Wizard) then model.spellbookSpells else ch.spellbookSpells,
         featureSelections = newFeatures
       )
       val updatedStored = StoredCharacter(model.storedCharacter.id, updated)
@@ -223,14 +230,8 @@ object LevelUpScreen extends Screen {
     else None
   }
 
-  private def hasSpellChangesAtLevel(cls: DndClass, level: Int): Boolean =
-    SpellProgression.forClass(cls, level).isDefined
-
   private def choicesAtLevel(cls: DndClass, level: Int): List[LevelChoice] =
-    ClassProgression.atLevel(cls, level).choices.filterNot(_ == LevelChoice.ChooseSubclass)
-
-  private def hasClassFeatureChoicesAtLevel(cls: DndClass, level: Int): Boolean =
-    choicesAtLevel(cls, level).nonEmpty
+    LevelSummary.forClassAtLevel(cls, level).choices.filterNot(_ == LevelChoice.ChooseSubclass)
 
   private def extraSkillChoiceAtLevel(cls: DndClass, level: Int): (Int, Set[Skill]) =
     choicesAtLevel(cls, level).collectFirst { case LevelChoice.ChooseExtraSkills(count, pool) => (count, pool) }
@@ -310,15 +311,14 @@ object LevelUpScreen extends Screen {
     val ch = model.storedCharacter.character
     val cls = ch.primaryClass
     val tgt = targetLevel(model)
-    val gain = ClassProgression.atLevel(cls, tgt)
+    val summary = LevelSummary.forClassAtLevel(cls, tgt)
     val conMod = ch.modifier(Ability.Constitution)
     val hpGain = cls.hitDie.avgGain + conMod.toInt + ch.species.hpBonusPerLevel
     val oldProf = ch.proficiencyBonus.toInt
     val newProf = if tgt <= 4 then 2 else 3
     val oldProg = ch.spellProgression
-    val newProg = SpellProgression.forClass(cls, tgt)
-    val subBanner =
-      if tgt >= 3 then Subclass.forClass(cls) else None
+    val newProg = summary.spellProgression
+    val subBanner = summary.subclassEligible
     div(
       div(`class` := "flex-row", style := "margin-bottom: 1rem; gap: 0.5rem;")(
         span(`class` := "badge")(text(s"${cls.name} ${ch.primaryClassLevel}")),
@@ -328,11 +328,11 @@ object LevelUpScreen extends Screen {
       div(`class` := "section-title")(text("Stats Comparison")),
       combatTable(ch, hpGain, oldProf, newProf, tgt, cls),
       spellTable(oldProg, newProg),
-      (if gain.features.nonEmpty then
+      (if summary.features.nonEmpty then
         div(
           div(`class` := "section-title")(text("New Features")),
           div(`class` := "feature-list")(
-            gain.features.map { f =>
+            summary.features.map { f =>
               div(`class` := "feature-item")(
                 div(`class` := "feature-name")(text(f.name)),
                 div(`class` := "feature-desc")(text(f.description))
@@ -356,7 +356,7 @@ object LevelUpScreen extends Screen {
     val ch = model.storedCharacter.character
     val cls = ch.primaryClass
     val tgt = targetLevel(model)
-    val subOpt = Subclass.forClass(cls)
+    val subOpt = LevelSummary.forClassAtLevel(cls, tgt).subclassEligible
     subOpt match {
       case Some(sub) =>
         val levelFeatures = sub.features.getOrElse(tgt, Nil)
@@ -412,7 +412,7 @@ object LevelUpScreen extends Screen {
     val tgt = targetLevel(model)
     val prog = SpellProgression.forClass(cls, tgt).get
     val maxPrepared = prog.preparedSpells
-    val isWizard = cls == Wizard
+    val isWizard = cls.fullCasterVariant.contains(FullCasterVariant.Wizard)
     val spellbookSize = SpellProgression.wizardSpellbookSize(tgt)
     val maxSpellLvl = SpellProgression.maxSpellLevelForSlots(cls, tgt)
     val availableForPrepared =
@@ -500,20 +500,11 @@ object LevelUpScreen extends Screen {
     val fightingStyleSection =
       if !needFS then div()
       else
-        div(style := "margin-bottom: 1.5rem;")(
-          h2(`class` := "about-heading")(text("Fighting Style (choose 1)")),
-          div(`class` := "card-grid")(
-            FightingStyle.values.toList.map { style =>
-              val selected = model.fightingStyle.contains(style)
-              div(
-                `class` := (if selected then "card card--selected" else "card"),
-                onClick(LevelUpMsg.SetFightingStyle(style))
-              )(
-                div(`class` := "card-title")(text(style.label)),
-                div(`class` := "card-desc")(text(style.description))
-              )
-            }*
-          )
+        ChoiceWidgets.cardPicker(
+          "Fighting Style (choose 1)",
+          FightingStyle.values.toList.map(s => (s, s.label, Some(s.description))),
+          model.fightingStyle,
+          LevelUpMsg.SetFightingStyle.apply
         )
 
     val expertiseSection =
@@ -521,92 +512,51 @@ object LevelUpScreen extends Screen {
       else {
         val proficientSkills = ch.allSkillProficiencies
         val alreadyExpert = ch.featureSelections.expertiseSkills
-        val pool = proficientSkills -- alreadyExpert
-        div(style := "margin-bottom: 1.5rem;")(
-          h2(`class` := "about-heading")(text(s"Expertise (choose $expCount skill${if expCount > 1 then "s" else ""})")),
-          p(`class` := "screen-intro")(text("Double your proficiency bonus for these skills.")),
-          div(`class` := "points-pool", style := "margin-bottom: 0.5rem;")(
-            text("Chosen: "),
-            span(`class` := "points-pool-value")(text(s"${model.expertiseSkills.size} / $expCount"))
-          ),
-          div(
-            pool.toList.sortBy(_.label).map { skill =>
-              val isChosen = model.expertiseSkills.contains(skill)
-              val clsName = if isChosen then "skill-item skill-item--selected" else "skill-item"
-              div(`class` := clsName, onClick(LevelUpMsg.ToggleExpertise(skill)))(
-                div(`class` := "skill-checkbox")(text(if isChosen then "*" else "")),
-                span(`class` := "skill-label")(text(skill.label)),
-                span(`class` := "skill-ability-tag")(text(skill.ability.abbreviation))
-              )
-            }*
-          )
+        val pool = (proficientSkills -- alreadyExpert).toList
+        ChoiceWidgets.skillPicker(
+          s"Expertise (choose $expCount skill${if expCount > 1 then "s" else ""})",
+          Some("Double your proficiency bonus for these skills."),
+          pool,
+          model.expertiseSkills,
+          expCount,
+          LevelUpMsg.ToggleExpertise.apply
         )
       }
 
     val skillSection =
       if extraCount == 0 then div()
-      else
-        div(style := "margin-bottom: 1.5rem;")(
-          div(`class` := "section-title")(text(s"Choose $extraCount extra skill(s)")),
-          div(`class` := "points-pool", style := "margin-bottom: 0.5rem;")(text(s"Chosen: ${model.extraSkills.size} / $extraCount")),
-          div(
-            Skill.byAbility.toList.sortBy(_._1.ordinal).flatMap { case (ability, skills) =>
-              val inPool = skills.filter(extraPool.contains)
-              if inPool.isEmpty then Nil
-              else
-                List(div(`class` := "skill-group")(
-                  div(`class` := "skill-group-title")(text(ability.label)),
-                  div(
-                    inPool.map { skill =>
-                      val isChosen = model.extraSkills.contains(skill)
-                      val clsName = if isChosen then "skill-item skill-item--selected" else "skill-item"
-                      div(`class` := clsName, onClick(LevelUpMsg.ToggleExtraSkill(skill)))(
-                        div(`class` := "skill-checkbox")(text(if isChosen then "*" else "")),
-                        span(`class` := "skill-label")(text(skill.label)),
-                        span(`class` := "skill-ability-tag")(text(ability.abbreviation))
-                      )
-                    }*
-                  )
-                ))
-            }*
-          )
+      else {
+        val byAbility = Skill.byAbility.toList.sortBy(_._1.ordinal).map { case (ability, skills) =>
+          (ability, skills.filter(extraPool.contains))
+        }
+        ChoiceWidgets.skillPickerGroupedByAbility(
+          s"Choose $extraCount extra skill(s)",
+          model.extraSkills.size,
+          extraCount,
+          byAbility,
+          model.extraSkills,
+          LevelUpMsg.ToggleExtraSkill.apply
         )
+      }
 
     val landSection =
       if !needLand then div()
       else
-        div(style := "margin-bottom: 1.5rem;")(
-          div(`class` := "section-title")(text("Circle of the Land: choose land type")),
-          div(`class` := "card-grid")(
-            LandType.values.toList.map { lt =>
-              val selected = model.landType.contains(lt)
-              div(
-                `class` := (if selected then "card card--selected" else "card"),
-                onClick(LevelUpMsg.SetLandType(lt))
-              )(
-                div(`class` := "card-title")(text(lt.label))
-              )
-            }*
-          )
+        ChoiceWidgets.cardPicker(
+          "Circle of the Land: choose land type",
+          LandType.values.toList.map(lt => (lt, lt.label, None)),
+          model.landType,
+          LevelUpMsg.SetLandType.apply
         )
 
     val hunterSection =
       if !needHunter then div()
       else
-        div(style := "margin-bottom: 1.5rem;")(
-          div(`class` := "section-title")(text("Hunter's Prey")),
-          div(`class` := "card-grid")(
-            HunterPreyChoice.values.toList.map { hp =>
-              val selected = model.hunterPrey.contains(hp)
-              div(
-                `class` := (if selected then "card card--selected" else "card"),
-                onClick(LevelUpMsg.SetHunterPrey(hp))
-              )(
-                div(`class` := "card-title")(text(hp.label)),
-                div(`class` := "card-desc")(text(hp.description))
-              )
-            }*
-          )
+        ChoiceWidgets.cardPicker(
+          "Hunter's Prey",
+          HunterPreyChoice.values.toList.map(hp => (hp, hp.label, Some(hp.description))),
+          model.hunterPrey,
+          LevelUpMsg.SetHunterPrey.apply
         )
 
     div(
