@@ -8,6 +8,9 @@ import scala.scalajs.js.annotation.JSExportTopLevel
 
 object CharacterSheetPdf {
 
+  /** Font size (pt) for all large content fields: Class Features, Species Traits, Feats, Languages, Equipment, Weapon Prof, Tool Prof, and weapon rows. Change this to adjust all at once. */
+  val contentFontSizePt: Int = 10
+
   private val pdfUrl =
     "https://raw.githubusercontent.com/birddie721/5e2024Builder/main/Character-Sheet.pdf"
 
@@ -108,19 +111,21 @@ object CharacterSheetPdf {
     text + "\n" * padding
   }
 
-  private def setFieldPadded(form: js.Dynamic, name: String, value: String, targetLines: Int): Unit = {
-    val field = PdfLib.getTextField(form, name)
-    PdfLib.removeMaxLength(field)
-    PdfLib.setText(field, padToLines(value, targetLines))
-  }
-
-  /** Like setFieldPadded but sets font size (pt) so text is a bit larger (e.g. tools/equipment). */
+  /** Like setField + padToLines but also sets font size (pt) for content fields. */
   private def setFieldPaddedSized(form: js.Dynamic, name: String, value: String, targetLines: Int, fontSizePt: Int): Unit = {
     val field = PdfLib.getTextField(form, name)
     PdfLib.removeMaxLength(field)
     PdfLib.setFontSize(field, fontSizePt)
     PdfLib.setText(field, padToLines(value, targetLines))
   }
+
+  private def trySetFieldSized(form: js.Dynamic, name: String, value: String, pt: Int): Unit =
+    try {
+      val field = PdfLib.getTextField(form, name)
+      PdfLib.removeMaxLength(field)
+      PdfLib.setFontSize(field, pt)
+      PdfLib.setText(field, value)
+    } catch case _: Throwable => ()
 
   private def checkBox(form: js.Dynamic, name: String): Unit =
     PdfLib.check(PdfLib.getCheckBox(form, name))
@@ -253,10 +258,10 @@ object CharacterSheetPdf {
     ch.equippedWeapons.zipWithIndex.foreach { case (weapon, idx) =>
       val n = idx + 1
       if n <= 6 then {
-        setField(form, PdfFormFields.nameWeapon(n), weapon.name)
-        setField(form, PdfFormFields.bonusWeapon(n), ch.weaponAttackBonus(weapon).format)
-        setField(form, PdfFormFields.damageWeapon(n), ch.weaponDamageString(weapon))
-        setField(form, PdfFormFields.notesWeapon(n), ch.weaponPropertiesSummary(weapon))
+        setFieldSized(form, PdfFormFields.nameWeapon(n), weapon.name, contentFontSizePt)
+        setFieldSized(form, PdfFormFields.bonusWeapon(n), ch.weaponAttackBonus(weapon).format, contentFontSizePt)
+        setFieldSized(form, PdfFormFields.damageWeapon(n), ch.weaponDamageString(weapon), contentFontSizePt)
+        setFieldSized(form, PdfFormFields.notesWeapon(n), ch.weaponPropertiesSummary(weapon), contentFontSizePt)
       }
     }
 
@@ -286,14 +291,10 @@ object CharacterSheetPdf {
       if idx <= 28 then {
         setField(form, PdfFormFields.spellName(idx), spellName)
         setField(form, PdfFormFields.spellLevel(idx), levelStr)
-        tryCheckBox(form, PdfFormFields.spellPreparedCheckBox(idx))
+        if levelStr == "1" then tryCheckBox(form, PdfFormFields.spellPreparedCheckBox(idx))
       }
     }
   }
-
-  private def trySetField(form: js.Dynamic, name: String, value: String): Unit =
-    try setField(form, name, value)
-    catch case _: Throwable => ()
 
   private def tryCheckBox(form: js.Dynamic, name: String): Unit =
     try PdfLib.check(PdfLib.getCheckBox(form, name))
@@ -310,14 +311,14 @@ object CharacterSheetPdf {
 
   private def fillProficienciesAndFeatures(form: js.Dynamic, ch: Character): Unit = {
     val langStr = ch.languages.toList.sortBy(_.label).map(_.label).mkString(", ")
-    trySetField(form, PdfFormFields.Languages, langStr)
-    setFieldPadded(form, PdfFormFields.WeaponProf, ch.primaryClass.weaponSummary, 4)
-    setFieldPaddedSized(form, PdfFormFields.ToolProf, ch.background.toolProficiency, 2, 11)
+    trySetFieldSized(form, PdfFormFields.Languages, langStr, contentFontSizePt)
+    setFieldPaddedSized(form, PdfFormFields.WeaponProf, ch.primaryClass.weaponSummary, 4, contentFontSizePt)
+    setFieldPaddedSized(form, PdfFormFields.ToolProf, ch.background.toolProficiency, 2, contentFontSizePt)
     val featText = ch.originFeat.name + ":\n" + ch.originFeat.description
-    setFieldPadded(form, PdfFormFields.Feats, featText, 28)
-    setFieldPaddedSized(form, PdfFormFields.Equipment, ch.equipmentSummary, 40, 11)
+    setFieldPaddedSized(form, PdfFormFields.Feats, featText, 28, contentFontSizePt)
+    setFieldPaddedSized(form, PdfFormFields.Equipment, ch.equipmentSummary, 40, contentFontSizePt)
     val traitsText = ch.species.traits.map(t => s" * $t").mkString("\n")
-    setFieldPadded(form, PdfFormFields.SpeciesTraits, traitsText, 25)
+    setFieldPaddedSized(form, PdfFormFields.SpeciesTraits, traitsText, 25, contentFontSizePt)
 
     val features = ClassProgression.featuresUpToLevel(ch.primaryClass, ch.primaryClassLevel)
     val featureLines = features.map(f => featureLine(f, ch))
@@ -325,10 +326,10 @@ object CharacterSheetPdf {
     val col1Text = featureLines.take(mid).mkString("\n")
     val col2Text = featureLines.drop(mid)
 
-    setFieldPadded(form, PdfFormFields.ClassFeatures1, col1Text, 30)
+    setFieldPaddedSized(form, PdfFormFields.ClassFeatures1, col1Text, 30, contentFontSizePt)
 
     if col2Text.nonEmpty then
-      setFieldPadded(form, PdfFormFields.ClassFeatures2, col2Text.mkString("\n"), 35)
+      setFieldPaddedSized(form, PdfFormFields.ClassFeatures2, col2Text.mkString("\n"), 35, contentFontSizePt)
   }
 
   private def featureLine(f: ClassFeature, ch: Character): String = {
