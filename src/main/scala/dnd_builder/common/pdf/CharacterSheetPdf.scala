@@ -61,7 +61,7 @@ object CharacterSheetPdf {
   @JSExportTopLevel("testPdf")
   def generateTest(): Unit = {
     val dragonbornRed = DragonbornOf(DragonAncestry.Red)
-    val attackGrants = FeatureGrants.fromSpecies(dragonbornRed).attackGrants
+    val attackGrants = FeatureGrants.grantsForSpecies(dragonbornRed).attackGrants
     val sacredFlame = Spell.all.find(_.name == "Sacred Flame").get
     val testCantrips = sacredFlame :: (1 to 4).toList.map(i =>
       Spell.utility(f"Spell $i%02d", 0, SpellSchool.Evocation, Set("Cleric"), false)
@@ -393,7 +393,7 @@ object CharacterSheetPdf {
       setContentField(form, PdfFormFields.ClassFeatures2, col2Text.mkString("\n"), 35)
   }
 
-  private def featureLine(f: ClassFeature, ch: Character): String = {
+  private def featureLine(f: Feature, ch: Character): String = {
     val base = f.name + " - "
     val desc = resolvedFeatureDescription(f, ch)
     val tracking = f.uses match {
@@ -403,7 +403,7 @@ object CharacterSheetPdf {
     s" * $base$desc$tracking"
   }
 
-  private def resolvedFeatureDescription(f: ClassFeature, ch: Character): String = {
+  private def resolvedFeatureDescription(f: Feature, ch: Character): String = {
     val fs = ch.featureSelections
     f.name match {
       case "Fighting Style" =>

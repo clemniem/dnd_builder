@@ -37,25 +37,46 @@ object Grants {
   val empty: Grants = Grants(Nil, Nil, Nil)
 }
 
+/** Unified feature-grant collection: build draft grants from class, species, and origin-feat grants. */
 object FeatureGrants {
 
-  def fromBackground(bg: Background): Grants = {
-    val sourceLabel = s"${bg.name}: ${bg.feat.name}"
-    val spellGrants = bg.feat.spellGrantSpecs.map { case (count, level, list) =>
-      SpellGrant(count, level, list.label, sourceLabel, Nil)
-    }
-    val skillGrants = bg.feat.skillGrant.toList.map { case (count, pool) =>
-      SkillGrant(count, pool, sourceLabel, Set.empty)
-    }
-    Grants(spellGrants, skillGrants, Nil)
+  /** Origin feat effects as FeatureGrant (replaces reading grantsInitiativeBonus / skillGrant / spellGrantSpecs). */
+  def grantsFromOriginFeat(feat: OriginFeat): List[FeatureGrant] = feat match {
+    case Alert => List(FeatureGrant.InitiativeBonus())
+    case Skilled => List(FeatureGrant.SkillChoice(3, Skill.values.toSet))
+    case mi: MagicInitiate =>
+      mi.spellGrantSpecs.map { case (count, level, list) => FeatureGrant.SpellChoice(count, level, list.label) }
+    case _ => Nil
   }
 
-  def fromSpecies(sp: Species): Grants =
-    Grants(Nil, Nil, sp.grantedAttacks)
+  def grantsFromSpecies(sp: Species): List[FeatureGrant] =
+    sp.grantedAttacks.map(FeatureGrant.Attack.apply)
 
-  def fromClass(cls: DndClass): Grants =
-    Grants(Nil, Nil, cls.grantedAttacks)
+  def grantsFromClass(cls: DndClass, level: Int): List[FeatureGrant] =
+    ClassProgression.featuresUpToLevel(cls, level).flatMap(_.grants)
+
+  private def buildGrantsFromFeatureGrants(grants: List[FeatureGrant], sourceLabel: String): Grants = Grants(
+    spellGrants = grants.collect { case FeatureGrant.SpellChoice(c, l, list) => SpellGrant(c, l, list, sourceLabel, Nil) },
+    skillGrants = grants.collect { case FeatureGrant.SkillChoice(c, pool) => SkillGrant(c, pool, sourceLabel, Set.empty) },
+    attackGrants = grants.collect { case FeatureGrant.Attack(a) => a }
+  )
+
+  /** Grants from species only (e.g. for PDF test character). */
+  def grantsForSpecies(sp: Species): Grants =
+    buildGrantsFromFeatureGrants(grantsFromSpecies(sp), sp.name)
+
+  /** Single entry point: all spell/skill/attack grants for the draft from class + species + background feat. */
+  def allGrantsForDraft(draft: CharacterDraft): Grants = {
+    val level = draft.level.getOrElse(1)
+    val classG = buildGrantsFromFeatureGrants(grantsFromClass(draft.resolvedClass, level), draft.resolvedClass.name)
+    val speciesG = buildGrantsFromFeatureGrants(grantsFromSpecies(draft.resolvedSpecies), draft.resolvedSpecies.name)
+    val bgG = draft.background match {
+      case Some(bg) => buildGrantsFromFeatureGrants(grantsFromOriginFeat(bg.feat), s"${bg.name}: ${bg.feat.name}")
+      case None => Grants.empty
+    }
+    classG ++ speciesG ++ bgG
+  }
 
   def needsSpellScreen(cls: DndClass, bg: Option[Background]): Boolean =
-    cls.isSpellcaster || bg.exists(b => fromBackground(b).spellGrants.nonEmpty)
+    cls.isSpellcaster || bg.exists(b => grantsFromOriginFeat(b.feat).exists { case _: FeatureGrant.SpellChoice => true; case _ => false })
 }

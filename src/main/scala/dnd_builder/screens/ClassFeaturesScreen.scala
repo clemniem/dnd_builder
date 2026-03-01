@@ -29,15 +29,15 @@ object ClassFeaturesScreen extends Screen {
 
   val screenId: ScreenId = ScreenId.FeaturesId
 
-  private def level1Choices(cls: DndClass): List[LevelChoice] =
-    ClassProgression.atLevel(cls, 1).choices
+  private def level1GrantChoices(cls: DndClass): List[FeatureGrant] =
+    ClassProgression.grantChoicesAtLevel(ClassProgression.atLevel(cls, 1))
 
   private def hasClassFeatureChoices(cls: DndClass): Boolean =
-    level1Choices(cls).nonEmpty
+    level1GrantChoices(cls).nonEmpty
 
   private def canProceed(model: Model): Boolean = {
     val cls = model.draft.resolvedClass
-    ClassProgression.satisfiesChoices(level1Choices(cls), model.featureSelections)
+    ClassProgression.satisfiesGrantChoices(level1GrantChoices(cls), model.featureSelections)
   }
 
   def init(previous: Option[ScreenOutput]): (Model, Cmd[IO, Msg]) = {
@@ -72,7 +72,7 @@ object ClassFeaturesScreen extends Screen {
     case ClassFeaturesMsg.ToggleExpertiseSkill(skill) =>
       val cls = model.draft.resolvedClass
       val fs = model.featureSelections
-      val maxCount = ClassProgression.expertiseCountFromChoices(level1Choices(cls))
+      val maxCount = ClassProgression.expertiseCountFromGrants(level1GrantChoices(cls))
       val newExpertise =
         if fs.expertiseSkills.contains(skill) then fs.expertiseSkills - skill
         else if fs.expertiseSkills.size < maxCount then fs.expertiseSkills + skill
@@ -81,7 +81,7 @@ object ClassFeaturesScreen extends Screen {
     case ClassFeaturesMsg.ToggleWeaponMastery(weapon) =>
       val cls = model.draft.resolvedClass
       val fs = model.featureSelections
-      val maxCount = ClassProgression.weaponMasteryCountFromChoices(level1Choices(cls))
+      val maxCount = ClassProgression.weaponMasteryCountFromGrants(level1GrantChoices(cls))
       val newList =
         if fs.weaponMasteries.contains(weapon) then fs.weaponMasteries.filter(_ != weapon)
         else if fs.weaponMasteries.size < maxCount then fs.weaponMasteries :+ weapon
@@ -179,8 +179,8 @@ object ClassFeaturesScreen extends Screen {
     }
 
   private def fightingStyleSection(model: Model): Html[Msg] = {
-    val cls = model.draft.resolvedClass
-    if !level1Choices(cls).contains(LevelChoice.ChooseFightingStyle) then div()
+    val grants = level1GrantChoices(model.draft.resolvedClass)
+    if !grants.exists { case FeatureGrant.FightingStyleChoice() => true; case _ => false } then div()
     else
       ChoiceWidgets.cardPicker(
         "Fighting Style (choose 1)",
@@ -191,8 +191,8 @@ object ClassFeaturesScreen extends Screen {
   }
 
   private def divineOrderSection(model: Model): Html[Msg] = {
-    val cls = model.draft.resolvedClass
-    if !level1Choices(cls).contains(LevelChoice.ChooseDivineOrder) then div()
+    val grants = level1GrantChoices(model.draft.resolvedClass)
+    if !grants.exists { case FeatureGrant.DivineOrderChoice() => true; case _ => false } then div()
     else
       ChoiceWidgets.cardPicker(
         "Divine Order (choose 1)",
@@ -203,8 +203,8 @@ object ClassFeaturesScreen extends Screen {
   }
 
   private def primalOrderSection(model: Model): Html[Msg] = {
-    val cls = model.draft.resolvedClass
-    if !level1Choices(cls).contains(LevelChoice.ChoosePrimalOrder) then div()
+    val grants = level1GrantChoices(model.draft.resolvedClass)
+    if !grants.exists { case FeatureGrant.PrimalOrderChoice() => true; case _ => false } then div()
     else
       ChoiceWidgets.cardPicker(
         "Primal Order (choose 1)",
@@ -215,8 +215,8 @@ object ClassFeaturesScreen extends Screen {
   }
 
   private def eldritchInvocationSection(model: Model): Html[Msg] = {
-    val cls = model.draft.resolvedClass
-    if !level1Choices(cls).contains(LevelChoice.ChooseEldritchInvocation) then div()
+    val grants = level1GrantChoices(model.draft.resolvedClass)
+    if !grants.exists { case FeatureGrant.EldritchInvocationChoice() => true; case _ => false } then div()
     else
       ChoiceWidgets.cardPicker(
         "Eldritch Invocation (choose 1)",
@@ -228,7 +228,7 @@ object ClassFeaturesScreen extends Screen {
 
   private def expertiseSection(model: Model): Html[Msg] = {
     val cls = model.draft.resolvedClass
-    val expCount = ClassProgression.expertiseCountFromChoices(level1Choices(cls))
+    val expCount = ClassProgression.expertiseCountFromGrants(level1GrantChoices(cls))
     if expCount <= 0 then div()
     else
       ChoiceWidgets.skillPicker(
@@ -243,7 +243,7 @@ object ClassFeaturesScreen extends Screen {
 
   private def weaponMasterySection(model: Model): Html[Msg] = {
     val cls = model.draft.resolvedClass
-    val count = ClassProgression.weaponMasteryCountFromChoices(level1Choices(cls))
+    val count = ClassProgression.weaponMasteryCountFromGrants(level1GrantChoices(cls))
     if count <= 0 then div()
     else {
       val proficient = Weapon.all.filter(w => WeaponProficiency.isProficient(w, cls.weaponProficiencies))

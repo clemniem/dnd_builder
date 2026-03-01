@@ -2,7 +2,38 @@ package dndbuilder.dnd
 
 import dndbuilder.dnd.DndTypes.Score
 
-final case class ClassFeature(name: String, description: String, uses: Option[Int])
+/** Structured mechanical effects that a feature can grant. */
+sealed trait FeatureGrant
+object FeatureGrant {
+  case class SkillChoice(count: Int, pool: Set[Skill])       extends FeatureGrant
+  case class ExpertiseChoice(count: Int)                    extends FeatureGrant
+  case class Attack(grant: AttackGrant)                    extends FeatureGrant
+  case class WeaponMasteryChoice(count: Int)               extends FeatureGrant
+  case class FightingStyleChoice()                         extends FeatureGrant
+  case class ACFormula(abilities: List[Ability])           extends FeatureGrant
+  case class SpellChoice(count: Int, level: Int, list: String) extends FeatureGrant
+  case class HalfProfUnproficientChecks()                  extends FeatureGrant
+  case class InitiativeBonus()                             extends FeatureGrant
+  case class SubclassGate()                                extends FeatureGrant
+  case class DivineOrderChoice()                           extends FeatureGrant
+  case class PrimalOrderChoice()                           extends FeatureGrant
+  case class EldritchInvocationChoice()                    extends FeatureGrant
+  case class LandTypeChoice()                              extends FeatureGrant
+  case class HunterPreyChoice()                            extends FeatureGrant
+  case class ExtraSkillsChoice(count: Int, pool: Set[Skill]) extends FeatureGrant
+}
+
+/** A class feature with optional structured grants. Backward-compat alias: ClassFeature = Feature. */
+final case class Feature(
+    id: String,
+    name: String,
+    description: String,
+    uses: Option[Int],
+    grants: List[FeatureGrant]
+)
+
+/** Backward-compat during transition; Feature is the canonical type. */
+type ClassFeature = Feature
 
 enum SpellCasterType {
   case NonCaster, FullCaster, HalfCaster, PactMagic
@@ -28,12 +59,8 @@ final case class DndClass(
     level1Features: List[ClassFeature],
     description: String,
     recommendedScores: AbilityScores,
-    weaponMasteryCount: Int,
     extraLanguageChoices: Int,
-    unarmoredDefenseAbility: Option[Ability],
-    usesSpellbook: Boolean,
-    jackOfAllTradesAtLevel: Option[Int],
-    grantedAttacks: List[AttackGrant]
+    usesSpellbook: Boolean
 ) {
   def isSpellcaster: Boolean = spellCasterType != SpellCasterType.NonCaster
 
@@ -84,12 +111,8 @@ object DndClass {
     level1Features = level1Features,
     description = description,
     recommendedScores = recommendedScores,
-    weaponMasteryCount = 0,
     extraLanguageChoices = 0,
-    unarmoredDefenseAbility = None,
-    usesSpellbook = false,
-    jackOfAllTradesAtLevel = None,
-    grantedAttacks = Nil
+    usesSpellbook = false
   )
 
   val Barbarian: DndClass = base(
@@ -106,9 +129,6 @@ object DndClass {
     level1Features = SRD_registry.getMany("rage", "unarmored-defense-barbarian", "weapon-mastery-2"),
     description = "A fierce warrior fueled by primal rage",
     recommendedScores = AbilityScores(Score(15), Score(13), Score(14), Score(10), Score(12), Score(8))
-  ).copy(
-    weaponMasteryCount = 2,
-    unarmoredDefenseAbility = Some(Ability.Constitution)
   )
 
   val Bard: DndClass = base(
@@ -127,7 +147,6 @@ object DndClass {
     spellcastingAbility = Some(Ability.Charisma),
     spellCasterType = SpellCasterType.FullCaster,
     fullCasterVariant = Some(FullCasterVariant.Bard),
-    jackOfAllTradesAtLevel = Some(2),
     extraLanguageChoices = 1
   )
 
@@ -186,7 +205,7 @@ object DndClass {
     level1Features = SRD_registry.getMany("fighting-style", "second-wind", "weapon-mastery-3"),
     description = "A master of martial combat with every weapon and armor",
     recommendedScores = AbilityScores(Score(15), Score(14), Score(13), Score(8), Score(10), Score(12))
-  ).copy(weaponMasteryCount = 3)
+  )
 
   val Monk: DndClass = base(
     name = "Monk",
@@ -202,21 +221,6 @@ object DndClass {
     level1Features = SRD_registry.getMany("martial-arts", "unarmored-defense-monk"),
     description = "A martial artist harnessing body and mind as one weapon",
     recommendedScores = AbilityScores(Score(12), Score(15), Score(13), Score(10), Score(14), Score(8))
-  ).copy(
-    unarmoredDefenseAbility = Some(Ability.Wisdom),
-    grantedAttacks = List(
-      AttackGrant(
-        "Unarmed Strike",
-        AttackKind.Weapon,
-        "1d6",
-        "bludg.",
-        AttackGrantDelivery.MeleeAttack(Ability.Dexterity),
-        DiceScaling.MartialArts,
-        false,
-        "",
-        "Monk"
-      )
-    )
   )
 
   val Paladin: DndClass = base(
@@ -235,8 +239,7 @@ object DndClass {
     recommendedScores = AbilityScores(Score(15), Score(10), Score(13), Score(8), Score(12), Score(14))
   ).copy(
     spellcastingAbility = Some(Ability.Charisma),
-    spellCasterType = SpellCasterType.HalfCaster,
-    weaponMasteryCount = 2
+    spellCasterType = SpellCasterType.HalfCaster
   )
 
   val Ranger: DndClass = base(
@@ -258,7 +261,6 @@ object DndClass {
     numSkillChoices = 3,
     spellcastingAbility = Some(Ability.Wisdom),
     spellCasterType = SpellCasterType.HalfCaster,
-    weaponMasteryCount = 2,
     extraLanguageChoices = 1
   )
 
@@ -279,8 +281,7 @@ object DndClass {
     description = "A scoundrel who uses stealth and trickery to overcome obstacles",
     recommendedScores = AbilityScores(Score(12), Score(15), Score(13), Score(14), Score(10), Score(8))
   ).copy(
-    numSkillChoices = 4,
-    weaponMasteryCount = 2
+    numSkillChoices = 4
   )
 
   val Sorcerer: DndClass = base(

@@ -21,7 +21,7 @@ object LevelUpScreen extends Screen {
     val summary = LevelSummary.forClassAtLevel(cls, level)
     val hasSub = summary.subclassEligible.isDefined
     val hasSpells = summary.spellProgression.isDefined
-    val hasFeatures = summary.choices.filterNot(_ == LevelChoice.ChooseSubclass).nonEmpty
+    val hasFeatures = summary.grantChoices.filterNot { case FeatureGrant.SubclassGate() => true; case _ => false }.nonEmpty
     val base = LevelUpPhase.Preview :: (if hasSub then List(LevelUpPhase.Subclass) else Nil)
     val withSpells = if hasSpells then base :+ LevelUpPhase.Spells else base
     val withFeatures = if hasFeatures then withSpells :+ LevelUpPhase.ClassFeatures else withSpells
@@ -230,25 +230,24 @@ object LevelUpScreen extends Screen {
     else None
   }
 
-  private def choicesAtLevel(cls: DndClass, level: Int): List[LevelChoice] =
-    LevelSummary.forClassAtLevel(cls, level).choices.filterNot(_ == LevelChoice.ChooseSubclass)
+  private def grantChoicesAtLevel(cls: DndClass, level: Int): List[FeatureGrant] =
+    LevelSummary.forClassAtLevel(cls, level).grantChoices.filterNot { case FeatureGrant.SubclassGate() => true; case _ => false }
 
   private def extraSkillChoiceAtLevel(cls: DndClass, level: Int): (Int, Set[Skill]) =
-    choicesAtLevel(cls, level).collectFirst { case LevelChoice.ChooseExtraSkills(count, pool) => (count, pool) }
+    grantChoicesAtLevel(cls, level).collectFirst { case FeatureGrant.ExtraSkillsChoice(count, pool) => (count, pool) }
       .getOrElse((0, Set.empty))
 
   private def hasFightingStyleChoice(cls: DndClass, level: Int): Boolean =
-    choicesAtLevel(cls, level).contains(LevelChoice.ChooseFightingStyle)
+    grantChoicesAtLevel(cls, level).exists { case FeatureGrant.FightingStyleChoice() => true; case _ => false }
 
   private def expertiseCountAtLevel(cls: DndClass, level: Int): Int =
-    choicesAtLevel(cls, level).collectFirst { case LevelChoice.ChooseExpertise(count) => count }
-      .getOrElse(0)
+    ClassProgression.expertiseCountFromGrants(grantChoicesAtLevel(cls, level))
 
   private def hasLandTypeChoice(cls: DndClass, level: Int): Boolean =
-    choicesAtLevel(cls, level).contains(LevelChoice.ChooseLandType)
+    grantChoicesAtLevel(cls, level).exists { case FeatureGrant.LandTypeChoice() => true; case _ => false }
 
   private def hasHunterPreyChoice(cls: DndClass, level: Int): Boolean =
-    choicesAtLevel(cls, level).contains(LevelChoice.ChooseHunterPrey)
+    grantChoicesAtLevel(cls, level).exists { case FeatureGrant.HunterPreyChoice() => true; case _ => false }
 
   private def phaseStepLabel(phase: LevelUpPhase): String =
     phase match {

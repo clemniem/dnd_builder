@@ -1,9 +1,9 @@
 package dndbuilder.dnd
 
-/** Aggregate of everything that changes at a given class level (features, choices, spells, subclass). */
+/** Aggregate of everything that changes at a given class level (features, choice grants, spells, subclass). */
 final case class LevelSummary(
-    features: List[ClassFeature],
-    choices: List[LevelChoice],
+    features: List[Feature],
+    grantChoices: List[FeatureGrant],
     spellProgression: Option[SpellSlotRow],
     subclassEligible: Option[Subclass]
 )
@@ -15,8 +15,8 @@ object LevelSummary {
     val sub = if level >= 3 then Subclass.forClass(cls) else None
     val subclassFeatures = sub.toList.flatMap(_.features.getOrElse(level, Nil))
     LevelSummary(
-      features = gain.features ++ subclassFeatures,
-      choices = gain.choices,
+      features = ClassProgression.featuresFromGain(gain) ++ subclassFeatures,
+      grantChoices = ClassProgression.grantChoicesAtLevel(gain),
       spellProgression = SpellProgression.forClass(cls, level),
       subclassEligible = sub
     )

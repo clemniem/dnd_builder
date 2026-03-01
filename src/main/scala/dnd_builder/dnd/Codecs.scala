@@ -119,9 +119,6 @@ object Codecs {
   given Encoder[FullCasterVariant] = mkEncoder(_.toString)
   given Decoder[FullCasterVariant] = mkDecoder(FullCasterVariant.values, _.toString)
 
-  given Encoder[ClassFeature] = Encoder.forProduct3("name", "description", "uses")(f => (f.name, f.description, f.uses))
-  given Decoder[ClassFeature] = Decoder.forProduct3("name", "description", "uses")(ClassFeature.apply)
-
   given Encoder[Subclass] = Encoder.encodeString.contramap(_.name)
   given Decoder[Subclass] = Decoder.decodeString.emap { s =>
     Subclass.byName(s).toRight(s"Unknown subclass: $s")
@@ -176,6 +173,57 @@ object Codecs {
       range          <- c.downField("range").as[String]
       sourceLabel    <- c.downField("sourceLabel").as[String]
     } yield AttackGrant(name, kind, baseDamageDice, damageType, delivery, diceScaling, usesPerLR, range, sourceLabel)
+  }
+
+  given Encoder[FeatureGrant] = Encoder.instance {
+    case FeatureGrant.SkillChoice(c, p)           => Json.obj("type" -> "SkillChoice".asJson, "count" -> c.asJson, "pool" -> p.asJson)
+    case FeatureGrant.ExpertiseChoice(c)          => Json.obj("type" -> "ExpertiseChoice".asJson, "count" -> c.asJson)
+    case FeatureGrant.Attack(g)                   => Json.obj("type" -> "Attack".asJson, "grant" -> g.asJson)
+    case FeatureGrant.WeaponMasteryChoice(c)      => Json.obj("type" -> "WeaponMasteryChoice".asJson, "count" -> c.asJson)
+    case FeatureGrant.FightingStyleChoice()       => Json.obj("type" -> "FightingStyleChoice".asJson)
+    case FeatureGrant.ACFormula(ab)              => Json.obj("type" -> "ACFormula".asJson, "abilities" -> ab.asJson)
+    case FeatureGrant.SpellChoice(c, lv, list)    => Json.obj("type" -> "SpellChoice".asJson, "count" -> c.asJson, "level" -> lv.asJson, "list" -> list.asJson)
+    case FeatureGrant.HalfProfUnproficientChecks() => Json.obj("type" -> "HalfProfUnproficientChecks".asJson)
+    case FeatureGrant.InitiativeBonus()           => Json.obj("type" -> "InitiativeBonus".asJson)
+    case FeatureGrant.SubclassGate()              => Json.obj("type" -> "SubclassGate".asJson)
+    case FeatureGrant.DivineOrderChoice()          => Json.obj("type" -> "DivineOrderChoice".asJson)
+    case FeatureGrant.PrimalOrderChoice()         => Json.obj("type" -> "PrimalOrderChoice".asJson)
+    case FeatureGrant.EldritchInvocationChoice()   => Json.obj("type" -> "EldritchInvocationChoice".asJson)
+    case FeatureGrant.LandTypeChoice()            => Json.obj("type" -> "LandTypeChoice".asJson)
+    case FeatureGrant.HunterPreyChoice()          => Json.obj("type" -> "HunterPreyChoice".asJson)
+    case FeatureGrant.ExtraSkillsChoice(c, p)     => Json.obj("type" -> "ExtraSkillsChoice".asJson, "count" -> c.asJson, "pool" -> p.asJson)
+  }
+  given Decoder[FeatureGrant] = Decoder.instance { c =>
+    c.downField("type").as[String].flatMap {
+      case "SkillChoice"             => Decoder.forProduct2("count", "pool")(FeatureGrant.SkillChoice.apply).tryDecode(c)
+      case "ExpertiseChoice"         => c.downField("count").as[Int].map(FeatureGrant.ExpertiseChoice.apply)
+      case "Attack"                  => c.downField("grant").as[AttackGrant].map(FeatureGrant.Attack.apply)
+      case "WeaponMasteryChoice"     => c.downField("count").as[Int].map(FeatureGrant.WeaponMasteryChoice.apply)
+      case "FightingStyleChoice"    => Right(FeatureGrant.FightingStyleChoice())
+      case "ACFormula"              => c.downField("abilities").as[List[Ability]].map(FeatureGrant.ACFormula.apply)
+      case "SpellChoice"            => Decoder.forProduct3("count", "level", "list")(FeatureGrant.SpellChoice.apply).tryDecode(c)
+      case "HalfProfUnproficientChecks" => Right(FeatureGrant.HalfProfUnproficientChecks())
+      case "InitiativeBonus"        => Right(FeatureGrant.InitiativeBonus())
+      case "SubclassGate"           => Right(FeatureGrant.SubclassGate())
+      case "DivineOrderChoice"      => Right(FeatureGrant.DivineOrderChoice())
+      case "PrimalOrderChoice"      => Right(FeatureGrant.PrimalOrderChoice())
+      case "EldritchInvocationChoice" => Right(FeatureGrant.EldritchInvocationChoice())
+      case "LandTypeChoice"         => Right(FeatureGrant.LandTypeChoice())
+      case "HunterPreyChoice"       => Right(FeatureGrant.HunterPreyChoice())
+      case "ExtraSkillsChoice"      => Decoder.forProduct2("count", "pool")(FeatureGrant.ExtraSkillsChoice.apply).tryDecode(c)
+      case other                    => Left(DecodingFailure(s"Unknown FeatureGrant: $other", c.history))
+    }
+  }
+
+  given Encoder[Feature] = Encoder.forProduct5("id", "name", "description", "uses", "grants")(f => (f.id, f.name, f.description, f.uses, f.grants))
+  given Decoder[Feature] = Decoder.instance { c =>
+    for {
+      name        <- c.downField("name").as[String]
+      description <- c.downField("description").as[String]
+      uses        <- c.downField("uses").as[Option[Int]]
+      id          <- c.downField("id").as[Option[String]].map(_.getOrElse(name.toLowerCase.replace(' ', '-')))
+      grants      <- c.downField("grants").as[Option[List[FeatureGrant]]].map(_.getOrElse(Nil))
+    } yield Feature(id, name, description, uses, grants)
   }
 
   given Encoder[Modifier] = Encoder.encodeInt.contramap(_.toInt)

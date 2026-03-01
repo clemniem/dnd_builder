@@ -202,8 +202,8 @@ object CharacterValidator {
       level: Int,
       featureSelections: ClassFeatureSelections
   ): List[ValidationError] = {
-    val choices = ClassProgression.choicesUpToLevel(dndClass, level)
-    if ClassProgression.satisfiesChoices(choices, featureSelections) then Nil
+    val grants = ClassProgression.grantChoicesUpToLevel(dndClass, level)
+    if ClassProgression.satisfiesGrantChoices(grants, featureSelections) then Nil
     else List(ValidationError.FeatureChoicesNotSatisfied)
   }
 

@@ -33,9 +33,8 @@ object BackgroundScreen extends Screen {
     case BackgroundMsg.Next =>
       model.selectedBackground match {
         case Some(bg) =>
-          val grants = FeatureGrants.fromSpecies(model.draft.resolvedSpecies) ++
-            FeatureGrants.fromBackground(bg) ++
-            FeatureGrants.fromClass(model.draft.resolvedClass)
+          val draftWithBg = model.draft.copy(background = Some(bg))
+          val grants = FeatureGrants.allGrantsForDraft(draftWithBg)
           val updated = model.draft.copy(
             background = Some(bg),
             chosenExtraLanguages = model.chosenExtraLanguages,

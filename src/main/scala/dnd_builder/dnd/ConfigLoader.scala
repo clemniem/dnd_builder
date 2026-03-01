@@ -6,16 +6,14 @@ import io.circe.syntax.*
 object ConfigLoader {
   import Codecs.given
 
-  given dndClassContentEncoder: Encoder[DndClass] = Encoder.forProduct20(
+  given dndClassContentEncoder: Encoder[DndClass] = Encoder.forProduct16(
     "name", "hitDie", "primaryAbilities", "savingThrows", "armorProficiencies", "weaponProficiencies",
     "skillPool", "numSkillChoices", "spellcastingAbility", "spellCasterType", "fullCasterVariant",
-    "level1Features", "description", "recommendedScores", "weaponMasteryCount", "extraLanguageChoices",
-    "unarmoredDefenseAbility", "usesSpellbook", "jackOfAllTradesAtLevel", "grantedAttacks"
+    "level1Features", "description", "recommendedScores", "extraLanguageChoices", "usesSpellbook"
   )(d => (
     d.name, d.hitDie, d.primaryAbilities, d.savingThrows, d.armorProficiencies, d.weaponProficiencies,
     d.skillPool, d.numSkillChoices, d.spellcastingAbility, d.spellCasterType, d.fullCasterVariant,
-    d.level1Features, d.description, d.recommendedScores, d.weaponMasteryCount, d.extraLanguageChoices,
-    d.unarmoredDefenseAbility, d.usesSpellbook, d.jackOfAllTradesAtLevel, d.grantedAttacks
+    d.level1Features, d.description, d.recommendedScores, d.extraLanguageChoices, d.usesSpellbook
   ))
 
   given dndClassContentDecoder: Decoder[DndClass] = Decoder.instance { c =>
@@ -31,15 +29,11 @@ object ConfigLoader {
       spellcastingAbility     <- c.downField("spellcastingAbility").as[Option[Ability]]
       spellCasterType         <- c.downField("spellCasterType").as[SpellCasterType]
       fullCasterVariant       <- c.downField("fullCasterVariant").as[Option[FullCasterVariant]]
-      level1Features         <- c.downField("level1Features").as[List[ClassFeature]]
+      level1Features         <- c.downField("level1Features").as[List[Feature]]
       description             <- c.downField("description").as[String]
       recommendedScores      <- c.downField("recommendedScores").as[AbilityScores]
-      weaponMasteryCount     <- c.downField("weaponMasteryCount").as[Int]
       extraLanguageChoices   <- c.downField("extraLanguageChoices").as[Int]
-      unarmoredDefenseAbility <- c.downField("unarmoredDefenseAbility").as[Option[Ability]]
       usesSpellbook          <- c.downField("usesSpellbook").as[Boolean]
-      jackOfAllTradesAtLevel <- c.downField("jackOfAllTradesAtLevel").as[Option[Int]]
-      grantedAttacks         <- c.downField("grantedAttacks").as[Option[List[AttackGrant]]].map(_.getOrElse(Nil))
     } yield DndClass(
       name = name,
       hitDie = hitDie,
@@ -55,12 +49,8 @@ object ConfigLoader {
       level1Features = level1Features,
       description = description,
       recommendedScores = recommendedScores,
-      weaponMasteryCount = weaponMasteryCount,
       extraLanguageChoices = extraLanguageChoices,
-      unarmoredDefenseAbility = unarmoredDefenseAbility,
-      usesSpellbook = usesSpellbook,
-      jackOfAllTradesAtLevel = jackOfAllTradesAtLevel,
-      grantedAttacks = grantedAttacks
+      usesSpellbook = usesSpellbook
     )
   }
 

@@ -80,7 +80,7 @@ object LevelSelectScreen extends Screen {
       cls: DndClass,
       lvl: Int,
       prog: Option[SpellSlotRow],
-      features: List[ClassFeature]
+      features: List[Feature]
   ): Html[Msg] = {
     val conMod = 0
     val hp = cls.hitDie.sides + conMod + (if lvl > 1 then (lvl - 1) * (cls.hitDie.avgGain + conMod) else 0)

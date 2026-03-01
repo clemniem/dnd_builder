@@ -58,10 +58,19 @@ final case class Character(
     math.max(1, base + subsequent + speciesBonus)
   }
 
+  /** All feature grants from class, species, and origin feat (for resolution). */
+  private def allGrants: List[FeatureGrant] =
+    FeatureGrants.grantsFromClass(primaryClass, primaryClassLevel) ++
+      FeatureGrants.grantsFromSpecies(species) ++
+      FeatureGrants.grantsFromOriginFeat(background.feat)
+
+  private def hasInitiativeBonus: Boolean =
+    allGrants.exists { case FeatureGrant.InitiativeBonus() => true; case _ => false }
+
   def initiative: Modifier = {
     val dexMod = modifier(Ability.Dexterity)
-    val alertBonus = if background.feat.grantsInitiativeBonus then proficiencyBonus else Modifier.zero
-    val jackBonus = if hasJackOfAllTrades && !background.feat.grantsInitiativeBonus then Modifier(proficiencyBonus.toInt / 2) else Modifier.zero
+    val alertBonus = if hasInitiativeBonus then proficiencyBonus else Modifier.zero
+    val jackBonus = if hasJackOfAllTrades && !hasInitiativeBonus then Modifier(proficiencyBonus.toInt / 2) else Modifier.zero
     dexMod + alertBonus + jackBonus
   }
 
@@ -84,7 +93,7 @@ final case class Character(
 
   /** True if character has Jack of All Trades (half proficiency on non-proficient checks). */
   def hasJackOfAllTrades: Boolean =
-    primaryClass.jackOfAllTradesAtLevel.exists(_ <= primaryClassLevel)
+    allGrants.exists { case FeatureGrant.HalfProfUnproficientChecks() => true; case _ => false }
 
   def skillBonus(skill: Skill): Modifier = {
     val abilityMod = modifier(skill.ability)
@@ -108,7 +117,8 @@ final case class Character(
     val shieldBonus = if equippedShield then Armor.shieldACBonus else 0
     equippedArmor match {
       case None =>
-        val unarmoredBonus = primaryClass.unarmoredDefenseAbility.fold(0)(a => modifier(a).toInt)
+        val unarmoredBonus = allGrants.collectFirst { case FeatureGrant.ACFormula(abilities) => abilities }
+          .fold(0)(_.map(a => modifier(a).toInt).sum)
         val unarmored = 10 + dexMod.toInt + unarmoredBonus
         unarmored + shieldBonus
       case Some(armor) =>
