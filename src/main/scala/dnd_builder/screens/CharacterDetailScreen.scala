@@ -18,7 +18,7 @@ object CharacterDetailScreen extends Screen {
       case Some(ScreenOutput.ViewCharacter(c)) => c
       case _ =>
         StoredCharacter("?", Character(
-          "Unknown", Human, List(ClassLevel(Barbarian, 1)), Acolyte,
+          "Unknown", Human, List(ClassLevel(DndClass.Barbarian, 1)), Acolyte,
           AbilityScores.default,
           BackgroundBonus.ThreePlusOnes(Ability.Intelligence, Ability.Wisdom, Ability.Charisma),
           Set.empty, None, false, Nil, Nil, Nil, Nil, ClassFeatureSelections.empty, None, Human.languages, Coins.empty, Nil, Nil, Nil

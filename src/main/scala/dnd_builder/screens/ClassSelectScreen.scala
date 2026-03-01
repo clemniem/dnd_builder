@@ -44,7 +44,7 @@ object ClassSelectScreen extends Screen {
       h1(`class` := "screen-title")(text("Choose Your Class")),
       p(`class` := "screen-intro")(text("Select a class to define your character's abilities and role.")),
       div(`class` := "card-grid")(
-        DndClass.all.map(cls => classCard(cls, model.selected.contains(cls)))*
+        model.draft.ruleSet.classes.map(cls => classCard(cls, model.selected.contains(cls)))*
       )
     )
 

@@ -26,81 +26,81 @@ object LevelChoice {
 object ClassProgression {
 
   private val level1Entries: List[((String, Int), LevelGain)] = List(
-    (Barbarian.name, 1) -> LevelGain(Barbarian.level1Features, List(LevelChoice.ChooseWeaponMastery(2))),
-    (Bard.name, 1) -> LevelGain(Bard.level1Features, Nil),
-    (Cleric.name, 1) -> LevelGain(Cleric.level1Features, List(LevelChoice.ChooseDivineOrder)),
-    (Druid.name, 1) -> LevelGain(Druid.level1Features, List(LevelChoice.ChoosePrimalOrder)),
-    (Fighter.name, 1) -> LevelGain(Fighter.level1Features, List(LevelChoice.ChooseFightingStyle, LevelChoice.ChooseWeaponMastery(3))),
-    (Monk.name, 1) -> LevelGain(Monk.level1Features, Nil),
-    (Paladin.name, 1) -> LevelGain(Paladin.level1Features, List(LevelChoice.ChooseWeaponMastery(2))),
-    (Ranger.name, 1) -> LevelGain(Ranger.level1Features, List(LevelChoice.ChooseWeaponMastery(2))),
-    (Rogue.name, 1) -> LevelGain(Rogue.level1Features, List(LevelChoice.ChooseExpertise(2), LevelChoice.ChooseWeaponMastery(2))),
-    (Sorcerer.name, 1) -> LevelGain(Sorcerer.level1Features, Nil),
-    (Warlock.name, 1) -> LevelGain(Warlock.level1Features, List(LevelChoice.ChooseEldritchInvocation)),
-    (Wizard.name, 1) -> LevelGain(Wizard.level1Features, Nil)
+    (DndClass.Barbarian.name, 1) -> LevelGain(DndClass.Barbarian.level1Features, List(LevelChoice.ChooseWeaponMastery(2))),
+    (DndClass.Bard.name, 1) -> LevelGain(DndClass.Bard.level1Features, Nil),
+    (DndClass.Cleric.name, 1) -> LevelGain(DndClass.Cleric.level1Features, List(LevelChoice.ChooseDivineOrder)),
+    (DndClass.Druid.name, 1) -> LevelGain(DndClass.Druid.level1Features, List(LevelChoice.ChoosePrimalOrder)),
+    (DndClass.Fighter.name, 1) -> LevelGain(DndClass.Fighter.level1Features, List(LevelChoice.ChooseFightingStyle, LevelChoice.ChooseWeaponMastery(3))),
+    (DndClass.Monk.name, 1) -> LevelGain(DndClass.Monk.level1Features, Nil),
+    (DndClass.Paladin.name, 1) -> LevelGain(DndClass.Paladin.level1Features, List(LevelChoice.ChooseWeaponMastery(2))),
+    (DndClass.Ranger.name, 1) -> LevelGain(DndClass.Ranger.level1Features, List(LevelChoice.ChooseWeaponMastery(2))),
+    (DndClass.Rogue.name, 1) -> LevelGain(DndClass.Rogue.level1Features, List(LevelChoice.ChooseExpertise(2), LevelChoice.ChooseWeaponMastery(2))),
+    (DndClass.Sorcerer.name, 1) -> LevelGain(DndClass.Sorcerer.level1Features, Nil),
+    (DndClass.Warlock.name, 1) -> LevelGain(DndClass.Warlock.level1Features, List(LevelChoice.ChooseEldritchInvocation)),
+    (DndClass.Wizard.name, 1) -> LevelGain(DndClass.Wizard.level1Features, Nil)
   )
 
   private val level2Entries: List[((String, Int), LevelGain)] = List(
-    (Barbarian.name, 2) -> LevelGain(
+    (DndClass.Barbarian.name, 2) -> LevelGain(
       List(
         ClassFeature("Danger Sense", "Advantage on DEX saves you can see. Not Blinded, Deafened, or Incapacitated.", None),
         ClassFeature("Reckless Attack", "First attack on your turn: choose Advantage on STR attacks this turn; attacks against you also have Advantage.", None)
       ), Nil),
-    (Bard.name, 2) -> LevelGain(
+    (DndClass.Bard.name, 2) -> LevelGain(
       List(
         ClassFeature("Expertise", "Choose 2 skill proficiencies to gain Expertise (double proficiency bonus).", None),
         ClassFeature("Jack of All Trades", "Add half your proficiency bonus (round down) to ability checks you are not proficient in.", None)
       ), List(LevelChoice.ChooseExpertise(2))),
-    (Cleric.name, 2) -> LevelGain(
+    (DndClass.Cleric.name, 2) -> LevelGain(
       List(
         ClassFeature("Channel Divinity", "2 uses per Short/Long Rest. Turn Undead: undead within 30ft must save or be turned for 1 min.", Some(2))
       ), Nil),
-    (Druid.name, 2) -> LevelGain(
+    (DndClass.Druid.name, 2) -> LevelGain(
       List(
         ClassFeature("Wild Shape", "Bonus Action to magically assume a beast form. Uses = proficiency bonus per Long Rest.", None),
         ClassFeature("Wild Companion", "Expend a Wild Shape use to cast Find Familiar without material components.", None)
       ), Nil),
-    (Fighter.name, 2) -> LevelGain(
+    (DndClass.Fighter.name, 2) -> LevelGain(
       List(
         ClassFeature("Action Surge", "1 use per Short/Long Rest. On your turn, take one additional Action.", Some(1)),
         ClassFeature("Tactical Mind", "When you fail an ability check, expend a Second Wind use to add 1d10 to the roll.", None)
       ), Nil),
-    (Monk.name, 2) -> LevelGain(
+    (DndClass.Monk.name, 2) -> LevelGain(
       List(
         ClassFeature("Monk's Focus", "2 Focus Points per Short/Long Rest. Spend points for Flurry of Blows (1), Patient Defense (1), or Step of the Wind (1).", Some(2)),
         ClassFeature("Unarmored Movement", "+10ft speed when not wearing armor or wielding a shield.", None)
       ), Nil),
-    (Paladin.name, 2) -> LevelGain(
+    (DndClass.Paladin.name, 2) -> LevelGain(
       List(
         ClassFeature("Fighting Style", "Choose a Fighting Style feat.", None),
         ClassFeature("Paladin's Smite", "When you hit with a melee weapon, expend a spell slot to deal 2d8 extra Radiant damage (+1d8 per slot level above 1st).", None)
       ), List(LevelChoice.ChooseFightingStyle)),
-    (Ranger.name, 2) -> LevelGain(
+    (DndClass.Ranger.name, 2) -> LevelGain(
       List(
         ClassFeature("Deft Explorer", "Choose one of your skill proficiencies. Your proficiency bonus is doubled for ability checks using that skill.", None),
         ClassFeature("Fighting Style", "Choose a Fighting Style feat.", None)
       ), List(LevelChoice.ChooseExpertise(1), LevelChoice.ChooseFightingStyle)),
-    (Rogue.name, 2) -> LevelGain(
+    (DndClass.Rogue.name, 2) -> LevelGain(
       List(
         ClassFeature("Cunning Action", "Bonus Action each turn: Dash, Disengage, or Hide.", None)
       ), Nil),
-    (Sorcerer.name, 2) -> LevelGain(
+    (DndClass.Sorcerer.name, 2) -> LevelGain(
       List(
         ClassFeature("Font of Magic", "2 Sorcery Points per Long Rest. Convert spell slots to points or points to slots.", Some(2)),
         ClassFeature("Metamagic", "Choose 2 Metamagic options. Spend Sorcery Points to twist spells.", None)
       ), Nil),
-    (Warlock.name, 2) -> LevelGain(
+    (DndClass.Warlock.name, 2) -> LevelGain(
       List(
         ClassFeature("Magical Cunning", "If all Pact Magic slots are expended, perform a 1-minute ritual to recover half (round up). Once per Long Rest.", Some(1))
       ), Nil),
-    (Wizard.name, 2) -> LevelGain(
+    (DndClass.Wizard.name, 2) -> LevelGain(
       List(
         ClassFeature("Scholar", "Choose one of your skill proficiencies. Your proficiency bonus is doubled for ability checks using that skill.", None)
       ), List(LevelChoice.ChooseExpertise(1)))
   )
 
   private val level3Entries: List[((String, Int), LevelGain)] = List(
-    (Barbarian.name, 3) -> LevelGain(
+    (DndClass.Barbarian.name, 3) -> LevelGain(
       List(
         ClassFeature(
           "Primal Knowledge",
@@ -108,16 +108,16 @@ object ClassProgression {
           None
         )
       ),
-      List(LevelChoice.ChooseSubclass, LevelChoice.ChooseExtraSkills(1, Barbarian.skillPool))
+      List(LevelChoice.ChooseSubclass, LevelChoice.ChooseExtraSkills(1, DndClass.Barbarian.skillPool))
     ),
-    (Bard.name, 3) -> LevelGain(
+    (DndClass.Bard.name, 3) -> LevelGain(
       Nil,
       List(LevelChoice.ChooseSubclass, LevelChoice.ChooseExtraSkills(3, Skill.values.toSet))
     ),
-    (Cleric.name, 3) -> LevelGain(Nil, List(LevelChoice.ChooseSubclass)),
-    (Druid.name, 3) -> LevelGain(Nil, List(LevelChoice.ChooseSubclass, LevelChoice.ChooseLandType)),
-    (Fighter.name, 3) -> LevelGain(Nil, List(LevelChoice.ChooseSubclass)),
-    (Monk.name, 3) -> LevelGain(
+    (DndClass.Cleric.name, 3) -> LevelGain(Nil, List(LevelChoice.ChooseSubclass)),
+    (DndClass.Druid.name, 3) -> LevelGain(Nil, List(LevelChoice.ChooseSubclass, LevelChoice.ChooseLandType)),
+    (DndClass.Fighter.name, 3) -> LevelGain(Nil, List(LevelChoice.ChooseSubclass)),
+    (DndClass.Monk.name, 3) -> LevelGain(
       List(
         ClassFeature(
           "Deflect Attacks",
@@ -127,7 +127,7 @@ object ClassProgression {
       ),
       List(LevelChoice.ChooseSubclass)
     ),
-    (Paladin.name, 3) -> LevelGain(
+    (DndClass.Paladin.name, 3) -> LevelGain(
       List(
         ClassFeature(
           "Channel Divinity",
@@ -137,8 +137,8 @@ object ClassProgression {
       ),
       List(LevelChoice.ChooseSubclass)
     ),
-    (Ranger.name, 3) -> LevelGain(Nil, List(LevelChoice.ChooseSubclass, LevelChoice.ChooseHunterPrey)),
-    (Rogue.name, 3) -> LevelGain(
+    (DndClass.Ranger.name, 3) -> LevelGain(Nil, List(LevelChoice.ChooseSubclass, LevelChoice.ChooseHunterPrey)),
+    (DndClass.Rogue.name, 3) -> LevelGain(
       List(
         ClassFeature(
           "Steady Aim",
@@ -148,9 +148,9 @@ object ClassProgression {
       ),
       List(LevelChoice.ChooseSubclass)
     ),
-    (Sorcerer.name, 3) -> LevelGain(Nil, List(LevelChoice.ChooseSubclass)),
-    (Warlock.name, 3) -> LevelGain(Nil, List(LevelChoice.ChooseSubclass)),
-    (Wizard.name, 3) -> LevelGain(Nil, List(LevelChoice.ChooseSubclass))
+    (DndClass.Sorcerer.name, 3) -> LevelGain(Nil, List(LevelChoice.ChooseSubclass)),
+    (DndClass.Warlock.name, 3) -> LevelGain(Nil, List(LevelChoice.ChooseSubclass)),
+    (DndClass.Wizard.name, 3) -> LevelGain(Nil, List(LevelChoice.ChooseSubclass))
   )
 
   private lazy val registry: Map[(String, Int), LevelGain] =

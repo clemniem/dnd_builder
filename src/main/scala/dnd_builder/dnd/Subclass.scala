@@ -22,7 +22,7 @@ object Subclass {
 
   case object PathOfTheBerserker extends Subclass {
     val name         = "Path of the Berserker"
-    val dndClass     = Barbarian
+    val dndClass     = DndClass.Barbarian
     val description = "Channel Rage into violent fury. Thrill in the chaos of battle."
     val features    = level3Only(
       List(
@@ -38,7 +38,7 @@ object Subclass {
 
   case object CollegeOfLore extends Subclass {
     val name         = "College of Lore"
-    val dndClass     = Bard
+    val dndClass     = DndClass.Bard
     val description = "Plumb the depths of magical knowledge. Collect spells and secrets from diverse sources."
     val features    = level3Only(
       List(
@@ -59,7 +59,7 @@ object Subclass {
 
   case object LifeDomain extends Subclass {
     val name         = "Life Domain"
-    val dndClass     = Cleric
+    val dndClass     = DndClass.Cleric
     val description = "Soothe the hurts of the world. Masters of healing using positive energy."
     val features    = level3Only(
       List(
@@ -85,7 +85,7 @@ object Subclass {
 
   case object CircleOfTheLand extends Subclass {
     val name         = "Circle of the Land"
-    val dndClass     = Druid
+    val dndClass     = DndClass.Druid
     val description = "Mystics and sages who safeguard ancient knowledge. Connection to the natural world."
     val features    = level3Only(
       List(
@@ -106,7 +106,7 @@ object Subclass {
 
   case object Champion extends Subclass {
     val name         = "Champion"
-    val dndClass     = Fighter
+    val dndClass     = DndClass.Fighter
     val description = "Physical excellence in combat. Devastating blows, withstand peril, garner glory."
     val features    = level3Only(
       List(
@@ -127,7 +127,7 @@ object Subclass {
 
   case object WarriorOfTheOpenHand extends Subclass {
     val name         = "Warrior of the Open Hand"
-    val dndClass     = Monk
+    val dndClass     = DndClass.Monk
     val description = "Master unarmed combat techniques. Push, trip, and manipulate energy to protect yourself."
     val features    = level3Only(
       List(
@@ -143,7 +143,7 @@ object Subclass {
 
   case object OathOfDevotion extends Subclass {
     val name         = "Oath of Devotion"
-    val dndClass     = Paladin
+    val dndClass     = DndClass.Paladin
     val description = "Uphold the ideals of justice and order. Knight in shining armor."
     val features    = level3Only(
       List(
@@ -164,7 +164,7 @@ object Subclass {
 
   case object Hunter extends Subclass {
     val name         = "Hunter"
-    val dndClass     = Ranger
+    val dndClass     = DndClass.Ranger
     val description = "Stalk prey in the wilds. Protect nature and people from destruction."
     val features    = level3Only(
       List(
@@ -185,7 +185,7 @@ object Subclass {
 
   case object Thief extends Subclass {
     val name         = "Thief"
-    val dndClass     = Rogue
+    val dndClass     = DndClass.Rogue
     val description = "Burglar, treasure hunter, explorer. Agility, stealth, and magic item use."
     val features    = level3Only(
       List(
@@ -206,7 +206,7 @@ object Subclass {
 
   case object DraconicSorcery extends Subclass {
     val name         = "Draconic Sorcery"
-    val dndClass     = Sorcerer
+    val dndClass     = DndClass.Sorcerer
     val description = "Innate magic from the gift of a dragon. Draconic resilience and elemental affinity."
     val features    = level3Only(
       List(
@@ -227,7 +227,7 @@ object Subclass {
 
   case object FiendPatron extends Subclass {
     val name         = "The Fiend"
-    val dndClass     = Warlock
+    val dndClass     = DndClass.Warlock
     val description = "Your pact draws on the Lower Planes. Demons, archdevils, or other mighty fiends."
     val features    = level3Only(
       List(
@@ -248,7 +248,7 @@ object Subclass {
 
   case object SchoolOfEvocation extends Subclass {
     val name         = "School of Evocation"
-    val dndClass     = Wizard
+    val dndClass     = DndClass.Wizard
     val description = "Magic that creates powerful elemental effects: cold, flame, thunder, lightning, acid."
     val features    = level3Only(
       List(

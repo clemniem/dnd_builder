@@ -113,6 +113,15 @@ object Codecs {
   given Encoder[HunterPreyChoice] = mkEncoder(_.label)
   given Decoder[HunterPreyChoice] = mkDecoder(HunterPreyChoice.values, _.label)
 
+  given Encoder[SpellCasterType] = mkEncoder(_.toString)
+  given Decoder[SpellCasterType] = mkDecoder(SpellCasterType.values, _.toString)
+
+  given Encoder[FullCasterVariant] = mkEncoder(_.toString)
+  given Decoder[FullCasterVariant] = mkDecoder(FullCasterVariant.values, _.toString)
+
+  given Encoder[ClassFeature] = Encoder.forProduct3("name", "description", "uses")(f => (f.name, f.description, f.uses))
+  given Decoder[ClassFeature] = Decoder.forProduct3("name", "description", "uses")(ClassFeature.apply)
+
   given Encoder[Subclass] = Encoder.encodeString.contramap(_.name)
   given Decoder[Subclass] = Decoder.decodeString.emap { s =>
     Subclass.byName(s).toRight(s"Unknown subclass: $s")

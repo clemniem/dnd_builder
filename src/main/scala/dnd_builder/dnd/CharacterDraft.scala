@@ -2,6 +2,7 @@ package dndbuilder.dnd
 
 /** Accumulates choices across all creation-flow screens. Add new fields here (not new ScreenOutput variants) when extending the creation flow. */
 case class CharacterDraft(
+    ruleSet: RuleSet,
     species: Option[Species],
     dndClass: Option[DndClass],
     level: Option[Int],
@@ -24,7 +25,7 @@ case class CharacterDraft(
     attackGrants: List[AttackGrant]
 ) {
   /** Fallback when class not yet chosen; use instead of getOrElse(Barbarian) etc. */
-  def resolvedClass: DndClass = dndClass.getOrElse(DndClass.all.head)
+  def resolvedClass: DndClass = dndClass.getOrElse(ruleSet.classes.head)
   /** Fallback when species not yet chosen; use instead of getOrElse(Human) etc. */
   def resolvedSpecies: Species = species.getOrElse(Human)
   /** Fallback when background not yet chosen; use instead of getOrElse(Acolyte) etc. */
@@ -33,6 +34,7 @@ case class CharacterDraft(
 
 object CharacterDraft {
   val empty: CharacterDraft = CharacterDraft(
+    RuleSet.default,
     None, None, Some(1), None, None, None, Set.empty,
     None, false, Nil, Nil, Nil, Nil,
     ClassFeatureSelections.empty, None, Set.empty, Coins.empty,

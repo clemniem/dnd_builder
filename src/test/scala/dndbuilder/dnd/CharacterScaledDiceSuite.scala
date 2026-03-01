@@ -21,7 +21,7 @@ class CharacterScaledDiceSuite extends FunSuite {
     Character(
       "Test",
       Dwarf,
-      List(ClassLevel(Fighter, 1)),
+      List(ClassLevel(DndClass.Fighter, 1)),
       Soldier,
       AbilityScores(Score(10), Score(10), Score(10), Score(10), Score(10), Score(10)),
       BackgroundBonus.TwoPlusOne(Ability.Strength, Ability.Constitution),

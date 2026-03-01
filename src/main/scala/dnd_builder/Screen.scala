@@ -26,6 +26,7 @@ object ScreenId {
   case object GalleryId     extends ScreenId { val name = "gallery"; val title = "My Characters" }
   case object DetailId      extends ScreenId { val name = "detail"; val title = "Character Detail" }
   case object LevelUpId     extends ScreenId { val name = "level-up"; val title = "Level Up" }
+  case object RuleSetsId    extends ScreenId { val name = "rulesets"; val title = "Manage RuleSets" }
 }
 
 sealed trait ScreenOutput

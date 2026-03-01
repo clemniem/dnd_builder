@@ -72,7 +72,7 @@ object CharacterSheetPdf {
     val testChar = Character(
       s"Thorn Ironfist v$testPdfVersion",
       dragonbornRed,
-      List(ClassLevel(Cleric, 1)),
+      List(ClassLevel(DndClass.Cleric, 1)),
       Soldier,
       AbilityScores(Score(15), Score(14), Score(13), Score(8), Score(10), Score(12)),
       BackgroundBonus.TwoPlusOne(Ability.Strength, Ability.Constitution),

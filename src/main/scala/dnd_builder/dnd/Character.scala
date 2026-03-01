@@ -67,15 +67,12 @@ final case class Character(
 
   def savingThrowBonus(ability: Ability): Modifier = {
     val mod = modifier(ability)
-    val (st1, st2) = primaryClass.savingThrows
-    if ability == st1 || ability == st2 then mod + proficiencyBonus
+    if primaryClass.savingThrows.contains(ability) then mod + proficiencyBonus
     else mod
   }
 
-  def isProficientInSave(ability: Ability): Boolean = {
-    val (st1, st2) = primaryClass.savingThrows
-    ability == st1 || ability == st2
-  }
+  def isProficientInSave(ability: Ability): Boolean =
+    primaryClass.savingThrows.contains(ability)
 
   def allSkillProficiencies: Set[Skill] =
     background.skillProficiencySet ++ chosenSkills
