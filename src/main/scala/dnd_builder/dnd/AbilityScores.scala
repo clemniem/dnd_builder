@@ -95,4 +95,7 @@ object BackgroundBonus {
   final case class ThreePlusOnes(a1: Ability, a2: Ability, a3: Ability) extends BackgroundBonus {
     def increases: List[(Ability, Int)] = List((a1, 1), (a2, 1), (a3, 1))
   }
+
+  /** Partial allocation (0–3 points) while editing; allows +/− to redistribute. */
+  final case class Flexible(increases: List[(Ability, Int)]) extends BackgroundBonus
 }

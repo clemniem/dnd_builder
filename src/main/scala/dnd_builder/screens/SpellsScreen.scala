@@ -136,10 +136,10 @@ object SpellsScreen extends Screen {
     val remaining = cantrips - model.chosenCantrips.size
     val nextLabel = if spellbookSize > 0 then "Next: Spellbook >"
       else if prepared > 0 then "Next: Spells >"
-      else "Next: Review >"
+      else StepIndicator.nextLabel(8, cls.isSpellcaster)
 
     div(
-      StepNav("< Equipment", SpellsMsg.Back, nextLabel, SpellsMsg.Next, remaining == 0),
+      StepNav(StepIndicator.backLabel(8, cls.isSpellcaster), SpellsMsg.Back, nextLabel, SpellsMsg.Next, remaining == 0),
       h1(`class` := "screen-title")(text("Choose Cantrips")),
       p(`class` := "screen-intro")(
         text(s"Select $cantrips cantrips from the ${cls.name} spell list.")
@@ -192,7 +192,7 @@ object SpellsScreen extends Screen {
         s"Select $prepared spells from the ${cls.name} spell list."
 
     div(
-      StepNav(backLabel, SpellsMsg.Back, "Next: Review >", SpellsMsg.Next, remaining == 0),
+      StepNav(backLabel, SpellsMsg.Back, StepIndicator.nextLabel(8, cls.isSpellcaster), SpellsMsg.Next, remaining == 0),
       h1(`class` := "screen-title")(text(title)),
       p(`class` := "screen-intro")(text(intro)),
       div(`class` := "points-pool", style := "margin-bottom: 1rem;")(

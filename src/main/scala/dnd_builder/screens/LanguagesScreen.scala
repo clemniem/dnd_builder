@@ -72,9 +72,9 @@ object LanguagesScreen extends Screen {
     div(`class` := "screen-container")(
       StepIndicator(step, cls.isSpellcaster),
       StepNav(
-        if cls.isSpellcaster then "< Spells" else "< Class Features",
+        StepIndicator.backLabel(step, cls.isSpellcaster),
         LanguagesMsg.Back,
-        "Next: Review >",
+        StepIndicator.nextLabel(step, cls.isSpellcaster),
         LanguagesMsg.Next,
         canProceed(model)
       ),

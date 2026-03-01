@@ -118,26 +118,16 @@ object AbilityScoresScreen extends Screen {
     val newMap = currentMap.updated(ability, currentMap.getOrElse(ability, 0) + delta)
     val filled = opts.map(a => (a, newMap.getOrElse(a, 0)))
     val total = filled.map(_._2).sum
+    val withPoints = filled.filter(_._2 > 0)
     if total == 3 then
-      filled.filter(_._2 > 0) match {
+      withPoints match {
         case (a1, 2) :: (a2, 1) :: Nil => BackgroundBonus.TwoPlusOne(a1, a2)
         case (a1, 1) :: (a2, 2) :: Nil => BackgroundBonus.TwoPlusOne(a2, a1)
         case (a1, 1) :: (a2, 1) :: (a3, 1) :: Nil => BackgroundBonus.ThreePlusOnes(a1, a2, a3)
-        case _ => current
+        case _ => BackgroundBonus.Flexible(withPoints)
       }
-    else current.increases.toMap.updated(ability, newMap.getOrElse(ability, 0)) match {
-      case m =>
-        val all = opts.map(a => (a, m.getOrElse(a, 0)))
-        all.filter(_._2 > 0) match {
-          case (a1, 2) :: (a2, v2) :: _ if v2 >= 1 => BackgroundBonus.TwoPlusOne(a1, a2)
-          case (a1, v1) :: (a2, 2) :: _ if v1 >= 1 => BackgroundBonus.TwoPlusOne(a2, a1)
-          case items if items.map(_._2).sum == 3 && items.forall(_._2 <= 1) && items.size >= 3 =>
-            val filtered = items.filter(_._2 == 1)
-            if filtered.size == 3 then BackgroundBonus.ThreePlusOnes(filtered(0)._1, filtered(1)._1, filtered(2)._1)
-            else current
-          case _ => current
-        }
-    }
+    else
+      BackgroundBonus.Flexible(withPoints)
   }
 
   def view(model: Model): Html[Msg] = {
@@ -149,7 +139,7 @@ object AbilityScoresScreen extends Screen {
 
     div(`class` := "screen-container")(
       StepIndicator(4, cls.isSpellcaster),
-      StepNav("< Background", AbilityScoresMsg.Back, "Next: Skills >", AbilityScoresMsg.Next, bonusUsed == 3),
+      StepNav(StepIndicator.backLabel(4, cls.isSpellcaster), AbilityScoresMsg.Back, StepIndicator.nextLabel(4, cls.isSpellcaster), AbilityScoresMsg.Next, bonusUsed == 3),
       h1(`class` := "screen-title")(text("Ability Scores")),
       p(`class` := "screen-intro")(text("Assign your ability scores and distribute background bonuses.")),
       div(`class` := "flex-row", style := "margin-bottom: 1rem;")(

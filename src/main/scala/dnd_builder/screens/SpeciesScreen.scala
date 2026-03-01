@@ -44,7 +44,7 @@ object SpeciesScreen extends Screen {
   def view(model: Model): Html[Msg] =
     div(`class` := "screen-container")(
       StepIndicator(1, false),
-      StepNav("< Home", SpeciesMsg.Back, "Next: Class >", SpeciesMsg.Next, model.selectedSpecies.isDefined),
+      StepNav(StepIndicator.backLabel(1, false), SpeciesMsg.Back, StepIndicator.nextLabel(1, false), SpeciesMsg.Next, model.selectedSpecies.isDefined),
       h1(`class` := "screen-title")(text("Choose Your Race")),
       p(`class` := "screen-intro")(text("Select a species to define your character's heritage and innate traits.")),
       div(`class` := "card-grid")(

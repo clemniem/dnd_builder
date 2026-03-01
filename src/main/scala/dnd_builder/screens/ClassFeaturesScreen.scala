@@ -98,8 +98,8 @@ object ClassFeaturesScreen extends Screen {
     val nextEnabled = canProceed(model)
     div(`class` := "screen-container")(
       StepIndicator(6, cls.isSpellcaster),
-      StepNav("< Skills", ClassFeaturesMsg.Back,
-        "Next: Equipment >",
+      StepNav(StepIndicator.backLabel(6, cls.isSpellcaster), ClassFeaturesMsg.Back,
+        StepIndicator.nextLabel(6, cls.isSpellcaster),
         ClassFeaturesMsg.Next, nextEnabled),
       h1(`class` := "screen-title")(text("Class Features")),
       p(`class` := "screen-intro")(text("Choose your class feature options.")),

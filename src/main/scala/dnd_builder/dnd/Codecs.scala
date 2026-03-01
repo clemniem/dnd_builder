@@ -17,6 +17,13 @@ object Codecs {
   given Encoder[Ability] = mkEncoder(_.toString)
   given Decoder[Ability] = mkDecoder(Ability.values, _.toString)
 
+  private given Decoder[(Ability, Int)] = Decoder.instance { c =>
+    for {
+      a <- c.downField("ability").as[Ability]
+      n <- c.downField("amount").as[Int]
+    } yield (a, n)
+  }
+
   given Encoder[Skill] = mkEncoder(_.toString)
   given Decoder[Skill] = mkDecoder(Skill.values, _.toString)
 
@@ -176,6 +183,11 @@ object Codecs {
       Json.obj("type" -> "TwoPlusOne".asJson, "plus2" -> p2.asJson, "plus1" -> p1.asJson)
     case BackgroundBonus.ThreePlusOnes(a1, a2, a3) =>
       Json.obj("type" -> "ThreePlusOnes".asJson, "a1" -> a1.asJson, "a2" -> a2.asJson, "a3" -> a3.asJson)
+    case BackgroundBonus.Flexible(increases) =>
+      Json.obj(
+        "type"      -> "Flexible".asJson,
+        "increases" -> increases.map { case (a, n) => Json.obj("ability" -> a.asJson, "amount" -> n.asJson) }.asJson
+      )
   }
 
   given Decoder[BackgroundBonus] = Decoder.instance { c =>
@@ -193,6 +205,8 @@ object Codecs {
           a3 <- c.downField("a3").as[Ability]
         }
         yield BackgroundBonus.ThreePlusOnes(a1, a2, a3)
+      case "Flexible" =>
+        c.downField("increases").as[List[(Ability, Int)]].map(BackgroundBonus.Flexible.apply)
       case other => Left(DecodingFailure(s"Unknown BackgroundBonus type: $other", c.history))
     }
   }

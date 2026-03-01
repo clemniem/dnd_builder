@@ -56,7 +56,8 @@ final case class Character(
   def initiative: Modifier = {
     val dexMod = modifier(Ability.Dexterity)
     val alertBonus = if background.feat == Alert then proficiencyBonus else Modifier.zero
-    dexMod + alertBonus
+    val jackBonus = if hasJackOfAllTrades && background.feat != Alert then Modifier(proficiencyBonus.toInt / 2) else Modifier.zero
+    dexMod + alertBonus + jackBonus
   }
 
   def savingThrowBonus(ability: Ability): Modifier = {
@@ -74,9 +75,14 @@ final case class Character(
   def allSkillProficiencies: Set[Skill] =
     background.skillProficiencySet ++ chosenSkills
 
+  /** True if character has Jack of All Trades (Bard 2+: half proficiency on non-proficient checks). */
+  def hasJackOfAllTrades: Boolean =
+    ClassProgression.featuresUpToLevel(primaryClass, primaryClassLevel).exists(_.name == "Jack of All Trades")
+
   def skillBonus(skill: Skill): Modifier = {
     val abilityMod = modifier(skill.ability)
     if allSkillProficiencies.contains(skill) then abilityMod + proficiencyBonus
+    else if hasJackOfAllTrades then abilityMod + Modifier(proficiencyBonus.toInt / 2)
     else abilityMod
   }
 

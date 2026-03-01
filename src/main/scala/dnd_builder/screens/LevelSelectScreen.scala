@@ -53,7 +53,7 @@ object LevelSelectScreen extends Screen {
 
     div(`class` := "screen-container")(
       StepIndicator(3, cls.isSpellcaster),
-      StepNav("< Class", LevelSelectMsg.Back, "Next: Background >", LevelSelectMsg.Next, true),
+      StepNav(StepIndicator.backLabel(3, cls.isSpellcaster), LevelSelectMsg.Back, StepIndicator.nextLabel(3, cls.isSpellcaster), LevelSelectMsg.Next, true),
       h1(`class` := "screen-title")(text("Starting Level")),
       p(`class` := "screen-intro")(
         text(s"Choose the level for your ${cls.name}. Currently supports up to level $max.")

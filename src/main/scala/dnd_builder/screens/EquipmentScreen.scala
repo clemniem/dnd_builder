@@ -100,8 +100,8 @@ object EquipmentScreen extends Screen {
 
     div(`class` := "screen-container")(
       StepIndicator(7, cls.isSpellcaster),
-      StepNav("< Class Features", EquipmentMsg.Back,
-        if cls.isSpellcaster then "Next: Spells >" else "Next: Review >",
+      StepNav(StepIndicator.backLabel(7, cls.isSpellcaster), EquipmentMsg.Back,
+        StepIndicator.nextLabel(7, cls.isSpellcaster),
         EquipmentMsg.Next, nextEnabled),
       h1(`class` := "screen-title")(text("Choose Equipment")),
       p(`class` := "screen-intro")(text("Select weapons and armor you are proficient with. Each item has a star cost (1–5); stay within your budget.")),

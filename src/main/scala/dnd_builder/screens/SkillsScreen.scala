@@ -63,7 +63,7 @@ object SkillsScreen extends Screen {
 
     div(`class` := "screen-container")(
       StepIndicator(5, cls.isSpellcaster),
-      StepNav("< Abilities", SkillsMsg.Back, "Next: Equipment >", SkillsMsg.Next, remaining == 0),
+      StepNav(StepIndicator.backLabel(5, cls.isSpellcaster), SkillsMsg.Back, StepIndicator.nextLabel(5, cls.isSpellcaster), SkillsMsg.Next, remaining == 0),
       h1(`class` := "screen-title")(text("Choose Skills")),
       p(`class` := "screen-intro")(
         text(s"Select ${cls.numSkillChoices} skills from your class. Background skills are already granted.")

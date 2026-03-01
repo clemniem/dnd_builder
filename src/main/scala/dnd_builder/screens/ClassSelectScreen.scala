@@ -40,7 +40,7 @@ object ClassSelectScreen extends Screen {
   def view(model: Model): Html[Msg] =
     div(`class` := "screen-container")(
       StepIndicator(2, false),
-      StepNav("< Race", ClassSelectMsg.Back, "Next: Background >", ClassSelectMsg.Next, model.selected.isDefined),
+      StepNav(StepIndicator.backLabel(2, false), ClassSelectMsg.Back, StepIndicator.nextLabel(2, false), ClassSelectMsg.Next, model.selected.isDefined),
       h1(`class` := "screen-title")(text("Choose Your Class")),
       p(`class` := "screen-intro")(text("Select a class to define your character's abilities and role.")),
       div(`class` := "card-grid")(

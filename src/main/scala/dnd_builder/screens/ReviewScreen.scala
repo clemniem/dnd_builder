@@ -108,12 +108,13 @@ object ReviewScreen extends Screen {
 
   def view(model: Model): Html[Msg] = {
     val cls = model.draft.dndClass.getOrElse(Barbarian)
+    val currentStep = if cls.isSpellcaster then 9 else 8
     val character = buildCharacter(model)
 
     div(`class` := "screen-container")(
-      StepIndicator(if cls.isSpellcaster then 9 else 8, cls.isSpellcaster),
+      StepIndicator(currentStep, cls.isSpellcaster),
       StepNav(
-        if cls.isSpellcaster then "< Spells" else "< Equipment",
+        StepIndicator.backLabel(currentStep, cls.isSpellcaster),
         ReviewMsg.Back, if model.saving then "Saving..." else "Save Character", ReviewMsg.Save, !model.saving),
       h1(`class` := "screen-title")(text("Review & Save")),
       div(`class` := "field-block")(
