@@ -186,7 +186,9 @@ object CharacterSheetPdf {
 
   private def fillHeader(form: js.Dynamic, ch: Character): Unit = {
     setField(form, PdfFormFields.Name, ch.name)
-    setField(form, PdfFormFields.Class, ch.classLabel)
+    val classOnly = if ch.classLevels.size == 1 then s"${ch.primaryClass.name} ${ch.primaryClassLevel}" else ch.classLevels.map(cl => s"${cl.dndClass.name} ${cl.classLevel}").mkString(" / ")
+    setField(form, PdfFormFields.Class, classOnly)
+    setField(form, PdfFormFields.Subclass, ch.subclass.fold("")(_.name))
     setField(form, PdfFormFields.Species, ch.species.displayName)
     setField(form, PdfFormFields.Background, ch.background.name)
     setField(form, PdfFormFields.Level, ch.characterLevel.toString)
@@ -348,7 +350,7 @@ object CharacterSheetPdf {
       case None      => List.fill(9)(0)
     }
     PdfFormFields.spellSlotTotals.zip(slotsByLevel).foreach { case (name, n) =>
-      if n > 0 then setField(form, name, n.toString)
+      setField(form, name, if n > 0 then n.toString else "")
     }
 
     val spellRows = allCantrips.map(s => (s.name, "0")) ++ allPreparedLvl1.map(s => (s.name, "1"))
