@@ -28,6 +28,24 @@ Hit dice is filled in `fillCombatStats` as `{level}d{hitDie.sides}` (e.g. `1d10`
 
 `CharacterSheetPdf.testPdfVersion` is an integer appended to the test character's name (e.g. `Thorn Ironfist v3`). **Every change to PDF filling logic must bump `testPdfVersion`** so the downloaded PDF is immediately distinguishable from stale builds. If you forget, the user cannot tell whether they're looking at an old cached PDF or the latest code.
 
+## Spell row visual order
+
+The PDF template renders spell rows in a non-sequential field order: bare, 0, 1, then groups of three reversed (4,3,2), (7,6,5), … (28,27,26). `PdfFormFields.spellRowVisualOrder` maps visual position → field index. **Always use `spellName(visualPos)` / `spellLevel(visualPos)`** — never construct field names from raw indices.
+
+## Checkbox mapping (CRITICAL)
+
+The 5e2024 character sheet PDF has **no "prepared" checkbox column**. The spell table title is "CANTRIPS & PREPARED SPELLS" — being listed IS being prepared. Instead, prepared spells get a `[ ]` text prefix in the name field for the player to mark with a pen.
+
+All checkboxes in the spell area are one of:
+- **Expended spell slot diamonds** (Check Box37–58, at y ≈ 650–680): Never touch these — they are for the player during play.
+- **C/R/M diamonds** (Check Box0 + 59–150 minus 149, at x ≈ 239/261/283): Concentration, Ritual, and Required Material indicators per spell row. Not filled by our code.
+
+**Never call `check()` or `uncheck()` on any checkbox in the 37–150 range.** The only checkboxes our code touches are saves (0–25), armor proficiency (33–36), and skills (2–24). Run `mapCheckboxPositions()` in the browser console to re-verify positions if the template PDF changes.
+
+## Exposing new JS functions
+
+`@JSExportTopLevel("fnName")` in Scala.js is not enough. You must also add the import and `window.fnName = fnName` in `export-wrapper.js`, or the function won't be accessible from the browser console.
+
 ## Running the test
 
 In the browser console: `testPdf()`. Downloads a filled PDF for the test character so you can verify layout and font sizes without creating a character in the app. Check the character name includes the expected version number to confirm you're seeing the latest build.

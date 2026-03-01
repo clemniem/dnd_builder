@@ -65,6 +65,20 @@ object PdfLib {
     val _ = checkbox.check()
   }
 
+  def getPage(doc: js.Dynamic, pageIndex: Int): js.Dynamic =
+    doc.getPages().asInstanceOf[js.Array[js.Dynamic]](pageIndex)
+
+  def drawFilledCircle(page: js.Dynamic, x: Double, y: Double, size: Double): Unit = {
+    val lib = pdfLib.get
+    val opts = js.Dynamic.literal(
+      x = x,
+      y = y,
+      size = size,
+      color = lib.rgb(0, 0, 0)
+    )
+    val _ = page.drawCircle(opts)
+  }
+
   def saveAndOpen(doc: js.Dynamic, filename: String): Unit = {
     import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
     dom.console.log("[PdfLib] saveAndOpen: calling doc.save()")

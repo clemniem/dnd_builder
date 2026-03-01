@@ -158,7 +158,7 @@ object PdfFormFields {
   val CheckBox17 = "Check Box17"  // WIS
   val CheckBox6  = "Check Box6"    // CHA
 
-  // Skill checkboxes
+  // Skill checkboxes (name, page-0 x, page-0 y from mapCheckboxPositions)
   val CheckBox19 = "Check Box19"  // Athletics
   val CheckBox8  = "Check Box8"   // Acrobatics
   val CheckBox9  = "Check Box9"   // Sleight of Hand
@@ -177,6 +177,29 @@ object PdfFormFields {
   val CheckBox4  = "Check Box4"   // Intimidation
   val CheckBox3  = "Check Box3"   // Performance
   val CheckBox2  = "Check Box2"   // Persuasion
+
+  /** Physical (x, y) position of each skill checkbox on page 0, for drawing expertise filled circles. */
+  import dndbuilder.dnd.Skill
+  val skillCheckboxPositions: Map[Skill, (Double, Double)] = Map(
+    Skill.Athletics      -> (17.8, 485.1),
+    Skill.Acrobatics     -> (17.7, 367.3),
+    Skill.SleightOfHand  -> (17.6, 353.3),
+    Skill.Stealth        -> (17.7, 339.3),
+    Skill.Arcana         -> (123.8, 562.4),
+    Skill.History        -> (123.8, 548.5),
+    Skill.Investigation  -> (123.8, 534.3),
+    Skill.Nature         -> (123.8, 520.4),
+    Skill.Religion       -> (123.9, 506.3),
+    Skill.AnimalHandling -> (123.8, 388.4),
+    Skill.Insight        -> (123.9, 374.4),
+    Skill.Medicine       -> (123.9, 360.5),
+    Skill.Perception     -> (123.9, 346.5),
+    Skill.Survival       -> (123.9, 332.4),
+    Skill.Deception      -> (123.7, 214.7),
+    Skill.Intimidation   -> (123.8, 200.5),
+    Skill.Performance    -> (123.8, 186.5),
+    Skill.Persuasion     -> (123.8, 172.3)
+  )
 
   // Currency
   val GP = "GP"

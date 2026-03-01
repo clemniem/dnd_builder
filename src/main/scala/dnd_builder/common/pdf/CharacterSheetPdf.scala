@@ -9,7 +9,7 @@ import scala.scalajs.js.annotation.JSExportTopLevel
 object CharacterSheetPdf {
 
   /** Bump this on every change to PDF filling logic so `testPdf()` output is visually distinguishable from stale builds. */
-  val testPdfVersion: Int = 13
+  val testPdfVersion: Int = 17
 
   /** Font size (pt) for all large content fields: Class Features, Species Traits, Feats, Languages, Equipment, Weapon Prof, Tool Prof, and weapon rows. Change this to adjust all at once. */
   val contentFontSizePt: Int = 10
@@ -88,7 +88,7 @@ object CharacterSheetPdf {
         Some(DivineOrder.Protector),
         None,
         None,
-        Set.empty,
+        Set(Skill.Perception, Skill.Survival),
         Nil,
         None,
         None
@@ -112,7 +112,7 @@ object CharacterSheetPdf {
         fillCombatStats(form, ch)
         fillAbilityScores(form, ch)
         fillSavingThrows(form, ch)
-        fillSkills(form, ch)
+        fillSkills(form, doc, ch)
         fillArmorProficiencies(form, ch)
         fillWeapons(form, ch)
         fillSpellcasting(form, ch)
@@ -274,13 +274,22 @@ object CharacterSheetPdf {
     Skill.Persuasion     -> PdfFormFields.Persuasion
   )
 
-  private def fillSkills(form: js.Dynamic, ch: Character): Unit =
+  private def fillSkills(form: js.Dynamic, doc: js.Dynamic, ch: Character): Unit = {
+    val page0 = PdfLib.getPage(doc, 0)
     Skill.values.foreach { skill =>
-      val bonus = ch.skillBonus(skill)
-      skillFields.get(skill).foreach(f => setFieldSized(form, f, bonus.format, 10))
-      if ch.isSkillProficient(skill) then
-        skillCheckboxes.get(skill).foreach(c => checkBox(form, c))
+      skillFields.get(skill).foreach(f => setFieldSized(form, f, ch.skillBonus(skill).format, 10))
+      ch.skillProficiencyLevel(skill) match {
+        case SkillProficiency.Expert =>
+          skillCheckboxes.get(skill).foreach(c => checkBox(form, c))
+          PdfFormFields.skillCheckboxPositions.get(skill).foreach { case (x, y) =>
+            PdfLib.drawFilledCircle(page0, x + 4.0, y + 4.0, 3.5)
+          }
+        case SkillProficiency.Proficient =>
+          skillCheckboxes.get(skill).foreach(c => checkBox(form, c))
+        case SkillProficiency.None => ()
+      }
     }
+  }
 
   private def fillArmorProficiencies(form: js.Dynamic, ch: Character): Unit = {
     val profs = ch.primaryClass.armorProficiencies
@@ -326,7 +335,7 @@ object CharacterSheetPdf {
     val spellRows = allCantrips.map(s => (s.name, "0")) ++ allPreparedLvl1.map(s => (s.name, "1"))
     spellRows.zipWithIndex.foreach { case ((spellName, levelStr), visualPos) =>
       if visualPos < PdfFormFields.spellRowVisualOrder.length then {
-        val displayName = if levelStr != "0" then s"[ ] $spellName" else spellName
+        val displayName = s"O $spellName"
         setField(form, PdfFormFields.spellName(visualPos), displayName)
         setField(form, PdfFormFields.spellLevel(visualPos), levelStr)
       }

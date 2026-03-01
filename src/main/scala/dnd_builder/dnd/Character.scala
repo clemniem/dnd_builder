@@ -77,19 +77,28 @@ final case class Character(
   def allSkillProficiencies: Set[Skill] =
     background.skillProficiencySet ++ chosenSkills
 
+  def skillProficiencyLevel(skill: Skill): SkillProficiency =
+    if featureSelections.expertiseSkills.contains(skill) then SkillProficiency.Expert
+    else if allSkillProficiencies.contains(skill) then SkillProficiency.Proficient
+    else SkillProficiency.None
+
   /** True if character has Jack of All Trades (half proficiency on non-proficient checks). */
   def hasJackOfAllTrades: Boolean =
     primaryClass.jackOfAllTradesAtLevel.exists(_ <= primaryClassLevel)
 
   def skillBonus(skill: Skill): Modifier = {
     val abilityMod = modifier(skill.ability)
-    if allSkillProficiencies.contains(skill) then abilityMod + proficiencyBonus
-    else if hasJackOfAllTrades then abilityMod + Modifier(proficiencyBonus.toInt / 2)
-    else abilityMod
+    skillProficiencyLevel(skill) match {
+      case SkillProficiency.Expert     => abilityMod + proficiencyBonus + proficiencyBonus
+      case SkillProficiency.Proficient => abilityMod + proficiencyBonus
+      case SkillProficiency.None =>
+        if hasJackOfAllTrades then abilityMod + Modifier(proficiencyBonus.toInt / 2)
+        else abilityMod
+    }
   }
 
   def isSkillProficient(skill: Skill): Boolean =
-    allSkillProficiencies.contains(skill)
+    skillProficiencyLevel(skill) != SkillProficiency.None
 
   def passivePerception: Int =
     10 + skillBonus(Skill.Perception).toInt

@@ -35,6 +35,10 @@ object Skill {
     Skill.values.toList.groupBy(_.ability)
 }
 
+enum SkillProficiency {
+  case None, Proficient, Expert
+}
+
 enum HitDie(val sides: Int, val avgGain: Int) {
   case D6  extends HitDie(6, 4)
   case D8  extends HitDie(8, 5)

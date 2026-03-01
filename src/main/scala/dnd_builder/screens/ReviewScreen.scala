@@ -187,11 +187,13 @@ object ReviewScreen extends Screen {
       ),
       div(`class` := "section-title")(text("Skill Proficiencies")),
       div(`class` := "prof-list")(
-        ch.allSkillProficiencies.toList.sortBy(_.label).map { skill =>
-          div(`class` := "prof-item prof-item--proficient")(
-            text(s"${skill.label} (${skill.ability.abbreviation}) ${ch.skillBonus(skill).format}")
-          )
-        }*
+        Skill.values.toList.filter(s => ch.skillProficiencyLevel(s) != SkillProficiency.None)
+          .sortBy(_.label).map { skill =>
+            val expertTag = if ch.skillProficiencyLevel(skill) == SkillProficiency.Expert then " [Expert]" else ""
+            div(`class` := "prof-item prof-item--proficient")(
+              text(s"${skill.label} (${skill.ability.abbreviation}) ${ch.skillBonus(skill).format}$expertTag")
+            )
+          }*
       ),
       div(`class` := "section-title")(text("Class Features")),
       div(`class` := "feature-list")(
