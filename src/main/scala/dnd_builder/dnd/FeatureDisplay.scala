@@ -13,7 +13,7 @@ object FeatureDisplay {
   /** Character-resolved description: placeholders filled, actionable uses shown as "O O per LR - ...". */
   def resolvedDescription(f: Feature, ch: Character): String = {
     val desc = descriptionForDisplay(f, ch)
-    descriptionWithUsesNotation(f, desc)
+    descriptionWithUsesNotation(f, desc, Some(ch))
   }
 
   /** Splits features into actionable (false informative) and informative (true). */
@@ -91,9 +91,19 @@ object FeatureDisplay {
     all.foldLeft(afterAbility) { case (acc, (from, to)) => acc.replace(from, to) }
   }
 
-  private def descriptionWithUsesNotation(f: Feature, resolvedDesc: String): String = {
-    if !f.informative && f.uses.isDefined then {
-      val n = f.uses.get
+  private def resolveUses(u: Uses, ch: Character): Int = u match {
+    case Uses.Static(n)          => n
+    case Uses.AbilityMod(ab)     => math.max(1, ch.modifier(ab).toInt)
+    case Uses.ProfBonus()        => ch.proficiencyBonus.toInt
+    case Uses.LevelMultiplier(f) => f * ch.primaryClassLevel
+  }
+
+  private def descriptionWithUsesNotation(
+      f: Feature, resolvedDesc: String, ch: Option[Character]
+  ): String = {
+    val usesCount: Option[Int] = f.uses.flatMap(u => ch.map(c => resolveUses(u, c)))
+    if !f.informative && usesCount.isDefined then {
+      val n = usesCount.get
       val circles = ("O " * n).trim
       val perRest = inferPerRest(resolvedDesc)
       val stripped = stripLeadingUsesPhrase(resolvedDesc)

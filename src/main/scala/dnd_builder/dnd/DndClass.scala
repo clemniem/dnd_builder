@@ -23,13 +23,22 @@ object FeatureGrant {
   case class ExtraSkillsChoice(count: Int, pool: Set[Skill]) extends FeatureGrant
 }
 
+/** How many uses a feature has: static or derived from character (ability mod, prof bonus, level). */
+sealed trait Uses
+object Uses {
+  case class Static(n: Int) extends Uses
+  case class AbilityMod(ability: Ability) extends Uses
+  case class ProfBonus() extends Uses
+  case class LevelMultiplier(factor: Int) extends Uses
+}
+
 /** A class feature with optional structured grants. Backward-compat alias: ClassFeature = Feature.
   * informative: true = reference/passive (e.g. Spellcasting, Jack of All Trades); false = actionable (use-tracking, O-N). */
 final case class Feature(
     id: String,
     name: String,
     description: String,
-    uses: Option[Int],
+    uses: Option[Uses],
     grants: List[FeatureGrant],
     informative: Boolean
 )

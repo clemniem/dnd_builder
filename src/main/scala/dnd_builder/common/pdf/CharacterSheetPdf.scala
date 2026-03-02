@@ -387,7 +387,7 @@ object CharacterSheetPdf {
     }.mkString("\n")
     setContentField(form, PdfFormFields.SpeciesTraits, traitsText, 25)
 
-    val features = ClassProgression.featuresUpToLevel(ch.primaryClass, ch.primaryClassLevel)
+    val features = ClassProgression.featuresForDisplay(ch.primaryClass, ch.primaryClassLevel)
     val (actionable, informative) = FeatureDisplay.splitActionableInformative(features)
     def lineFor(f: Feature): String =
       " * " + f.name + " - " + FeatureDisplay.resolvedDescription(f, ch)

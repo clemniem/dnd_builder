@@ -68,6 +68,12 @@ object ClassProgression {
   def featuresUpToLevel(dndClass: DndClass, level: Int): List[Feature] =
     (1 to level).flatMap(l => featuresFromGain(atLevel(dndClass, l))).toList
 
+  /** Features for character sheet / PDF: same as featuresUpToLevel but omits "Subclass - Choose your subclass at this level." for level 3+ (already chosen). */
+  def featuresForDisplay(dndClass: DndClass, level: Int): List[Feature] = {
+    val all = featuresUpToLevel(dndClass, level)
+    if level >= 3 then all.filter(_.id != "subclass") else all
+  }
+
   def maxSupportedLevel(dndClass: DndClass): Int =
     (1 to 20).reverse.find(l => registry.contains((dndClass.name, l))).getOrElse(1)
 

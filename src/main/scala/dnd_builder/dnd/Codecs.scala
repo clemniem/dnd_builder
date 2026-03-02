@@ -215,12 +215,31 @@ object Codecs {
     }
   }
 
+  given Encoder[Uses] = Encoder.instance {
+    case Uses.Static(n)          => Json.obj("type" -> "static".asJson, "n" -> n.asJson)
+    case Uses.AbilityMod(ab)     => Json.obj("type" -> "abilityMod".asJson, "ability" -> ab.asJson)
+    case Uses.ProfBonus()        => Json.obj("type" -> "profBonus".asJson)
+    case Uses.LevelMultiplier(f) => Json.obj("type" -> "levelMul".asJson, "factor" -> f.asJson)
+  }
+  given Decoder[Uses] = Decoder.instance { c =>
+    c.downField("type").as[String].flatMap {
+      case "static"     => c.downField("n").as[Int].map(Uses.Static.apply)
+      case "abilityMod" => c.downField("ability").as[Ability].map(Uses.AbilityMod.apply)
+      case "profBonus"  => Right(Uses.ProfBonus())
+      case "levelMul"  => c.downField("factor").as[Int].map(Uses.LevelMultiplier.apply)
+      case other        => Left(DecodingFailure(s"Unknown Uses type: $other", c.history))
+    }
+  }
+
+  private def optionUsesDecoder(using du: Decoder[Uses], di: Decoder[Int]): Decoder[Option[Uses]] =
+    Decoder.decodeOption(using du).or(Decoder.decodeOption(using di).map(_.map(Uses.Static.apply)))
+
   given Encoder[Feature] = Encoder.forProduct6("id", "name", "description", "uses", "grants", "informative")(f => (f.id, f.name, f.description, f.uses, f.grants, f.informative))
   given Decoder[Feature] = Decoder.instance { c =>
     for {
       name        <- c.downField("name").as[String]
       description <- c.downField("description").as[String]
-      uses        <- c.downField("uses").as[Option[Int]]
+      uses        <- c.downField("uses").as(using optionUsesDecoder)
       id          <- c.downField("id").as[Option[String]].map(_.getOrElse(name.toLowerCase.replace(' ', '-')))
       grants      <- c.downField("grants").as[Option[List[FeatureGrant]]].map(_.getOrElse(Nil))
       informative <- c.downField("informative").as[Option[Boolean]].map(_.getOrElse(false))

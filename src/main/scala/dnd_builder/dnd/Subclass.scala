@@ -20,7 +20,7 @@ object Subclass {
   private def alwaysPrepared(level: Int, names: String*): Map[Int, List[Spell]] =
     Map(level -> spells(names*))
 
-  private def feat(name: String, description: String, uses: Option[Int]): Feature =
+  private def feat(name: String, description: String, uses: Option[Uses]): Feature =
     Feature(name.toLowerCase.replace(' ', '-'), name, description, uses, Nil, false)
 
   case object PathOfTheBerserker extends Subclass {

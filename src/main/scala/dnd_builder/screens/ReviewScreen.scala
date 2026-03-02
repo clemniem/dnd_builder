@@ -217,7 +217,7 @@ object ReviewScreen extends Screen {
           }*
       ),
       div(`class` := "section-title")(text("Class Features")),
-      FeatureListSplit(ClassProgression.featuresUpToLevel(ch.primaryClass, ch.primaryClassLevel), Some(ch)),
+      FeatureListSplit(ClassProgression.featuresForDisplay(ch.primaryClass, ch.primaryClassLevel), Some(ch)),
       div(`class` := "section-title")(text("Species Traits")),
       div(`class` := "feature-list")(
         ch.species.traits.map { t =>
