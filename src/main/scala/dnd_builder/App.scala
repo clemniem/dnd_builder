@@ -32,6 +32,7 @@ object App extends TyrianIOApp[RootMsg, RootModel] {
         ReviewScreen,
         CharacterGalleryScreen,
         CharacterDetailScreen,
+        ChangeSpellsScreen,
         RuleSetScreen,
         LevelUpScreen
       ),

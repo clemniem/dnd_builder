@@ -364,7 +364,7 @@ object LevelUpScreen extends Screen {
       (if summary.features.nonEmpty then
         div(
           div(`class` := "section-title")(text("New Features")),
-          FeatureListSplit(summary.features, Some(ch))
+          FeatureList(summary.features, Some(ch))
         )
       else div()),
       subBanner match {
@@ -672,7 +672,7 @@ object LevelUpScreen extends Screen {
       (if summary.features.nonEmpty then
         div(
           div(`class` := "section-title")(text("New Features")),
-          FeatureListSplit(summary.features, Some(ch))
+          FeatureList(summary.features, Some(ch))
         )
       else div()),
       (if choiceItems.nonEmpty then

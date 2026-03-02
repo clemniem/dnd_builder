@@ -37,6 +37,9 @@ object CharacterDetailScreen extends Screen {
     case DetailMsg.LevelUp =>
       (model, Cmd.Emit(NavigateNext(ScreenId.LevelUpId,
         Some(ScreenOutput.LevelUp(model.storedCharacter)))))
+    case DetailMsg.ChangeSpells =>
+      (model, Cmd.Emit(NavigateNext(ScreenId.ChangeSpellsId,
+        Some(ScreenOutput.ChangeSpells(model.storedCharacter)))))
     case _: NavigateNext =>
       (model, Cmd.None)
   }
@@ -113,7 +116,7 @@ object CharacterDetailScreen extends Screen {
         }*
       ),
       div(`class` := "section-title")(text("Class Features")),
-      FeatureListSplit(ClassProgression.featuresForDisplay(ch.primaryClass, ch.primaryClassLevel, ch), Some(ch)),
+      FeatureList(ClassProgression.featuresForDisplay(ch.primaryClass, ch.primaryClassLevel, ch), Some(ch)),
       div(`class` := "section-title")(text("Species Traits")),
       div(`class` := "feature-list")(
         ch.species.traits.map { t =>
@@ -126,7 +129,7 @@ object CharacterDetailScreen extends Screen {
           )
         }*
       ),
-      spellsSummary(ch),
+      spellsSummary(ch, ch.isSpellcaster && ch.spellProgression.exists(_.preparedSpells > 0)),
       div(`class` := "section-title")(text("Equipment")),
       div(style := "font-size: 0.85rem; color: var(--color-text-muted);")(
         div(text(s"Armor: ${ch.equippedArmor.fold("Unarmored")(_.name)}")),
@@ -148,10 +151,15 @@ object CharacterDetailScreen extends Screen {
     )
   }
 
-  private def spellsSummary(ch: Character): Html[Msg] =
+  private def spellsSummary(ch: Character, canChangeSpells: Boolean): Html[Msg] =
     if !ch.isSpellcaster then div()
     else div(
-      div(`class` := "section-title")(text("Spells")),
+      div(style := "display: flex; align-items: center; justify-content: space-between;")(
+        div(`class` := "section-title")(text("Spells")),
+        (if canChangeSpells then
+          button(`class` := "btn btn--secondary", style := "font-size: 0.8rem; padding: 0.25rem 0.5rem;", onClick(DetailMsg.ChangeSpells))(text("Change Spells"))
+        else div())
+      ),
       (if ch.chosenCantrips.nonEmpty then
         div(style := "margin-bottom: 0.5rem;")(
           div(style := "font-weight: 500; margin-bottom: 0.25rem;")(text("Cantrips")),
@@ -204,4 +212,5 @@ enum DetailMsg {
   case Back
   case ExportPdf
   case LevelUp
+  case ChangeSpells
 }
