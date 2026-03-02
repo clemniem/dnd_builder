@@ -527,6 +527,7 @@ object Codecs {
       "spellGrants"      -> ch.spellGrants.asJson,
       "skillGrants"      -> ch.skillGrants.asJson,
       "attackGrants"     -> ch.attackGrants.asJson
+    
     )
   }
 
@@ -555,8 +556,10 @@ object Codecs {
       spellGrants <- c.downField("spellGrants").as[Option[List[SpellGrant]]].map(_.getOrElse(Nil))
       skillGrants <- c.downField("skillGrants").as[Option[List[SkillGrant]]].map(_.getOrElse(Nil))
       attackGrants <- c.downField("attackGrants").as[Option[List[AttackGrant]]].map(_.getOrElse(Nil))
+    } yield {
+      val allGrants: List[Grant] = spellGrants ++ skillGrants ++ attackGrants
+      Character(name, sp, classLevels, bg, scores, bonus, skills.toSet, armor, shield, weapons, cantrips, prepared, spellbook,
+        featureSelections, subclass, languages.toSet, coins, allGrants)
     }
-    yield Character(name, sp, classLevels, bg, scores, bonus, skills.toSet, armor, shield, weapons, cantrips, prepared, spellbook,
-      featureSelections, subclass, languages.toSet, coins, spellGrants, skillGrants, attackGrants)
   }
 }

@@ -4,25 +4,23 @@
 
 ## Current State
 
-Three separate grant types exist in parallel, each with their own type:
+All grant types extend a `sealed trait Grant` with shared `sourceLabel` and `isFilled`:
 
 | Grant Type | Type | Has Player Choice | Source |
 |---|---|---|---|
-| Spell grants | `SpellGrant` | Yes (pick N spells from a list) | Background feat (Magic Initiate) |
+| Spell grants | `SpellGrant` | Yes (pick N spells from a list) | Background feat (Magic Initiate), Fighting Style (Blessed/Druidic Warrior) |
 | Skill grants | `SkillGrant` | Yes (pick N skills from a pool) | Background feat (Skilled) |
 | Attack grants | `AttackGrant` | No (auto-resolved) | Species, Class |
 
-They share a common shape:
-- Template fields (what can be granted)
-- `sourceLabel: String` (who granted it)
-- `isFilled: Boolean` (are player choices complete)
+`CharacterDraft` and `Character` carry a single `grants: List[Grant]` field with typed convenience accessors (`spellGrants`, `skillGrants`, `attackGrants`) and partial-update helpers (`withSpellGrants`, `withSkillGrants`).
 
 They flow through the same pipeline:
-1. `FeatureGrants.fromSpecies/fromClass/fromBackground` produces a `Grants` container
-2. `Grants` is stored on `CharacterDraft` (three separate fields)
-3. Wizard screens fill player choices where needed
-4. `Character` carries the resolved grants
-5. Output (PDF, review screen) reads from the character
+1. `FeatureGrants.fromSpecies/fromClass/fromBackground` produces a `Grants` container (view over `List[Grant]`)
+2. `grants: List[Grant]` is stored on `CharacterDraft`
+3. Wizard screens fill player choices where needed (filter by type)
+4. `Character` carries the resolved grants as `List[Grant]`
+5. Output (PDF, review screen) reads via typed accessors
+6. JSON serialization writes/reads three separate fields for backward compat, merging into `List[Grant]` on decode
 
 ## Goal: Unified Grant System
 
@@ -50,21 +48,19 @@ Benefits:
 
 ## Migration Phases
 
-### Phase 1: AttackGrant (current task)
+### Phase 1: AttackGrant ✅
 
-Add `AttackGrant` as a third grant type. Introduce `Grants` container to group the three types. Keep separate fields on `CharacterDraft`/`Character` for now.
+Added `AttackGrant` as a third grant type. Introduced `Grants` container to group the three types.
 
-This establishes the pattern without breaking existing code.
+### Phase 2: Unify into `List[Grant]` ✅
 
-### Phase 2: Unify into `List[Grant]`
-
-- Convert `SpellGrant`, `SkillGrant`, `AttackGrant` into cases of a sealed trait `Grant`
-- Replace `spellGrants`, `skillGrants`, `attackGrants` fields with a single `grants: List[Grant]`
-- Update `CharacterDraft`, `Character`, `Codecs` to use `List[Grant]`
-- Update wizard screens to filter grants by type: `grants.collect { case sg: SpellGrant => sg }`
-- `Grants` container becomes a view helper over `List[Grant]` rather than a data type
-
-**Estimated scope:** ~8 files, ~200 lines changed. Medium effort. Low risk since the types are already following the same pattern.
+- `sealed trait Grant { def sourceLabel: String; def isFilled: Boolean }` in `FeatureGrants.scala`
+- `SpellGrant`, `SkillGrant`, `AttackGrant` all extend `Grant` (all in same file for sealed requirement)
+- `CharacterDraft` and `Character` carry `grants: List[Grant]` with typed accessors and `withSpellGrants`/`withSkillGrants` helpers
+- `Grants` container is now a view over `List[Grant]` with typed accessors; overloaded `apply` for backward compat
+- `CharacterValidator.validate()` takes `grants: List[Grant]`
+- JSON encoder writes three fields; decoder reads three fields and merges into `List[Grant]`
+- All screens updated to use the unified API
 
 ### Phase 3: LanguageGrant
 

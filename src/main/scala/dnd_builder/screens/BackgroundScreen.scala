@@ -38,9 +38,7 @@ object BackgroundScreen extends Screen {
           val updated = model.draft.copy(
             background = Some(bg),
             chosenExtraLanguages = model.chosenExtraLanguages,
-            spellGrants = grants.spellGrants,
-            skillGrants = grants.skillGrants,
-            attackGrants = grants.attackGrants
+            grants = grants.grants
           )
           (model, Cmd.Emit(NavigateNext(ScreenId.AbilitiesId, Some(ScreenOutput.Draft(updated)))))
         case None =>

@@ -38,7 +38,7 @@ object LevelUpScreen extends Screen {
           "Unknown", Human, List(ClassLevel(DndClass.Barbarian, 1)),
           Acolyte, AbilityScores.default,
           BackgroundBonus.ThreePlusOnes(Ability.Intelligence, Ability.Wisdom, Ability.Charisma),
-          Set.empty, None, false, Nil, Nil, Nil, Nil, ClassFeatureSelections.empty, None, Human.languages, Coins.empty, Nil, Nil, Nil
+          Set.empty, None, false, Nil, Nil, Nil, Nil, ClassFeatureSelections.empty, None, Human.languages, Coins.empty, Nil
         ))
     }
     val ch = sc.character
@@ -214,9 +214,8 @@ object LevelUpScreen extends Screen {
         chosenSkills = ch.chosenSkills ++ model.extraSkills,
         preparedSpells = newPrepared,
         spellbookSpells = if cls.usesSpellbook then model.spellbookSpells else ch.spellbookSpells,
-        featureSelections = newFeatures,
-        spellGrants = newSpellGrants
-      )
+        featureSelections = newFeatures
+      ).withSpellGrants(newSpellGrants)
       val updatedStored = StoredCharacter(model.storedCharacter.id, updated)
       (model.copy(saving = true),
         LocalStorageUtils.loadList[StoredCharacter, Msg](StorageKeys.characters)(

@@ -94,8 +94,6 @@ object CharacterSheetPdf {
       Some(Subclass.PathOfTheBerserker),
       dragonbornRed.languages,
       Coins(Soldier.startingGold, 0, 0, 0, 0),
-      Nil,
-      Nil,
       attackGrants
     )
     generate(testChar)

@@ -20,9 +20,14 @@ final case class Character(
     subclass: Option[Subclass],
     languages: Set[Language],
     coins: Coins,
-    spellGrants: List[SpellGrant],
-    skillGrants: List[SkillGrant],
-    attackGrants: List[AttackGrant]) {
+    grants: List[Grant]) {
+
+  def spellGrants: List[SpellGrant] = grants.collect { case g: SpellGrant => g }
+  def skillGrants: List[SkillGrant] = grants.collect { case g: SkillGrant => g }
+  def attackGrants: List[AttackGrant] = grants.collect { case g: AttackGrant => g }
+
+  def withSpellGrants(sg: List[SpellGrant]): Character =
+    copy(grants = grants.filter { case _: SpellGrant => false; case _ => true } ++ sg)
 
   require(classLevels.nonEmpty, "classLevels cannot be empty")
 

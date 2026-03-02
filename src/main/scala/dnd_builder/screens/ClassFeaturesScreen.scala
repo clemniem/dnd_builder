@@ -51,7 +51,7 @@ object ClassFeaturesScreen extends Screen {
       val extraGrants = FeatureGrants.spellGrantsForFightingStyle(draft.featureSelections.fightingStyle)
       val existingLabels = draft.spellGrants.map(_.sourceLabel).toSet
       val newGrants = extraGrants.filter(g => !existingLabels(g.sourceLabel))
-      val finalDraft = draft.copy(spellGrants = draft.spellGrants ++ newGrants)
+      val finalDraft = draft.copy(grants = draft.grants ++ newGrants)
       (model, Cmd.Emit(NavigateNext(ScreenId.EquipmentId, Some(ScreenOutput.Draft(finalDraft)))))
     }
     else
@@ -64,7 +64,7 @@ object ClassFeaturesScreen extends Screen {
       val extraGrants = FeatureGrants.spellGrantsForFightingStyle(updated.featureSelections.fightingStyle)
       val existingLabels = updated.spellGrants.map(_.sourceLabel).toSet
       val newGrants = extraGrants.filter(g => !existingLabels(g.sourceLabel))
-      val finalDraft = updated.copy(spellGrants = updated.spellGrants ++ newGrants)
+      val finalDraft = updated.copy(grants = updated.grants ++ newGrants)
       (model, Cmd.Emit(NavigateNext(ScreenId.EquipmentId, Some(ScreenOutput.Draft(finalDraft)))))
     case ClassFeaturesMsg.Back =>
       val updated = model.draft.copy(featureSelections = model.featureSelections)

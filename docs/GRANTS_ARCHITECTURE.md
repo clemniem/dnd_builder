@@ -26,7 +26,16 @@ Defined on **class features** (and derived from species/background). They descri
 
 Defined in: `DndClass.scala` (`FeatureGrant`), `SRD_registry.scala` (features list their `grants`), `ClassProgression.scala` (level gains and `grantChoicesAtLevel`).
 
-### Resolvable: `SpellGrant`, `SkillGrant`, `AttackGrant`
+### Resolvable: `sealed trait Grant` with `SpellGrant`, `SkillGrant`, `AttackGrant`
+
+All concrete grant types extend a shared sealed trait (defined in `FeatureGrants.scala`):
+
+```scala
+sealed trait Grant {
+  def sourceLabel: String
+  def isFilled: Boolean
+}
+```
 
 Concrete “pick N from pool/list” entries. They carry:
 
@@ -34,7 +43,7 @@ Concrete “pick N from pool/list” entries. They carry:
 - `sourceLabel: String` (e.g. class name, "Blessed Warrior", "Acolyte: Magic Initiate")
 - `chosen`: the player’s selection; grant is **filled** when `chosen.size >= count`
 
-Defined in: `FeatureGrants.scala`. Stored on `CharacterDraft` and `Character` as `spellGrants`, `skillGrants`, `attackGrants`.
+Defined in: `FeatureGrants.scala`. Stored on `CharacterDraft` and `Character` as a single `grants: List[Grant]` field. Typed convenience accessors (`spellGrants`, `skillGrants`, `attackGrants`) filter by subtype. Partial-update helpers (`withSpellGrants`, `withSkillGrants`) replace one grant type in the list.
 
 ### Conversion: `FeatureGrant` → resolvable grants
 
@@ -58,7 +67,7 @@ Choice gates (e.g. `FightingStyleChoice`) are **not** converted here; they are r
   - **Class:** `grantsFromClass(draft.resolvedClass, level)` → from `ClassProgression.featuresUpToLevel` → each feature’s `grants`; only `SpellChoice`, `SkillChoice`, `Attack` are turned into `SpellGrant`/`SkillGrant`/`AttackGrant`.
   - **Species:** `grantsFromSpecies(draft.resolvedSpecies)` → e.g. `Attack` from species.
   - **Background feat:** `grantsFromOriginFeat(bg.feat)` → e.g. Magic Initiate → `SpellChoice`, Skilled → `SkillChoice`.
-- **Result:** Draft is updated with `spellGrants`, `skillGrants`, `attackGrants` and passed to Abilities.
+- **Result:** Draft is updated with `grants: List[Grant]` (containing all spell, skill, and attack grants) and passed to Abilities.
 
 **Later, after Class Features:** If the user chose **Blessed Warrior** or **Druidic Warrior**, `ClassFeaturesScreen` appends the corresponding spell grant (2 Cleric / 2 Druid cantrips) to `draft.spellGrants` when navigating to Equipment (see “Special case” below). So by the time we reach the Spells screen, those grants are already in the list.
 
@@ -115,12 +124,14 @@ So: **collect** (level summary: choice gates + spell progression) → **resolve*
 
 ## Where grants are stored
 
+All grants live in a single `grants: List[Grant]` field on both `CharacterDraft` and `Character`. Typed accessors (`spellGrants`, `skillGrants`, `attackGrants`) filter by subtype.
+
 | Data           | Creation | Level-up |
 |----------------|----------|----------|
 | Choice gates   | `CharacterDraft.featureSelections` | Model then `Character.featureSelections` on confirm |
-| Spell grants   | `CharacterDraft.spellGrants`       | `Character.spellGrants` (merged on confirm) |
-| Skill grants   | `CharacterDraft.skillGrants`       | Not added at level-up in current design |
-| Attack grants  | `CharacterDraft.attackGrants`      | From species/class only; not extended in level-up |
+| All grants     | `CharacterDraft.grants` (unified list) | `Character.grants` (merged on confirm via `withSpellGrants`) |
+
+JSON serialization writes three separate fields (`spellGrants`, `skillGrants`, `attackGrants`) for backward compatibility; the decoder reads them and merges into `List[Grant]`.
 
 ---
 
@@ -175,7 +186,7 @@ Level-up:
 
 | Concern | File(s) |
 |--------|---------|
-| Grant types | `dnd/FeatureGrants.scala` (SpellGrant, SkillGrant, Grants), `dnd/DndClass.scala` (FeatureGrant) |
+| Grant types | `dnd/FeatureGrants.scala` (`sealed trait Grant`, SpellGrant, SkillGrant, AttackGrant, Grants), `dnd/DndClass.scala` (FeatureGrant) |
 | Collection | `dnd/FeatureGrants.scala` (allGrantsForDraft, grantsFromClass/Species/OriginFeat, spellGrantsForFightingStyle) |
 | Class/level gains | `dnd/ClassProgression.scala`, `dnd/LevelSummary.scala` |
 | Creation: collect | `screens/BackgroundScreen.scala` (sets draft grants), `screens/ClassFeaturesScreen.scala` (appends fighting-style spell grant) |

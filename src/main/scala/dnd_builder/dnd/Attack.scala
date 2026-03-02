@@ -33,20 +33,6 @@ enum DiceScaling {
   case None, Cantrip, MartialArts
 }
 
-final case class AttackGrant(
-    name: String,
-    kind: AttackKind,
-    baseDamageDice: String,
-    damageType: String,
-    delivery: AttackGrantDelivery,
-    diceScaling: DiceScaling,
-    usesPerLR: Boolean,
-    range: String,
-    sourceLabel: String
-) {
-  def isFilled: Boolean = true
-}
-
 case class Attack(
     name: String,
     kind: AttackKind,

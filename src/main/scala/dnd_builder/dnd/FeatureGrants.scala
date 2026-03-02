@@ -1,13 +1,18 @@
 package dndbuilder.dnd
 
-/** Grant entries: each describes what can be picked (count, pool/spell list, source) and carries its resolution (chosen). */
+/** Common trait for all grant types. Each grant has a source and knows whether it is fully resolved. */
+sealed trait Grant {
+  def sourceLabel: String
+  def isFilled: Boolean
+}
+
 final case class SpellGrant(
     count: Int,
     spellLevel: Int,
     spellListLabel: String,
     sourceLabel: String,
     chosen: List[Spell]
-) {
+) extends Grant {
   def isFilled: Boolean = chosen.size >= count
   def withChosen(newChosen: List[Spell]): SpellGrant = copy(chosen = newChosen)
 }
@@ -17,24 +22,36 @@ final case class SkillGrant(
     pool: Set[Skill],
     sourceLabel: String,
     chosen: Set[Skill]
-) {
+) extends Grant {
   def isFilled: Boolean = chosen.size >= count
   def withChosen(newChosen: Set[Skill]): SkillGrant = copy(chosen = newChosen)
 }
 
-case class Grants(
-    spellGrants: List[SpellGrant],
-    skillGrants: List[SkillGrant],
-    attackGrants: List[AttackGrant]
-) {
-  def ++(other: Grants): Grants = Grants(
-    spellGrants ++ other.spellGrants,
-    skillGrants ++ other.skillGrants,
-    attackGrants ++ other.attackGrants
-  )
+final case class AttackGrant(
+    name: String,
+    kind: AttackKind,
+    baseDamageDice: String,
+    damageType: String,
+    delivery: AttackGrantDelivery,
+    diceScaling: DiceScaling,
+    usesPerLR: Boolean,
+    range: String,
+    sourceLabel: String
+) extends Grant {
+  def isFilled: Boolean = true
+}
+
+/** View helper over a heterogeneous List[Grant]; typed accessors filter by subtype. */
+case class Grants(grants: List[Grant]) {
+  def spellGrants: List[SpellGrant] = grants.collect { case g: SpellGrant => g }
+  def skillGrants: List[SkillGrant] = grants.collect { case g: SkillGrant => g }
+  def attackGrants: List[AttackGrant] = grants.collect { case g: AttackGrant => g }
+  def ++(other: Grants): Grants = Grants(grants ++ other.grants)
 }
 object Grants {
-  val empty: Grants = Grants(Nil, Nil, Nil)
+  val empty: Grants = Grants(Nil)
+  def apply(spellGrants: List[SpellGrant], skillGrants: List[SkillGrant], attackGrants: List[AttackGrant]): Grants =
+    Grants(spellGrants ++ skillGrants ++ attackGrants)
 }
 
 /** Unified feature-grant collection: build draft grants from class, species, and origin-feat grants. */

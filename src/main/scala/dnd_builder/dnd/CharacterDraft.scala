@@ -20,16 +20,20 @@ case class CharacterDraft(
     subclass: Option[Subclass],
     chosenExtraLanguages: Set[Language],
     coins: Coins,
-    spellGrants: List[SpellGrant],
-    skillGrants: List[SkillGrant],
-    attackGrants: List[AttackGrant]
+    grants: List[Grant]
 ) {
-  /** Fallback when class not yet chosen; use instead of getOrElse(Barbarian) etc. */
   def resolvedClass: DndClass = dndClass.getOrElse(ruleSet.classes.head)
-  /** Fallback when species not yet chosen; use instead of getOrElse(Human) etc. */
   def resolvedSpecies: Species = species.getOrElse(Human)
-  /** Fallback when background not yet chosen; use instead of getOrElse(Acolyte) etc. */
   def resolvedBackground: Background = background.getOrElse(Background.all.head)
+
+  def spellGrants: List[SpellGrant] = grants.collect { case g: SpellGrant => g }
+  def skillGrants: List[SkillGrant] = grants.collect { case g: SkillGrant => g }
+  def attackGrants: List[AttackGrant] = grants.collect { case g: AttackGrant => g }
+
+  def withSpellGrants(sg: List[SpellGrant]): CharacterDraft =
+    copy(grants = grants.filter { case _: SpellGrant => false; case _ => true } ++ sg)
+  def withSkillGrants(sg: List[SkillGrant]): CharacterDraft =
+    copy(grants = grants.filter { case _: SkillGrant => false; case _ => true } ++ sg)
 }
 
 object CharacterDraft {
@@ -38,6 +42,6 @@ object CharacterDraft {
     None, None, Some(1), None, None, None, Set.empty,
     None, false, Nil, Nil, Nil, Nil,
     ClassFeatureSelections.empty, None, Set.empty, Coins.empty,
-    Nil, Nil, Nil
+    Nil
   )
 }
