@@ -28,8 +28,9 @@ object ScreenId {
   case object ReviewId      extends ScreenId { val name = "review"; val title = "Review" }
   case object GalleryId     extends ScreenId { val name = "gallery"; val title = "My Characters" }
   case object DetailId      extends ScreenId { val name = "detail"; val title = "Character Detail" }
-  case object LevelUpId     extends ScreenId { val name = "level-up"; val title = "Level Up" }
-  case object RuleSetsId    extends ScreenId { val name = "rulesets"; val title = "Manage RuleSets" }
+  case object LevelUpId       extends ScreenId { val name = "level-up"; val title = "Level Up" }
+  case object ChangeSpellsId extends ScreenId { val name = "change-spells"; val title = "Change Spells" }
+  case object RuleSetsId     extends ScreenId { val name = "rulesets"; val title = "Manage RuleSets" }
 }
 
 sealed trait ScreenOutput
@@ -37,6 +38,7 @@ object ScreenOutput {
   case class Draft(draft: CharacterDraft) extends ScreenOutput
   case class ViewCharacter(storedCharacter: StoredCharacter) extends ScreenOutput
   case class LevelUp(storedCharacter: StoredCharacter) extends ScreenOutput
+  case class ChangeSpells(storedCharacter: StoredCharacter) extends ScreenOutput
 }
 
 sealed trait RootMsg

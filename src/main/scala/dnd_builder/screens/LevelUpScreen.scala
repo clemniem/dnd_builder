@@ -19,9 +19,9 @@ object LevelUpScreen extends Screen {
   /** Ordered phases for this level-up (depends on class and target level).
     * Class Features (e.g. Fighting Style) come before Spells so choices that grant spells
     * (e.g. Druidic Warrior: 2 Druid cantrips) are made before the spell selection step. */
-  private def phasesForLevel(cls: DndClass, level: Int): List[LevelUpPhase] = {
+  private def phasesForLevel(cls: DndClass, level: Int, existingSubclass: Option[Subclass]): List[LevelUpPhase] = {
     val summary = LevelSummary.forClassAtLevel(cls, level)
-    val hasSub = summary.subclassEligible.isDefined
+    val hasSub = summary.subclassEligible.isDefined && existingSubclass.isEmpty
     val hasSpells = summary.spellProgression.isDefined
     val hasFeatures = summary.grantChoices.filterNot { case FeatureGrant.SubclassGate() => true; case _ => false }.nonEmpty
     val base = LevelUpPhase.Preview :: (if hasSub then List(LevelUpPhase.Subclass) else Nil)
@@ -75,9 +75,10 @@ object LevelUpScreen extends Screen {
 
   def update(model: Model): Msg => (Model, Cmd[IO, Msg]) = {
     case LevelUpMsg.Back =>
-      val cls = model.storedCharacter.character.primaryClass
+      val ch = model.storedCharacter.character
+      val cls = ch.primaryClass
       val tgt = targetLevel(model)
-      prevPhaseFrom(model.phase, cls, tgt) match {
+      prevPhaseFrom(model.phase, cls, tgt, ch.subclass) match {
         case Some(p) => (model.copy(phase = p), Cmd.None)
         case None    => (model, Cmd.Emit(NavigateNext(ScreenId.DetailId, Some(ScreenOutput.ViewCharacter(model.storedCharacter)))))
       }
@@ -86,7 +87,7 @@ object LevelUpScreen extends Screen {
       val ch = model.storedCharacter.character
       val cls = ch.primaryClass
       val tgt = targetLevel(model)
-      nextPhaseFrom(model.phase, cls, tgt) match {
+      nextPhaseFrom(model.phase, cls, tgt, ch.subclass) match {
         case Some(LevelUpPhase.Confirm) =>
           (model.copy(phase = LevelUpPhase.Confirm), Cmd.None)
         case Some(p) =>
@@ -248,15 +249,15 @@ object LevelUpScreen extends Screen {
       (model, Cmd.None)
   }
 
-  private def nextPhaseFrom(current: LevelUpPhase, cls: DndClass, level: Int): Option[LevelUpPhase] = {
-    val phases = phasesForLevel(cls, level)
+  private def nextPhaseFrom(current: LevelUpPhase, cls: DndClass, level: Int, existingSub: Option[Subclass]): Option[LevelUpPhase] = {
+    val phases = phasesForLevel(cls, level, existingSub)
     val idx = phases.indexOf(current)
     if idx >= 0 && idx < phases.size - 1 then Some(phases(idx + 1))
     else None
   }
 
-  private def prevPhaseFrom(current: LevelUpPhase, cls: DndClass, level: Int): Option[LevelUpPhase] = {
-    val phases = phasesForLevel(cls, level)
+  private def prevPhaseFrom(current: LevelUpPhase, cls: DndClass, level: Int, existingSub: Option[Subclass]): Option[LevelUpPhase] = {
+    val phases = phasesForLevel(cls, level, existingSub)
     val idx = phases.indexOf(current)
     if idx > 0 then Some(phases(idx - 1))
     else None
@@ -291,9 +292,10 @@ object LevelUpScreen extends Screen {
     }
 
   private def levelUpStepIndicator(model: Model): Html[Msg] = {
-    val cls = model.storedCharacter.character.primaryClass
+    val ch = model.storedCharacter.character
+    val cls = ch.primaryClass
     val tgt = targetLevel(model)
-    val phases = phasesForLevel(cls, tgt)
+    val phases = phasesForLevel(cls, tgt, ch.subclass)
     val currentIdx = phases.indexOf(model.phase)
     val items = phases.zipWithIndex.flatMap { case (p, idx) =>
       val clsName =
@@ -619,19 +621,66 @@ object LevelUpScreen extends Screen {
   }
 
   private def confirmView(model: Model): Html[Msg] = {
-    val cls = model.storedCharacter.character.primaryClass
+    val ch = model.storedCharacter.character
+    val cls = ch.primaryClass
     val tgt = targetLevel(model)
-    val sub = if tgt >= 3 then model.chosenSubclass.orElse(Subclass.forClass(cls)) else None
-    val summaryItems: List[Html[Msg]] =
-      sub.map(s => div(`class` := "feature-item")(div(`class` := "feature-name")(text(s"Subclass: ${s.name}")))).toList ++
-        model.fightingStyle.map(fs => div(`class` := "feature-item")(div(`class` := "feature-name")(text(s"Fighting Style: ${fs.label}")))).toList ++
-        (if model.expertiseSkills.nonEmpty then List(div(`class` := "feature-item")(div(`class` := "feature-name")(text(s"Expertise: ${model.expertiseSkills.toList.sortBy(_.label).map(_.label).mkString(", ")}")))) else Nil) ++
-        (if model.extraSkills.nonEmpty then List(div(`class` := "feature-item")(div(`class` := "feature-name")(text(s"Extra skills: ${model.extraSkills.map(_.label).mkString(", ")}")))) else Nil) ++
-        model.landType.map(lt => div(`class` := "feature-item")(div(`class` := "feature-name")(text(s"Land type: ${lt.label}")))).toList ++
-        model.hunterPrey.map(hp => div(`class` := "feature-item")(div(`class` := "feature-name")(text(s"Hunter's Prey: ${hp.label}")))).toList
+    val summary = LevelSummary.forClassAtLevel(cls, tgt)
+    val conMod = ch.modifier(Ability.Constitution)
+    val hpGain = cls.hitDie.avgGain + conMod.toInt + ch.species.hpBonusPerLevel
+    val oldProf = ch.proficiencyBonus.toInt
+    val newProf = if tgt <= 4 then 2 else 3
+    val oldProg = ch.spellProgression
+    val newProg = summary.spellProgression
+    val sub = if tgt >= 3 then model.chosenSubclass.orElse(ch.subclass) else None
+    val choiceItems: List[Html[Msg]] =
+      sub.filterNot(s => ch.subclass.contains(s)).map(s =>
+        div(`class` := "feature-item")(div(`class` := "feature-name")(text(s"Subclass: ${s.name}")))
+      ).toList ++
+      model.fightingStyle.map(fs =>
+        div(`class` := "feature-item")(div(`class` := "feature-name")(text(s"Fighting Style: ${fs.label}")))
+      ).toList ++
+      (if model.expertiseSkills.nonEmpty then List(
+        div(`class` := "feature-item")(div(`class` := "feature-name")(text(s"Expertise: ${model.expertiseSkills.toList.sortBy(_.label).map(_.label).mkString(", ")}")))
+      ) else Nil) ++
+      (if model.extraSkills.nonEmpty then List(
+        div(`class` := "feature-item")(div(`class` := "feature-name")(text(s"Extra Skills: ${model.extraSkills.toList.sortBy(_.label).map(_.label).mkString(", ")}")))
+      ) else Nil) ++
+      model.landType.map(lt =>
+        div(`class` := "feature-item")(div(`class` := "feature-name")(text(s"Land Type: ${lt.label}")))
+      ).toList ++
+      model.hunterPrey.map(hp =>
+        div(`class` := "feature-item")(div(`class` := "feature-name")(text(s"Hunter's Prey: ${hp.label}")))
+      ).toList ++
+      (if model.fightingStyleGrantCantrips.nonEmpty then List(
+        div(`class` := "feature-item")(div(`class` := "feature-name")(text(s"Fighting Style Cantrips: ${model.fightingStyleGrantCantrips.map(_.name).mkString(", ")}")))
+      ) else Nil) ++
+      (if model.preparedSpells != ch.preparedSpells then List(
+        div(`class` := "feature-item")(div(`class` := "feature-name")(text(s"Prepared Spells: ${model.preparedSpells.map(_.name).mkString(", ")}")))
+      ) else Nil) ++
+      (if model.spellbookSpells != ch.spellbookSpells then List(
+        div(`class` := "feature-item")(div(`class` := "feature-name")(text(s"Spellbook: ${model.spellbookSpells.map(_.name).mkString(", ")}")))
+      ) else Nil)
     div(
-      div(`class` := "section-title")(text("Summary")),
-      div(`class` := "feature-list")(summaryItems*),
+      div(`class` := "flex-row", style := "margin-bottom: 1rem; gap: 0.5rem;")(
+        span(`class` := "badge")(text(s"${cls.name} ${ch.primaryClassLevel}")),
+        span(style := "font-size: 1.2rem; font-weight: bold; color: var(--color-text-muted);")(text("->")),
+        span(`class` := "badge", style := "font-weight: bold;")(text(s"${cls.name} $tgt"))
+      ),
+      div(`class` := "section-title")(text("Stats Comparison")),
+      combatTable(ch, hpGain, oldProf, newProf, tgt, cls),
+      spellTable(oldProg, newProg),
+      (if summary.features.nonEmpty then
+        div(
+          div(`class` := "section-title")(text("New Features")),
+          FeatureListSplit(summary.features, Some(ch))
+        )
+      else div()),
+      (if choiceItems.nonEmpty then
+        div(
+          div(`class` := "section-title")(text("Your Choices")),
+          div(`class` := "feature-list")(choiceItems*)
+        )
+      else div()),
       StepNav("< Back", LevelUpMsg.Back, if model.saving then "Saving..." else s"Level Up to $tgt", LevelUpMsg.Confirm, !model.saving)
     )
   }
