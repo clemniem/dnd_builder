@@ -77,6 +77,21 @@ object FeatureGrants {
     classG ++ speciesG ++ bgG
   }
 
+  /** Spell grants from Blessed Warrior (2 Cleric cantrips) or Druidic Warrior (2 Druid cantrips). */
+  def spellGrantsForFightingStyle(fs: Option[FightingStyle]): List[SpellGrant] = fs match {
+    case Some(FightingStyle.BlessedWarrior) => List(SpellGrant(2, 0, "Cleric", "Blessed Warrior", Nil))
+    case Some(FightingStyle.DruidicWarrior) => List(SpellGrant(2, 0, "Druid", "Druidic Warrior", Nil))
+    case _ => Nil
+  }
+
+  /** Whether the creation flow should show the Spells screen (class spells, background feat spells, or fighting-style cantrips). */
   def needsSpellScreen(cls: DndClass, bg: Option[Background]): Boolean =
     cls.isSpellcaster || bg.exists(b => grantsFromOriginFeat(b.feat).exists { case _: FeatureGrant.SpellChoice => true; case _ => false })
+
+  /** Same as above but also true when draft has Blessed Warrior or Druidic Warrior (extra cantrips chosen on Spells step). */
+  def needsSpellScreen(draft: CharacterDraft): Boolean =
+    needsSpellScreen(draft.resolvedClass, draft.background) ||
+      draft.featureSelections.fightingStyle.exists(fs =>
+        fs == FightingStyle.BlessedWarrior || fs == FightingStyle.DruidicWarrior
+      )
 }

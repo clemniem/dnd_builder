@@ -60,8 +60,7 @@ object EquipmentScreen extends Screen {
         equippedWeapons = model.selectedWeapons,
         coins = model.coins
       )
-      val cls = model.draft.resolvedClass
-      val nextScreen = if FeatureGrants.needsSpellScreen(cls, model.draft.background) then ScreenId.SpellsId else ScreenId.ReviewId
+      val nextScreen = if FeatureGrants.needsSpellScreen(updated) then ScreenId.SpellsId else ScreenId.ReviewId
       (model, Cmd.Emit(NavigateNext(nextScreen, Some(ScreenOutput.Draft(updated)))))
     case EquipmentMsg.Back =>
       val updated = model.draft.copy(
@@ -93,7 +92,7 @@ object EquipmentScreen extends Screen {
 
   def view(model: Model): Html[Msg] = {
     val cls = model.draft.resolvedClass
-    val needsSpells = FeatureGrants.needsSpellScreen(cls, model.draft.background)
+    val needsSpells = FeatureGrants.needsSpellScreen(model.draft)
     val proficientArmors = Armor.all.filter(a => cls.armorProficiencies.contains(a.armorType))
     val proficientWeapons = Weapon.all.filter(w => WeaponProficiency.isProficient(w, cls.weaponProficiencies))
     val usedStars = totalStars(model)

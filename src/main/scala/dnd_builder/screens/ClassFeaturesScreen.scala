@@ -48,7 +48,11 @@ object ClassFeaturesScreen extends Screen {
     val cls = draft.resolvedClass
     val model = ClassFeaturesModel(draft, draft.featureSelections)
     if !hasClassFeatureChoices(cls) then {
-      (model, Cmd.Emit(NavigateNext(ScreenId.EquipmentId, Some(ScreenOutput.Draft(draft)))))
+      val extraGrants = FeatureGrants.spellGrantsForFightingStyle(draft.featureSelections.fightingStyle)
+      val existingLabels = draft.spellGrants.map(_.sourceLabel).toSet
+      val newGrants = extraGrants.filter(g => !existingLabels(g.sourceLabel))
+      val finalDraft = draft.copy(spellGrants = draft.spellGrants ++ newGrants)
+      (model, Cmd.Emit(NavigateNext(ScreenId.EquipmentId, Some(ScreenOutput.Draft(finalDraft)))))
     }
     else
       (model, Cmd.None)
@@ -57,7 +61,11 @@ object ClassFeaturesScreen extends Screen {
   def update(model: Model): Msg => (Model, Cmd[IO, Msg]) = {
     case ClassFeaturesMsg.Next =>
       val updated = model.draft.copy(featureSelections = model.featureSelections)
-      (model, Cmd.Emit(NavigateNext(ScreenId.EquipmentId, Some(ScreenOutput.Draft(updated)))))
+      val extraGrants = FeatureGrants.spellGrantsForFightingStyle(updated.featureSelections.fightingStyle)
+      val existingLabels = updated.spellGrants.map(_.sourceLabel).toSet
+      val newGrants = extraGrants.filter(g => !existingLabels(g.sourceLabel))
+      val finalDraft = updated.copy(spellGrants = updated.spellGrants ++ newGrants)
+      (model, Cmd.Emit(NavigateNext(ScreenId.EquipmentId, Some(ScreenOutput.Draft(finalDraft)))))
     case ClassFeaturesMsg.Back =>
       val updated = model.draft.copy(featureSelections = model.featureSelections)
       (model, Cmd.Emit(NavigateNext(ScreenId.SkillsId, Some(ScreenOutput.Draft(updated)))))
@@ -94,8 +102,7 @@ object ClassFeaturesScreen extends Screen {
   }
 
   def view(model: Model): Html[Msg] = {
-    val cls = model.draft.resolvedClass
-    val needsSpells = FeatureGrants.needsSpellScreen(cls, model.draft.background)
+    val needsSpells = FeatureGrants.needsSpellScreen(model.draft)
     val nextEnabled = canProceed(model)
     div(`class` := "screen-container")(
       StepIndicator(6, needsSpells),

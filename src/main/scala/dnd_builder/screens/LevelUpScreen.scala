@@ -61,6 +61,7 @@ object LevelUpScreen extends Screen {
       chosenCantrips = ch.chosenCantrips,
       preparedSpells = initialSpells._2,
       spellbookSpells = initialSpells._1,
+      fightingStyleGrantCantrips = Nil,
       extraSkills = Set.empty,
       landType = None,
       hunterPrey = None,
@@ -157,6 +158,27 @@ object LevelUpScreen extends Screen {
         else current
       (model.copy(spellbookSpells = newList), Cmd.None)
 
+    case LevelUpMsg.ToggleFightingStyleGrantCantrip(spell) =>
+      val resolvedFS = model.fightingStyle.orElse(model.storedCharacter.character.featureSelections.fightingStyle)
+      val (listLabel, maxCount) = resolvedFS match {
+        case Some(FightingStyle.BlessedWarrior) => ("Cleric", 2)
+        case Some(FightingStyle.DruidicWarrior) => ("Druid", 2)
+        case _ => ("", 0)
+      }
+      if maxCount == 0 then (model, Cmd.None)
+      else {
+        val available = Spell.forSpellList(listLabel, 0)
+        if !available.exists(_.name == spell.name) then (model, Cmd.None)
+        else {
+          val current = model.fightingStyleGrantCantrips
+          val newList =
+            if current.exists(_.name == spell.name) then current.filterNot(_.name == spell.name)
+            else if current.size < maxCount then current :+ spell
+            else current
+          (model.copy(fightingStyleGrantCantrips = newList), Cmd.None)
+        }
+      }
+
     case LevelUpMsg.Confirm =>
       val ch = model.storedCharacter.character
       val cls = ch.primaryClass
@@ -178,13 +200,22 @@ object LevelUpScreen extends Screen {
         model.landType.orElse(ch.featureSelections.landType),
         model.hunterPrey.orElse(ch.featureSelections.hunterPrey)
       )
+      val fightingStyleSpellGrant = model.fightingStyle.orElse(ch.featureSelections.fightingStyle) match {
+        case Some(FightingStyle.BlessedWarrior) if model.fightingStyleGrantCantrips.size == 2 =>
+          Some(SpellGrant(2, 0, "Cleric", "Blessed Warrior", model.fightingStyleGrantCantrips))
+        case Some(FightingStyle.DruidicWarrior) if model.fightingStyleGrantCantrips.size == 2 =>
+          Some(SpellGrant(2, 0, "Druid", "Druidic Warrior", model.fightingStyleGrantCantrips))
+        case _ => None
+      }
+      val newSpellGrants = ch.spellGrants ++ fightingStyleSpellGrant.toList
       val updated = ch.copy(
         classLevels = newClassLevels,
         subclass = if tgt >= 3 then subOpt.orElse(ch.subclass) else ch.subclass,
         chosenSkills = ch.chosenSkills ++ model.extraSkills,
         preparedSpells = newPrepared,
         spellbookSpells = if cls.usesSpellbook then model.spellbookSpells else ch.spellbookSpells,
-        featureSelections = newFeatures
+        featureSelections = newFeatures,
+        spellGrants = newSpellGrants
       )
       val updatedStored = StoredCharacter(model.storedCharacter.id, updated)
       (model.copy(saving = true),
@@ -414,6 +445,12 @@ object LevelUpScreen extends Screen {
       else (1 to maxSpellLvl).flatMap(l => Spell.forClass(cls, l)).toList
     val remainingPrepared = maxPrepared - model.preparedSpells.size
     val remainingBook = if isWizard then spellbookSize - model.spellbookSpells.size else 0
+    val resolvedFS = model.fightingStyle.orElse(ch.featureSelections.fightingStyle)
+    val needFightingStyleCantrips = resolvedFS match {
+      case Some(FightingStyle.BlessedWarrior) | Some(FightingStyle.DruidicWarrior) => true
+      case _ => false
+    }
+    val fightingStyleCantripsReady = !needFightingStyleCantrips || model.fightingStyleGrantCantrips.size == 2
 
     val needSpellbookPhase = isWizard && remainingBook > 0
     val spellbookSection =
@@ -427,11 +464,28 @@ object LevelUpScreen extends Screen {
         )
       }
 
+    val fightingStyleCantripSection =
+      if !needFightingStyleCantrips then div()
+      else {
+        val (listLabel, sourceLabel) = resolvedFS match {
+          case Some(FightingStyle.BlessedWarrior) => ("Cleric", "Blessed Warrior")
+          case Some(FightingStyle.DruidicWarrior) => ("Druid", "Druidic Warrior")
+          case _ => ("", "")
+        }
+        val available = Spell.forSpellList(listLabel, 0)
+        div(style := "margin-bottom: 1.5rem;")(
+          div(`class` := "section-title")(text(s"$sourceLabel: Choose 2 $listLabel cantrips")),
+          div(`class` := "points-pool", style := "margin-bottom: 0.5rem;")(text(s"Chosen: ${model.fightingStyleGrantCantrips.size} / 2")),
+          spellListGrouped(available, model.fightingStyleGrantCantrips, LevelUpMsg.ToggleFightingStyleGrantCantrip.apply)
+        )
+      }
+
     div(
       h2(`class` := "screen-title")(text("Spell Changes")),
       p(`class` := "screen-intro")(
         text(if isWizard then s"Add 2 spells to your spellbook, then choose $maxPrepared prepared spells." else s"Choose $maxPrepared prepared spells.")
       ),
+      fightingStyleCantripSection,
       spellbookSection,
       div(
         div(`class` := "section-title")(text(if isWizard then "Prepared spells (from spellbook)" else "Prepared spells")),
@@ -443,7 +497,7 @@ object LevelUpScreen extends Screen {
         LevelUpMsg.Back,
         "Next >",
         LevelUpMsg.Next,
-        remainingPrepared == 0 && (!needSpellbookPhase || remainingBook == 0)
+        fightingStyleCantripsReady && remainingPrepared == 0 && (!needSpellbookPhase || remainingBook == 0)
       )
     )
   }
@@ -675,6 +729,7 @@ final case class LevelUpModel(
     chosenCantrips: List[Spell],
     preparedSpells: List[Spell],
     spellbookSpells: List[Spell],
+    fightingStyleGrantCantrips: List[Spell],
     extraSkills: Set[Skill],
     landType: Option[LandType],
     hunterPrey: Option[HunterPreyChoice],
@@ -695,6 +750,7 @@ enum LevelUpMsg {
   case ToggleExpertise(skill: Skill)
   case TogglePrepared(spell: Spell)
   case ToggleSpellbook(spell: Spell)
+  case ToggleFightingStyleGrantCantrip(spell: Spell)
   case Confirm
   case Cancel
   case Loaded(existing: List[StoredCharacter], updatedChar: StoredCharacter)

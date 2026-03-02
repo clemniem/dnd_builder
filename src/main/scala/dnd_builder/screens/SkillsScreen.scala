@@ -79,7 +79,7 @@ object SkillsScreen extends Screen {
   def view(model: Model): Html[Msg] = {
     val cls = model.draft.resolvedClass
     val bg  = model.draft.resolvedBackground
-    val needsSpells = FeatureGrants.needsSpellScreen(cls, model.draft.background)
+    val needsSpells = FeatureGrants.needsSpellScreen(model.draft)
     val bgSkills = bg.skillProficiencySet
     val pool     = cls.skillPool -- bgSkills
     val classRemaining = cls.numSkillChoices - model.chosenSkills.size

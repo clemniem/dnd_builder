@@ -42,9 +42,8 @@ object LanguagesScreen extends Screen {
       (model, Cmd.Emit(NavigateNext(ScreenId.ReviewId, Some(ScreenOutput.Draft(updated)))))
 
     case LanguagesMsg.Back =>
-      val cls = model.draft.resolvedClass
       val updated = model.draft.copy(chosenExtraLanguages = model.chosenExtraLanguages)
-      if FeatureGrants.needsSpellScreen(cls, model.draft.background) then
+      if FeatureGrants.needsSpellScreen(model.draft) then
         (model, Cmd.Emit(NavigateNext(ScreenId.SpellsId, Some(ScreenOutput.Draft(updated)))))
       else
         (model, Cmd.Emit(NavigateNext(ScreenId.FeaturesId, Some(ScreenOutput.Draft(updated)))))
@@ -66,7 +65,7 @@ object LanguagesScreen extends Screen {
   def view(model: Model): Html[Msg] = {
     val sp = model.draft.resolvedSpecies
     val cls = model.draft.resolvedClass
-    val needsSpells = FeatureGrants.needsSpellScreen(cls, model.draft.background)
+    val needsSpells = FeatureGrants.needsSpellScreen(model.draft)
     val granted = sp.languages
     val needChoices = cls.extraLanguageChoices
     val step = if needsSpells then 9 else 8

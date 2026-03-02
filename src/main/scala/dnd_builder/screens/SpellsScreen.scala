@@ -179,8 +179,7 @@ object SpellsScreen extends Screen {
   }
 
   def view(model: Model): Html[Msg] = {
-    val cls = model.draft.resolvedClass
-    val needsSpells = FeatureGrants.needsSpellScreen(cls, model.draft.background)
+    val needsSpells = FeatureGrants.needsSpellScreen(model.draft)
     div(`class` := "screen-container")(
       StepIndicator(8, needsSpells),
       model.phase match {
@@ -222,7 +221,7 @@ object SpellsScreen extends Screen {
 
   private def cantripsView(model: SpellsModel): Html[Msg] = {
     val (cls, cantrips, prepared, spellbookSize, _) = spellInfo(model.draft)
-    val needsSpells = FeatureGrants.needsSpellScreen(cls, model.draft.background)
+    val needsSpells = FeatureGrants.needsSpellScreen(model.draft)
     val available = Spell.cantripsForClass(cls)
     val remaining = cantrips - model.chosenCantrips.size
     val nextLabel = if spellbookSize > 0 then "Next: Spellbook >"
@@ -283,7 +282,7 @@ object SpellsScreen extends Screen {
         s"Select $prepared spells from the ${cls.name} spell list."
 
     div(
-      StepNav(backLabel, SpellsMsg.Back, StepIndicator.nextLabel(8, FeatureGrants.needsSpellScreen(cls, model.draft.background)), SpellsMsg.Next, remaining == 0),
+      StepNav(backLabel, SpellsMsg.Back, StepIndicator.nextLabel(8, FeatureGrants.needsSpellScreen(model.draft)), SpellsMsg.Next, remaining == 0),
       h1(`class` := "screen-title")(text(title)),
       p(`class` := "screen-intro")(text(intro)),
       div(`class` := "points-pool", style := "margin-bottom: 1rem;")(

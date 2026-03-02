@@ -1,5 +1,7 @@
 # Grant System Refactoring Roadmap
 
+**See [docs/GRANTS_ARCHITECTURE.md](docs/GRANTS_ARCHITECTURE.md) for the current grants architecture and flow (collect → resolve → visualise) in creation and level-up.**
+
 ## Current State
 
 Three separate grant types exist in parallel, each with their own type:

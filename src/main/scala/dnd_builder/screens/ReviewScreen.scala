@@ -101,8 +101,7 @@ object ReviewScreen extends Screen {
       }
 
     case ReviewMsg.Back =>
-      val cls = model.draft.resolvedClass
-      val backScreen = if FeatureGrants.needsSpellScreen(cls, model.draft.background) then ScreenId.SpellsId else ScreenId.EquipmentId
+      val backScreen = if FeatureGrants.needsSpellScreen(model.draft) then ScreenId.SpellsId else ScreenId.EquipmentId
       (model, Cmd.Emit(NavigateNext(backScreen, Some(ScreenOutput.Draft(model.draft)))))
 
     case _: NavigateNext =>
@@ -129,8 +128,7 @@ object ReviewScreen extends Screen {
   }
 
   def view(model: Model): Html[Msg] = {
-    val cls = model.draft.resolvedClass
-    val needsSpells = FeatureGrants.needsSpellScreen(cls, model.draft.background)
+    val needsSpells = FeatureGrants.needsSpellScreen(model.draft)
     val currentStep = if needsSpells then 9 else 8
     val character = buildCharacter(model)
 
