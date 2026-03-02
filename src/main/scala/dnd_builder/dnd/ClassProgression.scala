@@ -74,6 +74,20 @@ object ClassProgression {
     if level >= 3 then all.filter(_.id != "subclass") else all
   }
 
+  /** Like featuresForDisplay(dndClass, level) but also omits choice-gate features already resolved for this character
+    * (e.g. Hunter's Prey, Circle of the Land) so the sheet doesn't show "Choose your X option" once the choice is made. */
+  def featuresForDisplay(dndClass: DndClass, level: Int, ch: Character): List[Feature] = {
+    val base = featuresForDisplay(dndClass, level)
+    val fs = ch.featureSelections
+    base.filter { f =>
+      f.id match {
+        case "hunter-prey-choice" => fs.hunterPrey.isEmpty
+        case "land-type-choice"   => fs.landType.isEmpty
+        case _                    => true
+      }
+    }
+  }
+
   def maxSupportedLevel(dndClass: DndClass): Int =
     (1 to 20).reverse.find(l => registry.contains((dndClass.name, l))).getOrElse(1)
 

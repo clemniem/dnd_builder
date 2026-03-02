@@ -28,7 +28,7 @@ object CharacterGalleryScreen extends Screen {
 
   def update(model: Model): Msg => (Model, Cmd[IO, Msg]) = {
     case GalleryMsg.Loaded(chars) =>
-      (model.copy(characters = Some(chars)), Cmd.None)
+      (model.copy(characters = Some(chars.reverse)), Cmd.None)
 
     case GalleryMsg.AskDelete(id) =>
       (model.copy(pendingDeleteId = Some(id)), Cmd.None)
@@ -79,7 +79,7 @@ object CharacterGalleryScreen extends Screen {
       }
 
     case GalleryMsg.CreateNew =>
-      (model, Cmd.Emit(NavigateNext(ScreenId.ClassSelectId, None)))
+      (model, Cmd.Emit(NavigateNext(ScreenId.creationFlowFirst, None)))
 
     case GalleryMsg.Error(_) =>
       (model, Cmd.None)

@@ -30,7 +30,7 @@ object HomeScreen extends Screen {
         p(text("Build type-safe 5e (2024) characters"))
       ),
       div(`class` := "flex-col flex-col--gap-md")(
-        linkCard("Create Character", ScreenId.SpeciesId,
+        linkCard("Create Character", ScreenId.creationFlowFirst,
           "Build a new Level 1 character step by step"),
         linkCard("My Characters", ScreenId.GalleryId,
           "View, manage, and export your saved characters"),

@@ -16,16 +16,18 @@ object LevelUpScreen extends Screen {
   private def targetLevel(model: Model): Int =
     model.storedCharacter.character.primaryClassLevel + 1
 
-  /** Ordered phases for this level-up (depends on class and target level). */
+  /** Ordered phases for this level-up (depends on class and target level).
+    * Class Features (e.g. Fighting Style) come before Spells so choices that grant spells
+    * (e.g. Druidic Warrior: 2 Druid cantrips) are made before the spell selection step. */
   private def phasesForLevel(cls: DndClass, level: Int): List[LevelUpPhase] = {
     val summary = LevelSummary.forClassAtLevel(cls, level)
     val hasSub = summary.subclassEligible.isDefined
     val hasSpells = summary.spellProgression.isDefined
     val hasFeatures = summary.grantChoices.filterNot { case FeatureGrant.SubclassGate() => true; case _ => false }.nonEmpty
     val base = LevelUpPhase.Preview :: (if hasSub then List(LevelUpPhase.Subclass) else Nil)
-    val withSpells = if hasSpells then base :+ LevelUpPhase.Spells else base
-    val withFeatures = if hasFeatures then withSpells :+ LevelUpPhase.ClassFeatures else withSpells
-    withFeatures :+ LevelUpPhase.Confirm
+    val withFeatures = if hasFeatures then base :+ LevelUpPhase.ClassFeatures else base
+    val withSpells = if hasSpells then withFeatures :+ LevelUpPhase.Spells else withFeatures
+    withSpells :+ LevelUpPhase.Confirm
   }
 
   def init(previous: Option[ScreenOutput]): (Model, Cmd[IO, Msg]) = {

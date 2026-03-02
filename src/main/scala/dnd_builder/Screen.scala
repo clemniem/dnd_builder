@@ -10,6 +10,9 @@ trait ScreenId {
 }
 
 object ScreenId {
+  /** First screen of the character creation flow. Use this when starting a new character (e.g. gallery empty state, home). */
+  def creationFlowFirst: ScreenId = SpeciesId
+
   case object HomeId        extends ScreenId { val name = "home"; val title = "Home" }
   case object AboutId       extends ScreenId { val name = "about"; val title = "About" }
   case object SpeciesId     extends ScreenId { val name = "species"; val title = "Choose Race" }
