@@ -9,10 +9,13 @@ import scala.scalajs.js.annotation.JSExportTopLevel
 object CharacterSheetPdf {
 
   /** Bump this on every change to PDF filling logic so `testPdf()` output is visually distinguishable from stale builds. */
-  val testPdfVersion: Int = 32
+  val testPdfVersion: Int = 35
 
   /** Font size (pt) for all large content fields: Class Features, Species Traits, Feats, Languages, Equipment, Weapon Prof, Tool Prof, and weapon rows. Change this to adjust all at once. */
   val contentFontSizePt: Int = 14
+
+  /** Approximate characters per visual line in the Class Features PDF columns (for wrap-aware column split). Tune if columns look uneven. */
+  private val classFeaturesCharsPerLine: Int = 42
 
   private val pdfUrl =
     "https://raw.githubusercontent.com/birddie721/5e2024Builder/main/Character-Sheet.pdf"
@@ -62,38 +65,33 @@ object CharacterSheetPdf {
   def generateTest(): Unit = {
     val dragonbornRed = DragonbornOf(DragonAncestry.Red)
     val attackGrants = FeatureGrants.grantsForSpecies(dragonbornRed).attackGrants
-    val sacredFlame = Spell.all.find(_.name == "Sacred Flame").get
-    val testCantrips = sacredFlame :: (1 to 4).toList.map(i =>
-      Spell.utility(f"Spell $i%02d", 0, SpellSchool.Evocation, Set("Cleric"), false)
-    )
-    val testLvl1Spells = (6 to 30).toList.map(i =>
-      Spell.utility(f"Spell $i%02d", 1, SpellSchool.Evocation, Set("Cleric"), false)
-    )
+    val greataxe = Weapon.all.find(_.name == "Greataxe").get
+    val handaxe  = Weapon.all.find(_.name == "Handaxe").get
     val testChar = Character(
       s"Thorn Ironfist v$testPdfVersion",
       dragonbornRed,
-      List(ClassLevel(DndClass.Cleric, 1)),
+      List(ClassLevel(DndClass.Barbarian, 3)),
       Soldier,
       AbilityScores(Score(15), Score(14), Score(13), Score(8), Score(10), Score(12)),
       BackgroundBonus.TwoPlusOne(Ability.Strength, Ability.Constitution),
-      Set(Skill.Perception, Skill.Survival),
-      Some(Armor.all.find(_.name == "Chain Mail").get),
-      true,
-      List(Weapon.all.find(_.name == "Mace").get),
-      testCantrips,
-      testLvl1Spells,
+      Set(Skill.Perception, Skill.Survival, Skill.Athletics),
+      None,
+      false,
+      List(greataxe, handaxe),
+      Nil,
+      Nil,
       Nil,
       ClassFeatureSelections.empty.withChoices(
         None,
-        Some(DivineOrder.Protector),
         None,
         None,
-        Set(Skill.Perception, Skill.Survival),
-        Nil,
+        None,
+        Set(Skill.Athletics),
+        List(greataxe, handaxe),
         None,
         None
       ),
-      None,
+      Some(Subclass.PathOfTheBerserker),
       dragonbornRed.languages,
       Coins(Soldier.startingGold, 0, 0, 0, 0),
       Nil,
@@ -120,7 +118,8 @@ object CharacterSheetPdf {
         fillCurrency(form, ch)
         fillProficienciesAndFeatures(form, ch)
         val safeName = ch.name.replaceAll("[^a-zA-Z0-9_\\- ]", "").trim
-        val filename = if safeName.isEmpty then "character-sheet.pdf" else s"$safeName.pdf"
+        val baseName = if safeName.isEmpty then "character-sheet" else safeName
+        val filename = s"${baseName}_lv${ch.primaryClassLevel}.pdf"
         PdfLib.saveAndOpen(doc, filename)
         org.scalajs.dom.console.log("[Export PDF] saveAndOpen called")
       }
@@ -199,7 +198,10 @@ object CharacterSheetPdf {
     setField(form, PdfFormFields.ArmorClass, ch.armorClass.toString)
     setField(form, PdfFormFields.MaxHP, ch.maxHitPoints.toString)
     setField(form, PdfFormFields.MaxHD, ch.hitDiceString)
-    // Spent HD: left empty for the player to fill during play (count spent since last long rest)
+    // Current HP, Temp HP, Spent HD: never filled by us; clear any template default so the player fills during play
+    setField(form, PdfFormFields.CurrentHP, "")
+    setField(form, PdfFormFields.TempHP, "")
+    setField(form, PdfFormFields.SpentHD, "")
     setFieldSized(form, PdfFormFields.ProfBonus, ch.proficiencyBonus.format, 12)
     setField(form, PdfFormFields.PassivePerception, ch.passivePerception.toString)
     setFieldSized(form, PdfFormFields.Init, ch.initiative.format, 12)
@@ -380,52 +382,38 @@ object CharacterSheetPdf {
     val featText = ch.originFeat.name + ":\n" + ch.originFeat.description
     setContentField(form, PdfFormFields.Feats, featText, 28)
     setContentField(form, PdfFormFields.Equipment, ch.equipmentSummary, 18)
-    val traitsText = ch.species.traits.map(t => s" * $t").mkString("\n")
+    val traitsText = ch.species.traits.map { t =>
+      t.description.fold(s" * ${t.name}")(d => s" * ${t.name} - $d")
+    }.mkString("\n")
     setContentField(form, PdfFormFields.SpeciesTraits, traitsText, 25)
 
     val features = ClassProgression.featuresUpToLevel(ch.primaryClass, ch.primaryClassLevel)
-    val featureLines = features.map(f => featureLine(f, ch))
-    val mid = (featureLines.size + 1) / 2
-    val col1Text = featureLines.take(mid).mkString("\n")
-    val col2Text = featureLines.drop(mid)
+    val (actionable, informative) = FeatureDisplay.splitActionableInformative(features)
+    def lineFor(f: Feature): String =
+      " * " + f.name + " - " + FeatureDisplay.resolvedDescription(f, ch)
+    val actionableLines = actionable.map(lineFor)
+    val informativeLines = informative.map(lineFor)
+    val lines = actionableLines ++ informativeLines
+    // Account for wrapping: long lines occupy multiple visual lines in the PDF, so split by estimated wrapped height
+    val wrappedCounts = lines.map { line =>
+      val n = (line.length + classFeaturesCharsPerLine - 1) / classFeaturesCharsPerLine
+      math.max(1, n)
+    }
+    val totalWrapped = wrappedCounts.sum
+    val halfWrapped = totalWrapped / 2
+    val (splitAt, _) =
+      if lines.isEmpty then (0, 0)
+      else
+        (1 until lines.length).foldLeft((1, wrappedCounts(0))) { case ((splitAt, sum), i) =>
+          val newSum = sum + wrappedCounts(i)
+          if newSum <= halfWrapped then (i + 1, newSum) else (splitAt, sum)
+        }
+    val col1Text = lines.take(splitAt).mkString("\n")
+    val col2Lines = lines.drop(splitAt)
 
     setContentField(form, PdfFormFields.ClassFeatures1, col1Text, 30)
 
-    if col2Text.nonEmpty then
-      setContentField(form, PdfFormFields.ClassFeatures2, col2Text.mkString("\n"), 35)
-  }
-
-  private def featureLine(f: Feature, ch: Character): String = {
-    val base = f.name + " - "
-    val desc = resolvedFeatureDescription(f, ch)
-    val tracking = f.uses match {
-      case Some(n) => " " + ("o " * n).trim
-      case None    => ""
-    }
-    s" * $base$desc$tracking"
-  }
-
-  private def resolvedFeatureDescription(f: Feature, ch: Character): String = {
-    val fs = ch.featureSelections
-    f.name match {
-      case "Fighting Style" =>
-        fs.fightingStyle.fold(f.description)(s => s"${s.label} (${s.description})")
-      case "Divine Order" =>
-        fs.divineOrder.fold(f.description)(o => s"${o.label} (${o.description})")
-      case "Primal Order" =>
-        fs.primalOrder.fold(f.description)(o => s"${o.label} (${o.description})")
-      case "Eldritch Invocations" | "Eldritch Invocation" =>
-        fs.eldritchInvocation.fold(f.description)(i => s"${i.label} (${i.description})")
-      case "Expertise" =>
-        if fs.expertiseSkills.nonEmpty then
-          fs.expertiseSkills.toList.sortBy(_.label).map(_.label).mkString(", ")
-        else f.description
-      case "Weapon Mastery" =>
-        if fs.weaponMasteries.nonEmpty then
-          fs.weaponMasteries.map(w => s"${w.name} (${w.mastery})").mkString(", ")
-        else f.description
-      case _ =>
-        f.description
-    }
+    if col2Lines.nonEmpty then
+      setContentField(form, PdfFormFields.ClassFeatures2, col2Lines.mkString("\n"), 35)
   }
 }

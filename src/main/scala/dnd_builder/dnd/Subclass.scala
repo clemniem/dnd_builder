@@ -21,7 +21,7 @@ object Subclass {
     Map(level -> spells(names*))
 
   private def feat(name: String, description: String, uses: Option[Int]): Feature =
-    Feature(name.toLowerCase.replace(' ', '-'), name, description, uses, Nil)
+    Feature(name.toLowerCase.replace(' ', '-'), name, description, uses, Nil, false)
 
   case object PathOfTheBerserker extends Subclass {
     val name         = "Path of the Berserker"

@@ -109,14 +109,7 @@ object LevelSelectScreen extends Screen {
         case None => div()
       },
       div(`class` := "section-title")(text("Class Features")),
-      div(`class` := "feature-list")(
-        features.map { f =>
-          div(`class` := "feature-item")(
-            div(`class` := "feature-name")(text(f.name)),
-            div(`class` := "feature-desc")(text(f.description))
-          )
-        }*
-      )
+      FeatureListSplit(features, None)
     )
   }
 

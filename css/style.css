@@ -57,11 +57,13 @@ body {
   display: flex;
   justify-content: center;
   align-items: flex-start;
+  overflow-x: auto;
 }
 
 #myapp {
   width: 52rem;
-  max-width: 100%;
+  min-width: 52rem;
+  max-width: 52rem;
   min-height: 0;
   box-sizing: border-box;
 }

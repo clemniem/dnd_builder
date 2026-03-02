@@ -113,19 +113,16 @@ object CharacterDetailScreen extends Screen {
         }*
       ),
       div(`class` := "section-title")(text("Class Features")),
-      div(`class` := "feature-list")(
-        ClassProgression.featuresUpToLevel(ch.primaryClass, ch.primaryClassLevel).map { f =>
-          div(`class` := "feature-item")(
-            div(`class` := "feature-name")(text(f.name)),
-            div(`class` := "feature-desc")(text(f.description))
-          )
-        }*
-      ),
+      FeatureListSplit(ClassProgression.featuresUpToLevel(ch.primaryClass, ch.primaryClassLevel), Some(ch)),
       div(`class` := "section-title")(text("Species Traits")),
       div(`class` := "feature-list")(
         ch.species.traits.map { t =>
           div(`class` := "feature-item")(
-            div(`class` := "feature-name")(text(t))
+            div(`class` := "feature-name")(text(t.name)),
+            t.description match {
+              case Some(d) => div(`class` := "feature-desc", style := "font-size: 0.85rem; color: var(--color-text-muted);")(text(d))
+              case None    => div()
+            }
           )
         }*
       ),

@@ -171,7 +171,7 @@ object ClassFeaturesScreen extends Screen {
             },
             div(`class` := "feature-item")(
               div(`class` := "feature-name")(text("Traits")),
-              div(`class` := "feature-desc")(text(sp.traits.mkString("; ")))
+              div(`class` := "feature-desc")(text(sp.traits.map(_.name).mkString("; ")))
             )
           )
         )

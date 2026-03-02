@@ -64,7 +64,7 @@ object SpeciesScreen extends Screen {
                   s.darkvision.map(d => span(`class` := "badge")(text(s"Darkvision ${d}ft"))).getOrElse(span())
                 ),
                 div(style := "font-size: 0.8rem; color: var(--color-text-muted);")(
-                  text(s.traits.take(3).mkString(", "))
+                  text(s.traits.map(_.name).take(3).mkString(", "))
                 )
               )
             }.getOrElse(div())
@@ -116,7 +116,11 @@ object SpeciesScreen extends Screen {
           div(`class` := "feature-list")(
             sp.traits.map { t =>
               div(`class` := "feature-item")(
-                div(`class` := "feature-name")(text(t))
+                div(`class` := "feature-name")(text(t.name)),
+                t.description match {
+                  case Some(d) => div(`class` := "feature-desc", style := "font-size: 0.85rem; color: var(--color-text-muted);")(text(d))
+                  case None    => div()
+                }
               )
             }*
           )

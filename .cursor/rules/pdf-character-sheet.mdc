@@ -21,7 +21,9 @@ Hit dice is filled in `fillCombatStats` as `{level}d{hitDie.sides}` (e.g. `1d10`
 
 | File | Purpose |
 |------|--------|
+| `common/pdf/character-sheet-form-fields.json` | **Source of truth for existing PDF form field names.** Before adding or changing a field name in `PdfFormFields.scala`, check this JSON — only use names that appear there, with exact spelling and casing. Regenerate it via `listPdfFields()` in the browser console if the template PDF changes. |
 | `common/pdf/CharacterSheetPdf.scala` | Form filling logic, `generate()`, `generateTest()` |
+| `common/pdf/PdfFormFields.scala` | Constants for form field names; must match names in `character-sheet-form-fields.json`. |
 | `common/pdf/PdfLib.scala` | pdf-lib facade (setText, setFontSize, removeMaxLength, etc.) |
 
 ## Test PDF version stamp

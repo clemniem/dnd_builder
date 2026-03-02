@@ -1,5 +1,13 @@
 package dndbuilder.dnd
 
+/** A species trait with an optional short description for display (e.g. in PDF or app). */
+final case class SpeciesTrait(name: String, description: Option[String])
+
+object SpeciesTrait {
+  def apply(name: String, description: String): SpeciesTrait = SpeciesTrait(name, Some(description))
+  def nameOnly(name: String): SpeciesTrait = SpeciesTrait(name, None)
+}
+
 enum ElvenLineage(val label: String) {
   case High extends ElvenLineage("High Elf")
   case Wood extends ElvenLineage("Wood Elf")
@@ -45,7 +53,7 @@ sealed trait Species {
   def speed: Int
   def darkvision: Option[Int]
   def hpBonusPerLevel: Int
-  def traits: List[String]
+  def traits: List[SpeciesTrait]
   def subLabel: Option[String]
   /** Species name including subrace when present (e.g. "Elf (High Elf)"). Use this for display; Subclass is for class archetype at level 3+. */
   def displayName: String = subLabel.fold(name)(sub => s"$name ($sub)")
@@ -61,7 +69,12 @@ case object Dragonborn extends Species {
   val speed            = 30
   val darkvision       = Some(60)
   val hpBonusPerLevel  = 0
-  val traits           = List("Draconic Ancestry", "Breath Weapon", "Damage Resistance", "Darkvision 60ft")
+  val traits           = List(
+    SpeciesTrait("Draconic Ancestry", "Your ancestry determines damage type for breath and resistance."),
+    SpeciesTrait("Breath Weapon", "Exhale destructive energy in a 15ft cone or 30ft line; save for half."),
+    SpeciesTrait("Damage Resistance", "You have resistance to your ancestry's damage type."),
+    SpeciesTrait("Darkvision 60ft", "You see in dim light as bright light and in darkness as dim, out to 60ft.")
+  )
   val subLabel         = None
   val languages        = Set(Language.Common, Language.Draconic)
 }
@@ -73,10 +86,10 @@ final case class DragonbornOf(ancestry: DragonAncestry) extends Species {
   val darkvision       = Some(60)
   val hpBonusPerLevel  = 0
   val traits           = List(
-    s"Draconic Ancestry (${ancestry.label})",
-    s"Breath Weapon (${ancestry.damageType})",
-    s"${ancestry.damageType} Resistance",
-    "Darkvision 60ft"
+    SpeciesTrait(s"Draconic Ancestry (${ancestry.label})", "Your ancestry determines damage type for breath and resistance."),
+    SpeciesTrait(s"Breath Weapon (${ancestry.damageType})", "Exhale destructive energy in a 15ft cone or 30ft line; save for half."),
+    SpeciesTrait(s"${ancestry.damageType} Resistance", "You have resistance to your ancestry's damage type."),
+    SpeciesTrait("Darkvision 60ft", "You see in dim light as bright light and in darkness as dim, out to 60ft.")
   )
   val subLabel         = Some(ancestry.label)
   val languages        = Set(Language.Common, Language.Draconic)
@@ -101,7 +114,12 @@ case object Dwarf extends Species {
   val speed            = 30
   val darkvision       = Some(120)
   val hpBonusPerLevel  = 1
-  val traits           = List("Darkvision 120ft", "Dwarven Resilience", "Dwarven Toughness (+1 HP/level)", "Stonecunning")
+  val traits           = List(
+    SpeciesTrait("Darkvision 120ft", "You see in dim light as bright light and in darkness as dim, out to 120ft."),
+    SpeciesTrait("Dwarven Resilience", "Advantage on saves against poison; resistance to poison damage."),
+    SpeciesTrait("Dwarven Toughness (+1 HP/level)", "Your hit point maximum increases by 1 per level."),
+    SpeciesTrait("Stonecunning", "Bonus to History checks related to stonework; tremorsense while touching stone.")
+  )
   val subLabel         = None
   val languages        = Set(Language.Common, Language.Dwarvish)
 }
@@ -113,11 +131,11 @@ final case class Elf(lineage: ElvenLineage) extends Species {
   val darkvision       = Some(60)
   val hpBonusPerLevel  = 0
   val traits           = List(
-    "Darkvision 60ft",
-    s"Elven Lineage (${lineage.label})",
-    "Fey Ancestry",
-    "Keen Senses",
-    "Trance"
+    SpeciesTrait("Darkvision 60ft", "You see in dim light as bright light and in darkness as dim, out to 60ft."),
+    SpeciesTrait(s"Elven Lineage (${lineage.label})", "Grants lineage-specific spells or abilities."),
+    SpeciesTrait("Fey Ancestry", "Advantage on saves against being charmed; magic cannot put you to sleep."),
+    SpeciesTrait("Keen Senses", "Proficiency in the Perception skill."),
+    SpeciesTrait("Trance", "You meditate 4 hours instead of sleeping; remain semiconscious.")
   )
   val subLabel         = Some(lineage.label)
   val languages        = Set(Language.Common, Language.Elvish)
@@ -130,9 +148,9 @@ final case class Gnome(lineage: GnomishLineage) extends Species {
   val darkvision       = Some(60)
   val hpBonusPerLevel  = 0
   val traits           = List(
-    "Darkvision 60ft",
-    "Gnomish Cunning",
-    s"Gnomish Lineage (${lineage.label})"
+    SpeciesTrait("Darkvision 60ft", "You see in dim light as bright light and in darkness as dim, out to 60ft."),
+    SpeciesTrait("Gnomish Cunning", "Advantage on Int, Wis, and Cha saves against magic."),
+    SpeciesTrait(s"Gnomish Lineage (${lineage.label})", "Grants lineage-specific spells or abilities.")
   )
   val subLabel         = Some(lineage.label)
   val languages        = Set(Language.Common, Language.Gnomish)
@@ -145,9 +163,9 @@ final case class Goliath(ancestry: GiantAncestry) extends Species {
   val darkvision       = None
   val hpBonusPerLevel  = 0
   val traits           = List(
-    s"Giant Ancestry (${ancestry.label})",
-    "Large Form (level 5)",
-    "Powerful Build"
+    SpeciesTrait(s"Giant Ancestry (${ancestry.label})", "Grants ancestry-specific spells or abilities at higher levels."),
+    SpeciesTrait("Large Form (level 5)", "At 5th level you can become Large for 10 minutes; rest to reuse."),
+    SpeciesTrait("Powerful Build", "Count as one size larger for carrying capacity and push/drag/lift.")
   )
   val subLabel         = Some(ancestry.label)
   val languages        = Set(Language.Common, Language.Giant)
@@ -159,7 +177,12 @@ case object Halfling extends Species {
   val speed            = 30
   val darkvision       = None
   val hpBonusPerLevel  = 0
-  val traits           = List("Brave", "Halfling Nimbleness", "Luck", "Naturally Stealthy")
+  val traits           = List(
+    SpeciesTrait("Brave", "Advantage on saves against being frightened."),
+    SpeciesTrait("Halfling Nimbleness", "You can move through the space of any Medium or larger creature."),
+    SpeciesTrait("Luck", "When you roll a 1 on a d20 for an attack, check, or save, you can reroll once per turn."),
+    SpeciesTrait("Naturally Stealthy", "You can attempt to hide when obscured only by a Medium or larger creature.")
+  )
   val subLabel         = None
   val languages        = Set(Language.Common, Language.Halfling)
 }
@@ -170,7 +193,11 @@ case object Human extends Species {
   val speed            = 30
   val darkvision       = None
   val hpBonusPerLevel  = 0
-  val traits           = List("Resourceful", "Skillful", "Versatile")
+  val traits           = List(
+    SpeciesTrait("Resourceful", "Gain Inspiration whenever you finish a Long Rest."),
+    SpeciesTrait("Skillful", "Gain one extra skill proficiency and one extra feat."),
+    SpeciesTrait("Versatile", "Increase one ability score by 2 and another by 1, or three scores by 1.")
+  )
   val subLabel         = None
   val languages        = Set(Language.Common)
 }
@@ -181,7 +208,11 @@ case object Orc extends Species {
   val speed            = 30
   val darkvision       = Some(120)
   val hpBonusPerLevel  = 0
-  val traits           = List("Adrenaline Rush", "Darkvision 120ft", "Relentless Endurance")
+  val traits           = List(
+    SpeciesTrait("Adrenaline Rush", "Bonus action to Dash or make a weapon attack; gain temp HP; rest to reuse."),
+    SpeciesTrait("Darkvision 120ft", "You see in dim light as bright light and in darkness as dim, out to 120ft."),
+    SpeciesTrait("Relentless Endurance", "When reduced to 0 HP, drop to 1 instead once per long rest.")
+  )
   val subLabel         = None
   val languages        = Set(Language.Common, Language.Orc)
 }
@@ -193,9 +224,9 @@ final case class Tiefling(legacy: FiendishLegacy) extends Species {
   val darkvision       = Some(60)
   val hpBonusPerLevel  = 0
   val traits           = List(
-    "Darkvision 60ft",
-    s"Fiendish Legacy (${legacy.label})",
-    "Otherworldly Presence"
+    SpeciesTrait("Darkvision 60ft", "You see in dim light as bright light and in darkness as dim, out to 60ft."),
+    SpeciesTrait(s"Fiendish Legacy (${legacy.label})", "Grants a cantrip and damage resistance; at 3rd and 5th level, additional spells from your legacy."),
+    SpeciesTrait("Otherworldly Presence", "You know the Thaumaturgy cantrip. Advantage on saves against being frightened.")
   )
   val subLabel         = Some(legacy.label)
   val languages        = Set(Language.Common, Language.Infernal)

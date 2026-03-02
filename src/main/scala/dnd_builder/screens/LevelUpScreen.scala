@@ -330,14 +330,7 @@ object LevelUpScreen extends Screen {
       (if summary.features.nonEmpty then
         div(
           div(`class` := "section-title")(text("New Features")),
-          div(`class` := "feature-list")(
-            summary.features.map { f =>
-              div(`class` := "feature-item")(
-                div(`class` := "feature-name")(text(f.name)),
-                div(`class` := "feature-desc")(text(f.description))
-              )
-            }*
-          )
+          FeatureListSplit(summary.features, Some(ch))
         )
       else div()),
       subBanner match {

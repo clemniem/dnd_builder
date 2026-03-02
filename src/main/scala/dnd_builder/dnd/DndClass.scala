@@ -23,13 +23,15 @@ object FeatureGrant {
   case class ExtraSkillsChoice(count: Int, pool: Set[Skill]) extends FeatureGrant
 }
 
-/** A class feature with optional structured grants. Backward-compat alias: ClassFeature = Feature. */
+/** A class feature with optional structured grants. Backward-compat alias: ClassFeature = Feature.
+  * informative: true = reference/passive (e.g. Spellcasting, Jack of All Trades); false = actionable (use-tracking, O-N). */
 final case class Feature(
     id: String,
     name: String,
     description: String,
     uses: Option[Int],
-    grants: List[FeatureGrant]
+    grants: List[FeatureGrant],
+    informative: Boolean
 )
 
 /** Backward-compat during transition; Feature is the canonical type. */

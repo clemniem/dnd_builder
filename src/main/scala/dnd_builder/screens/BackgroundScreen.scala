@@ -98,6 +98,7 @@ object BackgroundScreen extends Screen {
     val cls = model.draft.resolvedClass
     val granted = sp.languages
     val needChoices = cls.extraLanguageChoices
+    val allKnown = (granted ++ model.chosenExtraLanguages).toList.sortBy(_.label)
     val pool = Language.choicePool.filterNot(granted.contains)
     val selectedValue = model.chosenExtraLanguages.headOption.map(_.label).getOrElse("")
 
@@ -105,28 +106,33 @@ object BackgroundScreen extends Screen {
       if s.isEmpty then BackgroundMsg.SelectExtraLanguage(None)
       else BackgroundMsg.SelectExtraLanguage(pool.find(_.label == s))
 
-    div(style := "margin-bottom: 1.5rem;")(
-      if needChoices <= 0 then div()
+    val dropdownHtml: Html[Msg] =
+      if needChoices <= 0 then div()()
       else
-        div(`class` := "field-block", style := "max-width: 20rem;")(
-          label(`class` := "label-block")(text("Additional language (from class)")),
+        div(`class` := "field-block", style := "max-width: 20rem; margin-top: 0.25rem;")(
+          label(`class` := "label-block", style := "font-size: 0.9rem;")(
+            text("Add a language from your class:")
+          ),
           {
             val opts =
               option(value := "")(text("Choose a language...")) :: pool.map(lang =>
                 option(value := lang.label)(text(lang.label))
-              )
+            )
             select(value := selectedValue, onInput(onSelectValue))(opts*)
           }
-        ),
-      div(`class` := "section-title")(text("Languages")),
+        )
+
+    div(style := "margin-bottom: 1.5rem;")(
+      div(`class` := "section-title", style := "margin-bottom: 0.5rem;")(text("Languages")),
       p(style := "font-size: 0.9rem; color: var(--color-text-dim); margin-bottom: 0.5rem;")(
-        text("Everyone knows Common. Your species grants:")
+        text("Everyone knows Common. Your species grants some; your class may let you add more.")
       ),
-      div(`class` := "prof-list", style := "margin-bottom: 0.75rem;")(
-        granted.toList.sortBy(_.label).map { lang =>
+      div(`class` := "prof-list", style := "margin-bottom: 0.5rem;")(
+        allKnown.map { lang =>
           div(`class` := "prof-item prof-item--proficient")(text(lang.label))
         }*
-      )
+      ),
+      dropdownHtml
     )
   }
 

@@ -215,7 +215,7 @@ object Codecs {
     }
   }
 
-  given Encoder[Feature] = Encoder.forProduct5("id", "name", "description", "uses", "grants")(f => (f.id, f.name, f.description, f.uses, f.grants))
+  given Encoder[Feature] = Encoder.forProduct6("id", "name", "description", "uses", "grants", "informative")(f => (f.id, f.name, f.description, f.uses, f.grants, f.informative))
   given Decoder[Feature] = Decoder.instance { c =>
     for {
       name        <- c.downField("name").as[String]
@@ -223,7 +223,8 @@ object Codecs {
       uses        <- c.downField("uses").as[Option[Int]]
       id          <- c.downField("id").as[Option[String]].map(_.getOrElse(name.toLowerCase.replace(' ', '-')))
       grants      <- c.downField("grants").as[Option[List[FeatureGrant]]].map(_.getOrElse(Nil))
-    } yield Feature(id, name, description, uses, grants)
+      informative <- c.downField("informative").as[Option[Boolean]].map(_.getOrElse(false))
+    } yield Feature(id, name, description, uses, grants, informative)
   }
 
   given Encoder[Modifier] = Encoder.encodeInt.contramap(_.toInt)
